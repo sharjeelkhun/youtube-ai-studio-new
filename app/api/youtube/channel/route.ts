@@ -1,86 +1,104 @@
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    // Get the YouTube tokens from the cookie
-    const tokenCookie = cookieStore.get("youtube_tokens")
+    // Get the current user session
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (!tokenCookie) {
-      return NextResponse.json({ error: "No YouTube tokens found" }, { status: 401 })
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    let tokenData
-    try {
-      tokenData = JSON.parse(tokenCookie.value)
-    } catch (e) {
-      return NextResponse.json({ error: "Invalid token data" }, { status: 401 })
+    // Get the channel data from the database
+    const { data: channelData, error: channelError } = await supabase
+      .from("youtube_channels")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .single()
+
+    if (channelError) {
+      return NextResponse.json({ error: `Failed to fetch channel data: ${channelError.message}` }, { status: 500 })
     }
 
-    const accessToken = tokenData.access_token
-
-    if (!accessToken) {
-      return NextResponse.json({ error: "No access token found" }, { status: 401 })
+    if (!channelData) {
+      return NextResponse.json({ error: "No YouTube channel connected" }, { status: 404 })
     }
 
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000)
-    if (tokenData.expiry_time && tokenData.expiry_time <= now) {
-      // Token is expired, we should refresh it
-      // For now, just return an error
-      return NextResponse.json({ error: "Access token expired" }, { status: 401 })
-    }
+    // Check if the token is expired
+    const tokenExpiresAt = new Date(channelData.token_expires_at).getTime()
+    const now = Date.now()
 
-    // Fetch channel data from YouTube API
-    const response = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    })
+    let accessToken = channelData.access_token
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error("YouTube API error response:", errorText)
+    if (now >= tokenExpiresAt) {
+      // Token is expired, refresh it
+      const refreshResponse = await fetch("/api/youtube/refresh-token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ refreshToken: channelData.refresh_token }),
+      })
 
-      try {
-        const errorData = JSON.parse(errorText)
-        return NextResponse.json(
-          { error: `YouTube API error: ${errorData.error?.message || errorData.error || response.statusText}` },
-          { status: response.status },
-        )
-      } catch (e) {
-        return NextResponse.json({ error: `YouTube API error: ${response.statusText}` }, { status: response.status })
+      if (!refreshResponse.ok) {
+        return NextResponse.json({ error: "Failed to refresh access token" }, { status: refreshResponse.status })
       }
+
+      const refreshData = await refreshResponse.json()
+      accessToken = refreshData.access_token
     }
 
-    const data = await response.json()
+    // Fetch the latest channel data from YouTube API
+    const youtubeResponse = await fetch(
+      "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      },
+    )
 
-    if (!data.items || data.items.length === 0) {
+    if (!youtubeResponse.ok) {
+      return NextResponse.json(
+        { error: `YouTube API error: ${youtubeResponse.statusText}` },
+        { status: youtubeResponse.status },
+      )
+    }
+
+    const youtubeData = await youtubeResponse.json()
+
+    if (!youtubeData.items || youtubeData.items.length === 0) {
       return NextResponse.json({ error: "No channel found" }, { status: 404 })
     }
 
-    const channelData = data.items[0]
+    const channel = youtubeData.items[0]
 
     // Format the response
-    const formattedChannel = {
-      id: channelData.id,
-      title: channelData.snippet.title,
-      description: channelData.snippet.description,
-      customUrl: channelData.snippet.customUrl,
-      thumbnails: channelData.snippet.thumbnails,
-      statistics: {
-        viewCount: channelData.statistics.viewCount,
-        subscriberCount: channelData.statistics.subscriberCount,
-        videoCount: channelData.statistics.videoCount,
-      },
+    const response = {
+      id: channel.id,
+      title: channel.snippet.title,
+      description: channel.snippet.description || null,
+      customUrl: channel.snippet.customUrl || null,
+      thumbnail: channel.snippet.thumbnails?.default?.url || null,
+      subscribers: Number.parseInt(channel.statistics.subscriberCount) || 0,
+      videos: Number.parseInt(channel.statistics.videoCount) || 0,
+      views: Number.parseInt(channel.statistics.viewCount) || 0,
+      lastUpdated: new Date().toISOString(),
+      statistics: channel.statistics,
+      thumbnails: channel.snippet.thumbnails,
     }
 
-    return NextResponse.json(formattedChannel)
+    return NextResponse.json(response)
   } catch (error: any) {
-    console.error("Error fetching YouTube channel:", error)
+    console.error("Error fetching channel data:", error)
     return NextResponse.json({ error: `Failed to fetch channel data: ${error.message}` }, { status: 500 })
   }
 }

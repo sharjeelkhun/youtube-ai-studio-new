@@ -1,34 +1,46 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Loader2 } from "lucide-react"
+import { useEffect, useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Button } from "@/components/ui/button"
+import { Check, XCircle } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
+import { useToast } from "@/hooks/use-toast"
 
-export default function CallbackPage() {
+export default function YouTubeCallback() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+  const [errorMessage, setErrorMessage] = useState("")
   const searchParams = useSearchParams()
+  const router = useRouter()
+  const { user, isLoading } = useAuth()
+  const { toast } = useToast()
 
   useEffect(() => {
-    const handleCallback = async () => {
-      const code = searchParams.get("code")
-      const error = searchParams.get("error")
+    // Redirect to login if not authenticated
+    if (!isLoading && !user) {
+      router.push("/login")
+      return
+    }
 
-      if (error) {
-        setStatus("error")
-        setError(`Google OAuth error: ${error}`)
-        return
-      }
-
-      if (!code) {
-        setStatus("error")
-        setError("No authorization code received")
-        return
-      }
-
+    async function handleCallback() {
       try {
+        const code = searchParams.get("code")
+        const error = searchParams.get("error")
+
+        if (error) {
+          setStatus("error")
+          setErrorMessage(error)
+          return
+        }
+
+        if (!code) {
+          setStatus("error")
+          setErrorMessage("No authorization code received")
+          return
+        }
+
         // Exchange the code for tokens
         const response = await fetch("/api/youtube/auth-callback", {
           method: "POST",
@@ -40,61 +52,85 @@ export default function CallbackPage() {
 
         const data = await response.json()
 
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to exchange code for tokens")
+        if (response.ok) {
+          setStatus("success")
+          toast({
+            title: "Channel connected!",
+            description: "Your YouTube channel has been connected successfully.",
+          })
+          // Wait a moment before redirecting
+          setTimeout(() => {
+            router.push("/dashboard")
+          }, 2000)
+        } else {
+          setStatus("error")
+          setErrorMessage(data.error || "Failed to connect YouTube channel")
         }
-
-        setStatus("success")
-
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 2000)
       } catch (error: any) {
-        console.error("Error handling OAuth callback:", error)
+        console.error("Error during callback:", error)
         setStatus("error")
-        setError(error.message || "Failed to connect YouTube channel")
+        setErrorMessage(error.message || "An unknown error occurred")
       }
     }
 
-    handleCallback()
-  }, [searchParams, router])
+    if (user) {
+      handleCallback()
+    }
+  }, [searchParams, router, user, isLoading, toast])
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">Loading...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-4">
-      {status === "loading" && (
-        <div className="flex flex-col items-center justify-center gap-4">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <h1 className="text-2xl font-bold">Connecting your YouTube channel...</h1>
-          <p className="text-muted-foreground">Please wait while we complete the connection process.</p>
-        </div>
-      )}
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">
+            {status === "loading" && "Connecting YouTube Channel..."}
+            {status === "success" && "YouTube Channel Connected"}
+            {status === "error" && "Connection Failed"}
+          </CardTitle>
+          <CardDescription>
+            {status === "loading" && "Please wait while we connect to your YouTube channel."}
+            {status === "success" && "Your YouTube channel has been connected successfully."}
+            {status === "error" && "We encountered an error connecting your YouTube channel."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center space-y-4">
+          {status === "loading" && (
+            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+          )}
 
-      {status === "success" && (
-        <div className="flex flex-col items-center justify-center gap-4">
-          <div className="rounded-full bg-green-100 p-3">
-            <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-bold">YouTube channel connected!</h1>
-          <p className="text-muted-foreground">Redirecting you to the dashboard...</p>
-        </div>
-      )}
+          {status === "success" && (
+            <>
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
+                <Check className="h-8 w-8 text-green-600 dark:text-green-300" />
+              </div>
+              <Button onClick={() => router.push("/dashboard")}>Go to Dashboard</Button>
+            </>
+          )}
 
-      {status === "error" && (
-        <Alert variant="destructive" className="max-w-md">
-          <AlertTitle>Connection Failed</AlertTitle>
-          <AlertDescription>
-            {error || "An error occurred while connecting your YouTube channel."}
-            <div className="mt-4">
-              <button onClick={() => router.push("/connect-channel")} className="text-sm font-medium underline">
-                Try again
-              </button>
-            </div>
-          </AlertDescription>
-        </Alert>
-      )}
+          {status === "error" && (
+            <>
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
+                <XCircle className="h-8 w-8 text-red-600 dark:text-red-300" />
+              </div>
+
+              <Alert variant="destructive" className="mt-4">
+                <AlertTitle>Error Details</AlertTitle>
+                <AlertDescription>{errorMessage}</AlertDescription>
+              </Alert>
+
+              <Button onClick={() => router.push("/connect-channel")}>Try Again</Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

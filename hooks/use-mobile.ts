@@ -2,22 +2,28 @@
 
 import { useState, useEffect } from "react"
 
-export function useMobile(maxWidth = 768) {
+export function useMobile() {
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= maxWidth)
+    // Check if window is defined (client-side)
+    if (typeof window !== "undefined") {
+      const checkIfMobile = () => {
+        setIsMobile(window.innerWidth < 768)
+      }
+
+      // Initial check
+      checkIfMobile()
+
+      // Add event listener
+      window.addEventListener("resize", checkIfMobile)
+
+      // Clean up
+      return () => {
+        window.removeEventListener("resize", checkIfMobile)
+      }
     }
-
-    handleResize()
-
-    window.addEventListener("resize", handleResize)
-
-    return () => {
-      window.removeEventListener("resize", handleResize)
-    }
-  }, [maxWidth])
+  }, [])
 
   return isMobile
 }

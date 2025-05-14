@@ -1,124 +1,83 @@
-"use client"
-
-import Link from "next/link"
-import { Bell, Settings } from "lucide-react"
+import { Bell, Menu, Search, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sidebar } from "@/components/sidebar"
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
-export function TopBar() {
-  const { channel } = useYouTubeChannel()
-  const supabase = createClientComponentClient()
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const getUser = async () => {
-      try {
-        setLoading(true)
-        const { data, error } = await supabase.auth.getUser()
-
-        if (error) {
-          console.error("Error fetching user:", error)
-          return
-        }
-
-        if (data?.user) {
-          setUser(data.user)
-        }
-      } catch (error) {
-        console.error("Error in getUser:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    getUser()
-  }, [supabase])
-
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut()
-      router.push("/login")
-    } catch (error) {
-      console.error("Error signing out:", error)
-    }
-  }
-
-  // Get the first letter of the email or a fallback
-  const getInitial = () => {
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase()
-    }
-    return "U"
+export function TopBar({ channelData }) {
+  // Get channel initials for avatar fallback
+  const getInitials = (name) => {
+    if (!name) return "YT"
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .substring(0, 2)
   }
 
   return (
-    <div className="flex h-16 items-center justify-between border-b px-4">
-      <div className="flex items-center gap-4">
-        <Link href="/dashboard" className="text-xl font-bold">
-          YT Dashboard
-        </Link>
-        <div className="hidden md:block">
-          <Input placeholder="Search..." className="w-[300px]" />
+    <TooltipProvider>
+      <header className="sticky top-0 z-10 flex h-16 items-center border-b bg-background px-4 md:px-6">
+        <div className="flex items-center gap-2 md:hidden">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0">
+              <Sidebar />
+            </SheetContent>
+          </Sheet>
         </div>
-      </div>
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
-        </Button>
-        <Link href="/settings">
-          <Button variant="ghost" size="icon">
-            <Settings className="h-5 w-5" />
-          </Button>
-        </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                {channel?.thumbnails?.default?.url ? (
-                  <AvatarImage
-                    src={channel.thumbnails.default.url || "/placeholder.svg"}
-                    alt={channel.title || "User"}
-                  />
-                ) : (
-                  <AvatarFallback>{loading ? "..." : getInitial()}</AvatarFallback>
-                )}
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{channel?.title || user?.email || "User"}</p>
-                <p className="text-xs leading-none text-muted-foreground">{channel?.customUrl || user?.email || ""}</p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/settings/profile">Profile</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/settings/integrations">Integrations</Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleSignOut}>Log out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+        <div className="flex w-full items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="relative hidden md:flex">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input type="search" placeholder="Search..." className="w-64 rounded-lg bg-background pl-8 md:w-80" />
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <Bell className="h-4 w-4" />
+                  <span className="sr-only">Notifications</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Notifications</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <Settings className="h-4 w-4" />
+                  <span className="sr-only">Settings</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Settings</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="icon" className="rounded-full">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={channelData?.thumbnail || "https://github.com/shadcn.png"}
+                      alt={channelData?.title || "Channel"}
+                    />
+                    <AvatarFallback>{getInitials(channelData?.title)}</AvatarFallback>
+                  </Avatar>
+                  <span className="sr-only">Profile</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Profile</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </header>
+    </TooltipProvider>
   )
 }

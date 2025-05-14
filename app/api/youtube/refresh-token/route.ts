@@ -1,9 +1,16 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
+    const body = await request.json()
+    const { refreshToken } = body
+
+    if (!refreshToken) {
+      return NextResponse.json({ error: "Refresh token is required" }, { status: 400 })
+    }
+
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
@@ -14,13 +21,6 @@ export async function POST(request: NextRequest) {
 
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Get refresh token from request body
-    const { refreshToken } = await request.json()
-
-    if (!refreshToken) {
-      return NextResponse.json({ error: "Refresh token is required" }, { status: 400 })
     }
 
     // Exchange refresh token for a new access token
@@ -38,8 +38,6 @@ export async function POST(request: NextRequest) {
     })
 
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json()
-      console.error("Token refresh error:", errorData)
       return NextResponse.json(
         { error: `Failed to refresh token: ${tokenResponse.statusText}` },
         { status: tokenResponse.status },
@@ -52,23 +50,24 @@ export async function POST(request: NextRequest) {
     const expiresIn = tokenData.expires_in || 3600
     const expiryTime = Math.floor(Date.now() / 1000) + expiresIn
 
-    // Update the user's profile with the new token
+    // Update the token in the database
     const { error: updateError } = await supabase
-      .from("profiles")
+      .from("youtube_channels")
       .update({
-        youtube_access_token: tokenData.access_token,
-        youtube_token_expiry: expiryTime,
+        access_token: tokenData.access_token,
+        token_expires_at: new Date(expiryTime * 1000).toISOString(),
+        last_updated: new Date().toISOString(),
       })
-      .eq("id", session.user.id)
+      .eq("user_id", session.user.id)
 
     if (updateError) {
-      console.error("Error updating profile with new token:", updateError)
-      return NextResponse.json({ error: "Failed to update profile with new token" }, { status: 500 })
+      console.error("Error updating token:", updateError)
+      return NextResponse.json({ error: `Failed to update token: ${updateError.message}` }, { status: 500 })
     }
 
     return NextResponse.json({
-      accessToken: tokenData.access_token,
-      expiresIn: expiresIn,
+      access_token: tokenData.access_token,
+      expires_at: expiryTime,
     })
   } catch (error: any) {
     console.error("Error refreshing token:", error)

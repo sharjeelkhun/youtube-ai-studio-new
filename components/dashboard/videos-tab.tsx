@@ -1,104 +1,109 @@
-"use client"
-
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Search, Filter, MoreHorizontal } from "lucide-react"
+import { Eye, ThumbsUp, MessageSquare } from "lucide-react"
 
-export function VideosTab() {
-  // Sample data
-  const videos = [
+export function VideosTab({ channelData }) {
+  // Mock data for preview mode
+  const mockVideos = [
     {
-      id: "1",
-      title: "How to Build a Next.js App",
-      views: 12543,
-      likes: 1243,
-      comments: 89,
-      publishedAt: "2023-05-15",
+      id: "video1",
+      title: "How to Get Started with YouTube",
+      views: 12500,
+      likes: 870,
+      comments: 120,
+      published_at: "2023-05-15T10:30:00Z",
     },
     {
-      id: "2",
-      title: "React Server Components Explained",
-      views: 8765,
-      likes: 765,
-      comments: 54,
-      publishedAt: "2023-06-02",
+      id: "video2",
+      title: "10 Tips for Growing Your Channel",
+      views: 8700,
+      likes: 650,
+      comments: 85,
+      published_at: "2023-06-22T14:15:00Z",
     },
     {
-      id: "3",
-      title: "Building a Dashboard with Tailwind CSS",
-      views: 6543,
-      likes: 543,
-      comments: 32,
-      publishedAt: "2023-06-18",
+      id: "video3",
+      title: "Content Creation Masterclass",
+      views: 15200,
+      likes: 1250,
+      comments: 210,
+      published_at: "2023-07-10T09:45:00Z",
     },
     {
-      id: "4",
-      title: "TypeScript Tips and Tricks",
-      views: 4321,
-      likes: 321,
-      comments: 21,
-      publishedAt: "2023-07-05",
+      id: "video4",
+      title: "YouTube Algorithm Explained",
+      views: 22800,
+      likes: 1870,
+      comments: 315,
+      published_at: "2023-08-05T16:20:00Z",
     },
     {
-      id: "5",
-      title: "State Management in 2023",
-      views: 3210,
-      likes: 210,
-      comments: 15,
-      publishedAt: "2023-07-22",
+      id: "video5",
+      title: "How to Edit Videos Like a Pro",
+      views: 9600,
+      likes: 720,
+      comments: 95,
+      published_at: "2023-09-18T11:10:00Z",
     },
   ]
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search videos..." className="pl-8" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Filter className="mr-2 h-4 w-4" />
-            Filter
-          </Button>
-          <Button variant="default" size="sm">
-            Upload Video
-          </Button>
-        </div>
-      </div>
+  // Format numbers with commas
+  const formatNumber = (num) => {
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+  }
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Title</TableHead>
-              <TableHead className="hidden md:table-cell">Date</TableHead>
-              <TableHead className="text-right">Views</TableHead>
-              <TableHead className="hidden sm:table-cell text-right">Likes</TableHead>
-              <TableHead className="hidden sm:table-cell text-right">Comments</TableHead>
-              <TableHead className="w-10"></TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {videos.map((video) => (
-              <TableRow key={video.id}>
-                <TableCell className="font-medium">{video.title}</TableCell>
-                <TableCell className="hidden md:table-cell">{video.publishedAt}</TableCell>
-                <TableCell className="text-right">{video.views.toLocaleString()}</TableCell>
-                <TableCell className="hidden sm:table-cell text-right">{video.likes.toLocaleString()}</TableCell>
-                <TableCell className="hidden sm:table-cell text-right">{video.comments.toLocaleString()}</TableCell>
-                <TableCell>
-                  <Button variant="ghost" size="icon">
-                    <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Actions</span>
-                  </Button>
-                </TableCell>
+  // Format date
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString()
+  }
+
+  return (
+    <div className="grid gap-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Videos</CardTitle>
+          <CardDescription>Manage and analyze your YouTube videos</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end">
+                    <Eye className="mr-1 h-4 w-4" />
+                    Views
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end">
+                    <ThumbsUp className="mr-1 h-4 w-4" />
+                    Likes
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">
+                  <div className="flex items-center justify-end">
+                    <MessageSquare className="mr-1 h-4 w-4" />
+                    Comments
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Published</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {mockVideos.map((video) => (
+                <TableRow key={video.id}>
+                  <TableCell className="font-medium">{video.title}</TableCell>
+                  <TableCell className="text-right">{formatNumber(video.views)}</TableCell>
+                  <TableCell className="text-right">{formatNumber(video.likes)}</TableCell>
+                  <TableCell className="text-right">{formatNumber(video.comments)}</TableCell>
+                  <TableCell className="text-right">{formatDate(video.published_at)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -1,182 +1,95 @@
 "use client"
 
-import type React from "react"
-import { cn } from "@/lib/utils"
-import {
-  BarChart3,
-  Home,
-  Video,
-  Search,
-  Lightbulb,
-  Sparkles,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Settings,
-  User,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { usePathname } from "next/navigation"
+import { BarChart3, Home, MessageSquare, PlusCircle, Settings, User, Video, Youtube } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
-interface SidebarProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  activeSection?: string
-}
-
-export function Sidebar({ open, onOpenChange, activeSection = "dashboard" }: SidebarProps) {
-  const router = useRouter()
-  const toggleSidebar = () => {
-    onOpenChange(!open)
-  }
-
-  const handleLogout = () => {
-    // In a real app, this would handle logout logic
-    console.log("Logging out...")
-    // Then redirect to login page
-    router.push("/login")
-  }
+export function Sidebar({ className }) {
+  const pathname = usePathname()
 
   return (
-    <TooltipProvider>
-      <div
-        className={cn(
-          "relative z-30 flex h-full flex-col border-r bg-sidebar text-sidebar-foreground transition-all duration-300",
-          open ? "w-64" : "w-16",
-        )}
-      >
-        <div className="flex h-16 items-center justify-between px-4">
-          <Link href="/" className={cn("flex items-center gap-2", !open && "justify-center w-full")}>
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
-            </div>
-            {open && <span className="font-semibold">YouTube AI Studio</span>}
-          </Link>
-          <Button variant="ghost" size="icon" onClick={toggleSidebar} className={cn("h-8 w-8", !open && "hidden")}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto py-4">
-          <nav className="space-y-1 px-2">
-            {[
-              { name: "Dashboard", icon: Home, id: "dashboard", path: "/dashboard" },
-              { name: "Analytics", icon: BarChart3, id: "analytics", path: "/dashboard/analytics" },
-              { name: "Videos", icon: Video, id: "videos", path: "/dashboard/videos" },
-              { name: "SEO", icon: Search, id: "seo", path: "/dashboard/seo" },
-              { name: "AI Suggestions", icon: Lightbulb, id: "suggestions", path: "/dashboard/suggestions" },
-              { name: "Settings", icon: Settings, id: "settings", path: "/dashboard/settings" },
-            ].map((item) => (
-              <NavItem
-                key={item.id}
-                name={item.name}
-                icon={item.icon}
-                path={item.path}
-                active={activeSection === item.id}
-                expanded={open}
-              />
-            ))}
-          </nav>
-        </div>
-
-        <div className="border-t p-4">
-          <div className="flex items-center justify-between">
-            <div className={cn("flex items-center gap-3", !open && "justify-center w-full")}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="p-0 h-auto">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder.svg" alt="User" />
-                      <AvatarFallback>US</AvatarFallback>
-                    </Avatar>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem>
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              {open && (
-                <div className="flex flex-col">
-                  <span className="text-sm font-medium">User Name</span>
-                  <span className="text-xs text-muted-foreground">user@example.com</span>
-                </div>
-              )}
-            </div>
-            {open && (
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-          {!open && (
-            <Button variant="ghost" size="icon" onClick={toggleSidebar} className="mt-4 h-8 w-8 mx-auto flex">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      </div>
-    </TooltipProvider>
-  )
-}
-
-interface NavItemProps {
-  name: string
-  icon: React.ElementType
-  path: string
-  active: boolean
-  expanded: boolean
-}
-
-function NavItem({ name, icon: Icon, path, active, expanded }: NavItemProps) {
-  if (expanded) {
-    return (
-      <Button variant={active ? "secondary" : "ghost"} className="w-full justify-start" asChild>
-        <Link href={path}>
-          <Icon className="mr-2 h-4 w-4" />
-          {name}
+    <div className={cn("flex h-full flex-col border-r bg-background", className)}>
+      <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
+        <Link href="/" className="flex items-center gap-2 font-semibold">
+          <Youtube className="h-6 w-6 text-red-600" />
+          <span>YouTube Dashboard</span>
         </Link>
-      </Button>
-    )
-  }
-
-  return (
-    <Tooltip delayDuration={0}>
-      <TooltipTrigger asChild>
-        <Button variant={active ? "secondary" : "ghost"} size="icon" className="h-9 w-9 mx-auto" asChild>
-          <Link href={path}>
-            <Icon className="h-4 w-4" />
-            <span className="sr-only">{name}</span>
+      </div>
+      <ScrollArea className="flex-1 overflow-auto">
+        <nav className="grid items-start gap-1 px-2 py-4 text-sm font-medium lg:px-4">
+          <Link
+            href="/dashboard"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              pathname === "/dashboard" && "bg-muted text-primary",
+            )}
+          >
+            <Home className="h-4 w-4" />
+            Dashboard
+          </Link>
+          <Link
+            href="/analytics"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              pathname === "/analytics" && "bg-muted text-primary",
+            )}
+          >
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </Link>
+          <Link
+            href="/videos"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              pathname === "/videos" && "bg-muted text-primary",
+            )}
+          >
+            <Video className="h-4 w-4" />
+            Videos
+          </Link>
+          <Link
+            href="/comments"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              pathname === "/comments" && "bg-muted text-primary",
+            )}
+          >
+            <MessageSquare className="h-4 w-4" />
+            Comments
+          </Link>
+          <Link
+            href="/profile"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              pathname === "/profile" && "bg-muted text-primary",
+            )}
+          >
+            <User className="h-4 w-4" />
+            Profile
+          </Link>
+          <Link
+            href="/settings"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              pathname === "/settings" && "bg-muted text-primary",
+            )}
+          >
+            <Settings className="h-4 w-4" />
+            Settings
+          </Link>
+        </nav>
+      </ScrollArea>
+      <div className="mt-auto border-t p-4">
+        <Button asChild variant="outline" size="sm" className="w-full justify-start">
+          <Link href="/connect-channel" className="flex items-center gap-2">
+            <PlusCircle className="h-4 w-4" />
+            Connect Channel
           </Link>
         </Button>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="font-normal">
-        {name}
-      </TooltipContent>
-    </Tooltip>
+      </div>
+    </div>
   )
 }

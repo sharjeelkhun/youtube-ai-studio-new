@@ -1,39 +1,27 @@
 import type React from "react"
+import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
+import { AuthProvider } from "@/contexts/auth-context"
 import { Toaster } from "@/components/ui/toaster"
-import { YouTubeChannelProvider } from "@/contexts/youtube-channel-context"
-import dynamic from "next/dynamic"
-
-// Dynamically import AuthProvider to avoid SSR issues
-const AuthProvider = dynamic(() => import("@/contexts/auth-context").then((mod) => mod.AuthProvider), {
-  ssr: false,
-})
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "YouTube AI Studio",
-  description: "AI-powered YouTube content optimization platform",
+  title: "YouTube Dashboard",
+  description: "A dashboard for YouTube content creators",
     generator: 'v0.dev'
 }
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <AuthProvider>
-            <YouTubeChannelProvider>
-              {children}
-              <Toaster />
-            </YouTubeChannelProvider>
+            {children}
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>

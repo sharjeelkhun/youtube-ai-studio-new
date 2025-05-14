@@ -1,130 +1,89 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Youtube } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 
-export default function ConnectChannelPage() {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
+export default function ConnectChannel() {
+  const [isConnecting, setIsConnecting] = useState(false)
   const router = useRouter()
+  const { toast } = useToast()
+  const { user, isLoading } = useAuth()
 
-  // Function to initiate OAuth flow
-  const connectYouTube = async () => {
-    setIsLoading(true)
-    setError(null)
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    if (!isLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, isLoading, router])
+
+  async function connectYouTubeChannel() {
+    setIsConnecting(true)
 
     try {
-      // In a real app, this would redirect to the YouTube OAuth flow
-      // For preview purposes, we'll just simulate success
-      setTimeout(() => {
-        setSuccess("YouTube channel connected successfully!")
+      // Get the authorization URL from our API
+      const response = await fetch("/api/youtube/connect")
+      const data = await response.json()
 
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 2000)
-      }, 1500)
-    } catch (error: any) {
-      console.error("Error initiating OAuth:", error)
-      setError(error.message || "Failed to start YouTube connection")
+      if (data.authUrl) {
+        // Redirect to the Google OAuth consent screen
+        window.location.href = data.authUrl
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Connection failed",
+          description: data.error || "Failed to initiate YouTube connection",
+        })
+      }
+    } catch (error) {
+      console.error("Error connecting YouTube channel:", error)
+      toast({
+        variant: "destructive",
+        title: "Connection failed",
+        description: "Something went wrong. Please try again later.",
+      })
     } finally {
-      setIsLoading(false)
+      setIsConnecting(false)
     }
   }
 
-  // Function to set up the database
-  const setupDatabase = async () => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      // In a real app, this would set up the database
-      // For preview purposes, we'll just simulate success
-      setTimeout(() => {
-        setSuccess("Database setup completed successfully!")
-
-        // Clear success message after a short delay
-        setTimeout(() => {
-          setSuccess(null)
-        }, 2000)
-      }, 1500)
-    } catch (error: any) {
-      console.error("Error setting up database:", error)
-      setError(error.message || "Failed to set up database")
-    } finally {
-      setIsLoading(false)
-    }
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">Loading...</div>
+      </div>
+    )
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900 sm:px-6 lg:px-8">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl">Connect YouTube Channel</CardTitle>
-          <CardDescription>Connect your YouTube channel to see analytics and manage your content</CardDescription>
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">Connect YouTube Channel</CardTitle>
+          <CardDescription>Connect your YouTube channel to get analytics and insights</CardDescription>
         </CardHeader>
-        <CardContent>
-          {error && (
-            <Alert variant="destructive" className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {success && (
-            <Alert variant="default" className="mb-4 bg-green-50 text-green-800 border-green-200">
-              <AlertTitle>Success</AlertTitle>
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Before connecting your YouTube channel, you need to set up the database to store your channel data.
+        <CardContent className="flex flex-col items-center space-y-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
+            <Youtube className="h-8 w-8 text-red-600 dark:text-red-300" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              By connecting your YouTube channel, you will be able to see analytics, manage videos, and get
+              recommendations.
             </p>
-
-            <Button onClick={setupDatabase} disabled={isLoading} className="w-full" variant="outline">
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Setting up...
-                </>
-              ) : (
-                "Setup Database"
-              )}
-            </Button>
-
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t"></span>
-              </div>
-              <div className="relative flex justify-center">
-                <span className="bg-gray-50 px-2 text-sm text-muted-foreground">Then</span>
-              </div>
-            </div>
-
-            <Button onClick={connectYouTube} disabled={isLoading} className="w-full bg-red-600 hover:bg-red-700">
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                "Connect with YouTube"
-              )}
-            </Button>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-xs text-muted-foreground">
-            Your data is secure and we only request read-only access to your channel.
-          </p>
+        <CardFooter className="flex flex-col space-y-4">
+          <Button className="w-full" onClick={connectYouTubeChannel} disabled={isConnecting}>
+            {isConnecting ? "Connecting..." : "Connect YouTube Channel"}
+          </Button>
+          <Button variant="outline" className="w-full" onClick={() => router.push("/dashboard")}>
+            Skip for now
+          </Button>
         </CardFooter>
       </Card>
     </div>

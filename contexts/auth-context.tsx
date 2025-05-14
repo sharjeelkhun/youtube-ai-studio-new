@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { Session, User } from "@supabase/supabase-js"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 
 interface AuthContextType {
   user: User | null
@@ -18,14 +18,30 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Check if we're in a preview environment
+const isPreviewEnvironment = () => {
+  return (
+    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    (typeof window !== "undefined" && window.location.hostname === "v0.dev")
+  )
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const { toast } = useToast()
+  const [isPreview, setIsPreview] = useState(isPreviewEnvironment())
 
   useEffect(() => {
+    // Skip Supabase initialization in preview mode
+    if (isPreview) {
+      setIsLoading(false)
+      return
+    }
+
     // Check if Supabase is properly initialized
     if (!supabase.auth) {
       console.warn("Supabase auth not available - skipping auth initialization")
@@ -33,33 +49,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setIsLoading(false)
-    })
+    try {
+      // Get initial session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setIsLoading(false)
+      })
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setIsLoading(false)
-    })
+      // Listen for auth changes
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setIsLoading(false)
+      })
 
-    return () => subscription.unsubscribe()
-  }, [])
+      return () => subscription.unsubscribe()
+    } catch (error) {
+      console.error("Error initializing auth:", error)
+      setIsLoading(false)
+    }
+  }, [isPreview])
 
   const signUp = async (email: string, password: string, fullName: string) => {
-    if (!supabase.auth) {
+    if (isPreview) {
+      // Simulate signup in preview mode
       toast({
-        title: "Error",
-        description: "Authentication service not available",
-        variant: "destructive",
+        title: "Preview Mode",
+        description: "Account creation simulated. Please log in.",
       })
+      router.push("/login")
       return
+    }
+
+    if (!supabase.auth) {
+      throw new Error("Authentication service not available")
     }
 
     setIsLoading(true)
@@ -95,24 +121,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.push("/login")
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create account",
-        variant: "destructive",
-      })
+      throw error
     } finally {
       setIsLoading(false)
     }
   }
 
   const signIn = async (email: string, password: string) => {
-    if (!supabase.auth) {
-      toast({
-        title: "Error",
-        description: "Authentication service not available",
-        variant: "destructive",
-      })
+    if (isPreview) {
+      // Create a mock user for preview
+      const mockUser = {
+        id: "preview-user-id",
+        email: email,
+        user_metadata: {
+          full_name: "Preview User",
+        },
+      }
+
+      // Set mock user and session
+      setUser(mockUser as any)
+      setSession({ user: mockUser } as any)
+
+      // Redirect to dashboard
+      router.push("/dashboard")
       return
+    }
+
+    if (!supabase.auth) {
+      throw new Error("Authentication service not available")
     }
 
     setIsLoading(true)
@@ -124,27 +160,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error
 
-      toast({
-        title: "Welcome back",
-        description: "You have successfully signed in.",
-      })
-
       router.push("/dashboard")
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to sign in",
-        variant: "destructive",
-      })
+      throw error
     } finally {
       setIsLoading(false)
     }
   }
 
   const signOut = async () => {
-    if (!supabase.auth) {
+    if (isPreview) {
+      // Clear mock user and session
+      setUser(null)
+      setSession(null)
       router.push("/login")
       return
+    }
+
+    if (!supabase.auth) {
+      throw new Error("Authentication service not available")
     }
 
     setIsLoading(true)
@@ -154,24 +188,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       router.push("/login")
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to sign out",
-        variant: "destructive",
-      })
+      throw error
     } finally {
       setIsLoading(false)
     }
   }
 
   const resetPassword = async (email: string) => {
-    if (!supabase.auth) {
+    if (isPreview) {
       toast({
-        title: "Error",
-        description: "Authentication service not available",
-        variant: "destructive",
+        title: "Preview Mode",
+        description: "Password reset simulated. Check your email.",
       })
       return
+    }
+
+    if (!supabase.auth) {
+      throw new Error("Authentication service not available")
     }
 
     setIsLoading(true)
@@ -187,11 +220,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         description: "Check your email for a password reset link.",
       })
     } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send password reset email",
-        variant: "destructive",
-      })
+      throw error
     } finally {
       setIsLoading(false)
     }
@@ -221,5 +250,3 @@ export function useAuth() {
   }
   return context
 }
-
-export default AuthProvider

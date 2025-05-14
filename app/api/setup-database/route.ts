@@ -2,147 +2,168 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-export async function GET() {
+export async function POST(request: Request) {
   try {
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
-    // Check if we can connect to the database
-    const { data: session, error: sessionError } = await supabase.auth.getSession()
+    // Get the current user session
+    const {
+      data: { session },
+    } = await supabase.auth.getSession()
 
-    if (sessionError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: sessionError.message,
-          message: "Failed to get session",
-        },
-        { status: 500 },
-      )
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    if (!session.session) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "No active session",
-          message: "You must be logged in to setup the database",
-        },
-        { status: 401 },
-      )
-    }
+    // Create the profiles table
+    const profilesQuery = `
+      CREATE TABLE IF NOT EXISTS profiles (
+        id UUID PRIMARY KEY REFERENCES auth.users(id),
+        full_name TEXT,
+        avatar_url TEXT,
+        youtube_access_token TEXT,
+        youtube_refresh_token TEXT,
+        youtube_token_expiry TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `
+    const { error: profilesError } = await supabase.rpc("exec_sql", { sql: profilesQuery })
 
-    // Instead of trying to alter the table, let's check if the profile exists
-    // and then update it with the YouTube fields, which will implicitly create the columns
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", session.session.user.id)
-      .single()
+    if (profilesError) {
+      console.error("Error creating profiles table:", profilesError)
 
-    if (profileError && profileError.code !== "PGRST116") {
-      return NextResponse.json(
-        {
-          success: false,
-          error: profileError.message,
-          message: "Error checking profile",
-        },
-        { status: 500 },
-      )
-    }
+      // Check if profile already exists and try upsert approach
+      const { data: userProfile, error: fetchError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", session.user.id)
+        .single()
 
-    // If profile doesn't exist, create it
-    if (profileError && profileError.code === "PGRST116") {
-      const { error: insertError } = await supabase.from("profiles").insert({
-        id: session.session.user.id,
-        youtube_access_token: null,
-        youtube_refresh_token: null,
-        youtube_token_expiry: null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-
-      if (insertError) {
+      if (fetchError && fetchError.code !== "PGRST116") {
         return NextResponse.json(
           {
-            success: false,
-            error: insertError.message,
-            message: "Failed to create profile",
+            error: `Failed to fetch user profile: ${fetchError.message}`,
           },
           { status: 500 },
         )
       }
-    } else {
-      // Profile exists, update it with YouTube fields
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update({
-          youtube_access_token: profile.youtube_access_token || null,
-          youtube_refresh_token: profile.youtube_refresh_token || null,
-          youtube_token_expiry: profile.youtube_token_expiry || null,
+
+      // If profile doesn't exist, insert it
+      if (!userProfile) {
+        const { error: insertError } = await supabase.from("profiles").insert({
+          id: session.user.id,
+          created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .eq("id", session.session.user.id)
 
-      if (updateError) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: updateError.message,
-            message: "Failed to update profile with YouTube fields",
-          },
-          { status: 500 },
-        )
+        if (insertError) {
+          return NextResponse.json(
+            {
+              error: `Failed to create profile: ${insertError.message}`,
+            },
+            { status: 500 },
+          )
+        }
       }
     }
 
-    // Check if the columns were added successfully by querying the profile again
-    const { data: updatedProfile, error: updatedProfileError } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", session.session.user.id)
-      .single()
+    // Create the youtube_channels table
+    const channelsQuery = `
+      CREATE TABLE IF NOT EXISTS youtube_channels (
+        id TEXT PRIMARY KEY,
+        user_id UUID REFERENCES auth.users(id) NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        subscribers INTEGER DEFAULT 0,
+        videos INTEGER DEFAULT 0,
+        thumbnail TEXT,
+        access_token TEXT,
+        refresh_token TEXT,
+        token_expires_at TIMESTAMP WITH TIME ZONE,
+        last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `
+    const { error: channelsError } = await supabase.rpc("exec_sql", { sql: channelsQuery })
 
-    if (updatedProfileError) {
+    if (channelsError) {
+      console.error("Error creating youtube_channels table:", channelsError)
+      // Continue anyway since the table might already exist
+    }
+
+    // Create the videos table
+    const videosQuery = `
+      CREATE TABLE IF NOT EXISTS videos (
+        id TEXT PRIMARY KEY,
+        channel_id TEXT NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        thumbnail TEXT,
+        status TEXT,
+        views INTEGER DEFAULT 0,
+        likes INTEGER DEFAULT 0,
+        comments INTEGER DEFAULT 0,
+        published_at TIMESTAMP WITH TIME ZONE,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `
+    const { error: videosError } = await supabase.rpc("exec_sql", { sql: videosQuery })
+
+    if (videosError) {
+      console.error("Error creating videos table:", videosError)
+      // Continue anyway since the table might already exist
+    }
+
+    // Create the analytics_data table
+    const analyticsQuery = `
+      CREATE TABLE IF NOT EXISTS analytics_data (
+        id SERIAL PRIMARY KEY,
+        channel_id TEXT NOT NULL,
+        date DATE NOT NULL,
+        views INTEGER DEFAULT 0,
+        watch_time INTEGER DEFAULT 0,
+        engagement NUMERIC DEFAULT 0,
+        subscribers INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `
+    const { error: analyticsError } = await supabase.rpc("exec_sql", { sql: analyticsQuery })
+
+    if (analyticsError) {
+      console.error("Error creating analytics_data table:", analyticsError)
+      // Continue anyway since the table might already exist
+    }
+
+    // Ensure we have a profile for the current user
+    const { error: profileError } = await supabase.from("profiles").upsert(
+      {
+        id: session.user.id,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: "id",
+      },
+    )
+
+    if (profileError) {
+      console.error("Error upserting profile:", profileError)
       return NextResponse.json(
         {
-          success: false,
-          error: updatedProfileError.message,
-          message: "Failed to verify profile update",
+          error: `Failed to create/update profile: ${profileError.message}`,
         },
         { status: 500 },
       )
     }
 
-    // Check if the YouTube fields exist in the profile
-    const hasYouTubeFields =
-      "youtube_access_token" in updatedProfile &&
-      "youtube_refresh_token" in updatedProfile &&
-      "youtube_token_expiry" in updatedProfile
-
-    if (!hasYouTubeFields) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: "YouTube fields not found in profile after update",
-          profile: updatedProfile,
-        },
-        { status: 500 },
-      )
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Profile setup completed successfully",
-      hasYouTubeFields,
-    })
+    return NextResponse.json({ success: true })
   } catch (error: any) {
-    console.error("Database setup error:", error)
+    console.error("Error setting up database:", error)
     return NextResponse.json(
       {
-        success: false,
-        error: error.message,
-        message: "Failed to setup profile",
+        error: `Failed to set up database: ${error.message}`,
       },
       { status: 500 },
     )

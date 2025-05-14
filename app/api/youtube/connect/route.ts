@@ -1,29 +1,32 @@
 import { NextResponse } from "next/server"
 
-export async function GET(request: Request) {
+// Define your YouTube OAuth configuration
+const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
+const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/connect-channel/callback`
+
+// Scopes needed for YouTube access
+const SCOPES = ["https://www.googleapis.com/auth/youtube.readonly", "https://www.googleapis.com/auth/youtube.force-ssl"]
+
+export async function GET() {
   try {
-    // Get the client ID from environment variables
-    const clientId = process.env.GOOGLE_CLIENT_ID
-    if (!clientId) {
-      return NextResponse.json({ error: "Google Client ID is not configured" }, { status: 500 })
+    if (!CLIENT_ID) {
+      return NextResponse.json({ error: "Google OAuth credentials not configured" }, { status: 500 })
     }
 
-    // Create the OAuth URL
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || request.headers.get("origin")}/connect-channel/callback`
-    const scope = "https://www.googleapis.com/auth/youtube.readonly"
-
+    // Build the authorization URL
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
-    authUrl.searchParams.append("client_id", clientId)
-    authUrl.searchParams.append("redirect_uri", redirectUri)
+    authUrl.searchParams.append("client_id", CLIENT_ID)
+    authUrl.searchParams.append("redirect_uri", REDIRECT_URI)
     authUrl.searchParams.append("response_type", "code")
-    authUrl.searchParams.append("scope", scope)
+    authUrl.searchParams.append("scope", SCOPES.join(" "))
     authUrl.searchParams.append("access_type", "offline")
-    authUrl.searchParams.append("prompt", "consent")
+    authUrl.searchParams.append("prompt", "consent") // Always prompt for consent to get a refresh token
 
-    // Return the URL for the client to redirect to
-    return NextResponse.json({ url: authUrl.toString() })
+    return NextResponse.json({
+      authUrl: authUrl.toString(),
+    })
   } catch (error: any) {
-    console.error("Error creating YouTube auth URL:", error)
-    return NextResponse.json({ error: `Failed to create auth URL: ${error.message}` }, { status: 500 })
+    console.error("Error generating auth URL:", error)
+    return NextResponse.json({ error: `Failed to initiate YouTube connection: ${error.message}` }, { status: 500 })
   }
 }
