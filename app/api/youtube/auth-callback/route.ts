@@ -5,7 +5,7 @@ import { NextResponse } from "next/server"
 // Define your YouTube OAuth configuration
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/connect-channel/callback`
+const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "https://youtube-ai-studio-new.vercel.app"}/connect-channel/callback`
 
 export async function POST(request: Request) {
   try {
@@ -14,6 +14,23 @@ export async function POST(request: Request) {
 
     if (!code) {
       return NextResponse.json({ error: "Authorization code is required" }, { status: 400 })
+    }
+
+    // Validate environment variables
+    if (!CLIENT_ID || !CLIENT_SECRET) {
+      return NextResponse.json(
+        {
+          error: "Google OAuth credentials are not properly configured",
+          debug: {
+            env: {
+              GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
+              GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
+              NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+            },
+          },
+        },
+        { status: 500 },
+      )
     }
 
     // Exchange code for access token and refresh token
@@ -36,7 +53,14 @@ export async function POST(request: Request) {
     if (!tokenResponse.ok) {
       console.error("Token exchange error:", tokenData)
       return NextResponse.json(
-        { error: tokenData.error_description || "Failed to exchange authorization code" },
+        {
+          error: tokenData.error_description || "Failed to exchange authorization code",
+          details: tokenData,
+          debug: {
+            code: code.substring(0, 10) + "...", // Only show part of the code for security
+            redirectUri: REDIRECT_URI,
+          },
+        },
         { status: tokenResponse.status },
       )
     }
@@ -60,7 +84,10 @@ export async function POST(request: Request) {
     if (!channelResponse.ok) {
       console.error("Channel fetch error:", channelData)
       return NextResponse.json(
-        { error: channelData.error?.message || "Failed to fetch channel data" },
+        {
+          error: channelData.error?.message || "Failed to fetch channel data",
+          details: channelData,
+        },
         { status: channelResponse.status },
       )
     }
@@ -119,66 +146,71 @@ export async function POST(request: Request) {
     }
 
     // Fetch some videos to populate the database
-    const videosResponse = await fetch(
-      `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=10&order=date&type=video`,
-      {
-        headers: {
-          Authorization: `Bearer ${access_token}`,
-        },
-      },
-    )
-
-    const videosData = await videosResponse.json()
-
-    if (videosResponse.ok && videosData.items?.length > 0) {
-      // Process videos in parallel
-      const videoPromises = videosData.items.map(async (item: any) => {
-        const videoId = item.id.videoId
-        const videoTitle = item.snippet.title
-        const videoDescription = item.snippet.description
-        const videoThumbnail = item.snippet.thumbnails?.medium?.url || null
-        const publishedAt = item.snippet.publishedAt
-
-        // Get video statistics
-        const videoStatsResponse = await fetch(
-          `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${access_token}`,
-            },
+    try {
+      const videosResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=10&order=date&type=video`,
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
           },
-        )
+        },
+      )
 
-        const videoStats = await videoStatsResponse.json()
-        const stats = videoStats.items?.[0]?.statistics || {}
+      const videosData = await videosResponse.json()
 
-        return {
-          id: videoId,
-          channel_id: channelId,
-          title: videoTitle,
-          description: videoDescription,
-          thumbnail: videoThumbnail,
-          views: stats.viewCount || 0,
-          likes: stats.likeCount || 0,
-          comments: stats.commentCount || 0,
-          status: "published",
-          published_at: publishedAt,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+      if (videosResponse.ok && videosData.items?.length > 0) {
+        // Process videos in parallel
+        const videoPromises = videosData.items.map(async (item: any) => {
+          const videoId = item.id.videoId
+          const videoTitle = item.snippet.title
+          const videoDescription = item.snippet.description
+          const videoThumbnail = item.snippet.thumbnails?.medium?.url || null
+          const publishedAt = item.snippet.publishedAt
+
+          // Get video statistics
+          const videoStatsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${access_token}`,
+              },
+            },
+          )
+
+          const videoStats = await videoStatsResponse.json()
+          const stats = videoStats.items?.[0]?.statistics || {}
+
+          return {
+            id: videoId,
+            channel_id: channelId,
+            title: videoTitle,
+            description: videoDescription,
+            thumbnail: videoThumbnail,
+            views: stats.viewCount || 0,
+            likes: stats.likeCount || 0,
+            comments: stats.commentCount || 0,
+            status: "Published",
+            published_at: publishedAt,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        })
+
+        const videos = await Promise.all(videoPromises)
+
+        // Insert videos into database
+        const { error: videosError } = await supabase.from("videos").upsert(videos, {
+          onConflict: "id",
+        })
+
+        if (videosError) {
+          console.error("Error saving videos:", videosError)
+          // Continue anyway, as we've already connected the channel
         }
-      })
-
-      const videos = await Promise.all(videoPromises)
-
-      // Insert videos into database
-      const { error: videosError } = await supabase.from("videos").upsert(videos, {
-        onConflict: "id",
-      })
-
-      if (videosError) {
-        console.error("Error saving videos:", videosError)
-        // Continue anyway, as we've already connected the channel
       }
+    } catch (videoError) {
+      console.error("Error fetching videos:", videoError)
+      // Continue anyway, as we've already connected the channel
     }
 
     return NextResponse.json({
@@ -188,6 +220,12 @@ export async function POST(request: Request) {
     })
   } catch (error: any) {
     console.error("YouTube auth callback error:", error)
-    return NextResponse.json({ error: `An unexpected error occurred: ${error.message}` }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: `An unexpected error occurred: ${error.message}`,
+        stack: error.stack,
+      },
+      { status: 500 },
+    )
   }
 }

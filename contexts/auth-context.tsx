@@ -38,7 +38,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Skip Supabase initialization in preview mode
     if (isPreview) {
-      setIsLoading(false)
+      // Check if we have a preview login cookie
+      const checkPreviewLogin = () => {
+        const previewLoggedIn = document.cookie.includes("preview_logged_in=true")
+        if (previewLoggedIn) {
+          // Create a mock user and session for preview mode
+          const mockUser = {
+            id: "preview-user-id",
+            email: "preview@example.com",
+            user_metadata: {
+              full_name: "Preview User",
+            },
+          }
+          setUser(mockUser as any)
+          setSession({ user: mockUser } as any)
+        } else {
+          setUser(null)
+          setSession(null)
+        }
+        setIsLoading(false)
+      }
+
+      checkPreviewLogin()
       return
     }
 
@@ -129,6 +150,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     if (isPreview) {
+      // Set a cookie to indicate preview login
+      document.cookie = "preview_logged_in=true; path=/; max-age=86400"
+
       // Create a mock user for preview
       const mockUser = {
         id: "preview-user-id",
@@ -141,6 +165,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Set mock user and session
       setUser(mockUser as any)
       setSession({ user: mockUser } as any)
+
+      // Show success toast
+      toast({
+        title: "Preview Mode",
+        description: "Logged in successfully in preview mode.",
+      })
 
       // Redirect to dashboard
       router.push("/dashboard")
@@ -170,9 +200,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     if (isPreview) {
+      // Clear preview login cookie
+      document.cookie = "preview_logged_in=false; path=/; max-age=0"
+
       // Clear mock user and session
       setUser(null)
       setSession(null)
+
+      // Show success toast
+      toast({
+        title: "Preview Mode",
+        description: "Logged out successfully in preview mode.",
+      })
+
       router.push("/login")
       return
     }

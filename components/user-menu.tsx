@@ -1,89 +1,81 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
-import { User, Settings, HelpCircle, LogOut } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { LogOut, Settings, User } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { isPreviewEnvironment } from "@/lib/db"
 
-export function UserMenu() {
+export function UserMenu({ user, profile }) {
+  const { signOut } = useAuth()
   const router = useRouter()
-  const { user, signOut } = useAuth()
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const isPreview = isPreviewEnvironment()
 
-  const handleLogout = async () => {
-    setIsLoggingOut(true)
+  const handleSignOut = async () => {
+    if (isPreview) {
+      // In preview mode, just redirect to login
+      router.push("/login")
+      return
+    }
+
     try {
       await signOut()
+      router.push("/login")
     } catch (error) {
-      console.error("Error logging out:", error)
-    } finally {
-      setIsLoggingOut(false)
+      console.error("Error signing out:", error)
     }
   }
 
-  // Get user initials for avatar fallback
-  const getInitials = () => {
-    if (!user?.user_metadata?.full_name) return "US"
-
-    const nameParts = user.user_metadata.full_name.split(" ")
-    if (nameParts.length === 1) return nameParts[0].substring(0, 2).toUpperCase()
-
-    return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase()
-  }
+  const displayName = profile?.full_name || user?.email || "User"
+  const initials = displayName.charAt(0).toUpperCase()
+  const avatarUrl = profile?.avatar_url || "/placeholder.svg?height=32&width=32"
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder.svg"} alt="User" />
-            <AvatarFallback>{getInitials()}</AvatarFallback>
+            <AvatarImage src={avatarUrl || "/placeholder.svg"} alt={displayName} />
+            <AvatarFallback>{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <div className="flex items-center justify-start gap-2 p-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full">
-            <Avatar>
-              <AvatarImage src={user?.user_metadata?.avatar_url || "/placeholder.svg"} alt="User" />
-              <AvatarFallback>{getInitials()}</AvatarFallback>
-            </Avatar>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{displayName}</p>
+            <p className="text-xs leading-none text-muted-foreground">{user?.email || "user@example.com"}</p>
           </div>
-          <div className="flex flex-col space-y-0.5">
-            <p className="text-sm font-medium">{user?.user_metadata?.full_name || "User"}</p>
-            <p className="text-xs text-muted-foreground">{user?.email}</p>
-          </div>
-        </div>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => router.push("/profile")}>
-          <User className="mr-2 h-4 w-4" />
-          Profile
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
-          <Settings className="mr-2 h-4 w-4" />
-          Settings
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push("/connect-channel")}>
-          <HelpCircle className="mr-2 h-4 w-4" />
-          Connect YouTube Channel
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => router.push("/profile")}>
+            <User className="mr-2 h-4 w-4" />
+            <span>Profile</span>
+            <DropdownMenuShortcut>⇧P</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+            <DropdownMenuShortcut>⌘S</DropdownMenuShortcut>
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className="text-destructive focus:text-destructive"
-        >
+        <DropdownMenuItem onClick={handleSignOut}>
           <LogOut className="mr-2 h-4 w-4" />
-          {isLoggingOut ? "Logging out..." : "Log out"}
+          <span>Log out</span>
+          <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

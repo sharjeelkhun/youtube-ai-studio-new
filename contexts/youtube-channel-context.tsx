@@ -1,96 +1,120 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/contexts/auth-context"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { useAuth } from "./auth-context"
+import { db, type YouTubeChannel, isPreviewEnvironment } from "@/lib/db"
+import { useToast } from "@/hooks/use-toast"
+import { usePathname } from "next/navigation"
 
-// Check if we're in a preview environment
-const isPreviewEnvironment = () => {
-  return (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" ||
-    (typeof window !== "undefined" &&
-      (window.location.hostname === "v0.dev" || window.location.hostname.includes("lite.vusercontent.net")))
-  )
+interface YouTubeChannelContextType {
+  channel: YouTubeChannel | null
+  isLoading: boolean
+  error: string | null
+  refreshChannel: () => Promise<void>
+  hasConnectedChannel: boolean
 }
 
-// Mock channel data for preview mode
-const mockChannelData = {
-  id: "UC123456789",
-  user_id: "preview-user-id",
-  title: "Demo YouTube Channel",
-  description: "This is a demo YouTube channel for preview mode",
-  subscribers: 10500,
-  videos: 42,
-  thumbnail: "https://via.placeholder.com/150",
-  created_at: new Date().toISOString(),
-  last_updated: new Date().toISOString(),
-}
+const YouTubeChannelContext = createContext<YouTubeChannelContextType | undefined>(undefined)
 
-const YouTubeChannelContext = createContext(null)
-
-export function YouTubeChannelProvider({ children }) {
-  const [channel, setChannel] = useState(null)
+export function YouTubeChannelProvider({ children }: { children: ReactNode }) {
+  const [channel, setChannel] = useState<YouTubeChannel | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
+  const [hasConnectedChannel, setHasConnectedChannel] = useState(false)
   const { user } = useAuth()
-  const [isPreview, setIsPreview] = useState(false)
+  const { toast } = useToast()
+  const pathname = usePathname()
+  const isPreview = isPreviewEnvironment()
+
+  // Determine if we're on a page that requires a channel
+  const requiresChannel =
+    pathname?.includes("/dashboard") &&
+    !pathname?.includes("/connect-channel") &&
+    !pathname?.includes("/settings") &&
+    !pathname?.includes("/profile")
+
+  const fetchChannel = async () => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      if (isPreview) {
+        // Use mock data in preview mode
+        const mockChannel = await db.channels.getByUserId("preview-user-id")
+        setChannel(mockChannel)
+        setHasConnectedChannel(true)
+        return
+      }
+
+      if (!user) {
+        setChannel(null)
+        setHasConnectedChannel(false)
+        return
+      }
+
+      const channelData = await db.channels.getByUserId(user.id)
+
+      if (channelData) {
+        setChannel(channelData)
+        setHasConnectedChannel(true)
+
+        // Check if token is expired and needs refresh
+        const tokenExpiresAt = new Date(channelData.token_expires_at || 0)
+        if (tokenExpiresAt < new Date()) {
+          // Token is expired, should refresh
+          // This would be implemented in a real app
+          console.log("Token expired, should refresh")
+        }
+      } else {
+        setChannel(null)
+        setHasConnectedChannel(false)
+
+        if (requiresChannel) {
+          toast({
+            title: "No YouTube Channel",
+            description: "Please connect your YouTube channel to continue",
+            variant: "destructive",
+          })
+        }
+      }
+    } catch (err: any) {
+      console.error("Error in fetchChannel:", err)
+      setError(`An unexpected error occurred: ${err.message}`)
+
+      if (requiresChannel) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: `Failed to fetch YouTube channel: ${err.message}`,
+        })
+      }
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const refreshChannel = async () => {
+    await fetchChannel()
+  }
 
   useEffect(() => {
-    // Check if we're in preview mode
-    const preview = isPreviewEnvironment()
-    setIsPreview(preview)
-
-    // In preview mode, set mock data
-    if (preview) {
-      setChannel(mockChannelData)
+    if (user || isPreview) {
+      fetchChannel()
+    } else {
       setIsLoading(false)
-      return
+      setChannel(null)
+      setHasConnectedChannel(false)
     }
-
-    // Skip if no user
-    if (!user) {
-      setIsLoading(false)
-      return
-    }
-
-    async function fetchChannel() {
-      try {
-        setIsLoading(true)
-        setError(null)
-
-        const { data, error } = await supabase
-          .from("youtube_channels")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single()
-
-        if (error) {
-          throw error
-        }
-
-        setChannel(data)
-      } catch (err) {
-        console.error("Error fetching YouTube channel:", err)
-        setError(err.message)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchChannel()
-  }, [user])
+  }, [user, isPreview])
 
   return (
     <YouTubeChannelContext.Provider
       value={{
-        channel: channel || (isPreview ? mockChannelData : null),
+        channel,
         isLoading,
         error,
-        isPreview,
+        refreshChannel,
+        hasConnectedChannel,
       }}
     >
       {children}
@@ -100,7 +124,7 @@ export function YouTubeChannelProvider({ children }) {
 
 export function useYouTubeChannel() {
   const context = useContext(YouTubeChannelContext)
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useYouTubeChannel must be used within a YouTubeChannelProvider")
   }
   return context

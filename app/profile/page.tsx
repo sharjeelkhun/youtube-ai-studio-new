@@ -25,7 +25,13 @@ export default function ProfilePage() {
 
   // Redirect if not authenticated
   useEffect(() => {
-    if (!authLoading && !user) {
+    // In preview mode, don't redirect
+    const isPreview =
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      (typeof window !== "undefined" && window.location.hostname === "v0.dev")
+
+    if (!authLoading && !user && !isPreview) {
       router.push("/login?redirectTo=/profile")
     }
   }, [user, authLoading, router])
@@ -33,6 +39,17 @@ export default function ProfilePage() {
   // Load user profile data
   useEffect(() => {
     const loadProfile = async () => {
+      const isPreview =
+        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        (typeof window !== "undefined" && window.location.hostname === "v0.dev")
+
+      if (isPreview) {
+        // Set mock data in preview mode
+        setFullName("Preview User")
+        setAvatarUrl("/placeholder.svg?height=200&width=200")
+        return
+      }
       if (!user) return
 
       try {

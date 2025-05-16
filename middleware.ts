@@ -9,42 +9,38 @@ export async function middleware(request: NextRequest) {
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     request.headers.get("host")?.includes("v0.dev")
 
-  // Skip auth check in preview mode
-  if (isPreview) {
-    // For dashboard routes in preview, just allow access
-    if (request.nextUrl.pathname.startsWith("/dashboard") || request.nextUrl.pathname.startsWith("/connect-channel")) {
-      return NextResponse.next()
-    }
-
-    // For login/signup pages in preview, also allow access
-    if (request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/signup") {
-      return NextResponse.next()
-    }
-
-    // Redirect root to login in preview
-    if (request.nextUrl.pathname === "/") {
-      return NextResponse.redirect(new URL("/login", request.url))
-    }
-
-    return NextResponse.next()
-  }
+  // Create response to modify
+  const res = NextResponse.next()
 
   // Create supabase middleware client
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req: request, res })
+  let session = null
 
-  // Refresh session if expired
-  const {
-    data: { session },
-  } = await supabase.auth.getSession()
+  if (!isPreview) {
+    const supabase = createMiddlewareClient({ req: request, res })
+    // Refresh session if expired
+    const { data } = await supabase.auth.getSession()
+    session = data.session
+  }
 
-  // Auth condition for protected routes
+  // For preview mode, we'll create a simulated session based on a special cookie
+  if (isPreview) {
+    const previewLoggedIn = request.cookies.get("preview_logged_in")?.value === "true"
+    if (previewLoggedIn) {
+      // Simulate a session for preview mode
+      session = { user: { id: "preview-user" } } as any
+    }
+  }
+
+  // Auth condition for protected routes - ALWAYS check regardless of preview mode
   if (
     (request.nextUrl.pathname.startsWith("/dashboard") ||
+      request.nextUrl.pathname.startsWith("/(dashboard)") ||
       request.nextUrl.pathname.startsWith("/connect-channel") ||
-      request.nextUrl.pathname.startsWith("/profile")) &&
+      request.nextUrl.pathname.startsWith("/profile") ||
+      request.nextUrl.pathname.startsWith("/settings")) &&
     !session
   ) {
+    // Redirect to login with return URL
     const redirectUrl = new URL("/login", request.url)
     redirectUrl.searchParams.set("redirect", request.nextUrl.pathname)
     return NextResponse.redirect(redirectUrl)
@@ -75,7 +71,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - api (API routes)
      * - favicon.ico (favicon file)
+     * - public folder
      */
-    "/((?!_next/static|_next/image|api|favicon.ico).*)",
+    "/((?!_next/static|_next/image|api|favicon.ico|public).*)",
   ],
 }

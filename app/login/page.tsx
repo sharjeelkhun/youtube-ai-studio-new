@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
@@ -17,10 +17,18 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const { signIn } = useAuth()
+  const { signIn, session } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const message = searchParams.get("message")
+  const redirect = searchParams.get("redirect") || "/dashboard"
+
+  // If already logged in, redirect to dashboard
+  useEffect(() => {
+    if (session) {
+      router.push(redirect)
+    }
+  }, [session, router, redirect])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

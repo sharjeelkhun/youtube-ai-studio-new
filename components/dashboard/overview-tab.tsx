@@ -1,20 +1,71 @@
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowUpRight, Users, Video, Eye, ThumbsUp, MessageSquare } from "lucide-react"
+import { ArrowUpRight, Users, Video, Eye, ThumbsUp, MessageSquare, Loader2 } from "lucide-react"
+import { db, type Video as VideoType, type AnalyticsData } from "@/lib/db"
+import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 
 // Format numbers with commas
-const formatNumber = (num) => {
-  return num?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") || "0"
+const formatNumber = (num: number | string | null | undefined) => {
+  if (num === null || num === undefined) return "0"
+  return Number(num).toLocaleString()
 }
 
-export function OverviewTab({ channelData }) {
-  // Mock data for preview mode
-  const mockStats = {
-    views: 125000,
-    watchTime: 7500,
-    subscribers: channelData?.subscribers || 10500,
-    videos: channelData?.videos || 42,
-    likes: 8700,
-    comments: 1200,
+export function OverviewTab({ channelData, isLoading }) {
+  const [videos, setVideos] = useState<VideoType[]>([])
+  const [analytics, setAnalytics] = useState<AnalyticsData[]>([])
+  const [isLoadingData, setIsLoadingData] = useState(true)
+  const { channel } = useYouTubeChannel()
+
+  useEffect(() => {
+    async function fetchData() {
+      setIsLoadingData(true)
+      try {
+        if (channelData?.id) {
+          // Fetch videos and analytics in parallel
+          const [videosData, analyticsData] = await Promise.all([
+            db.videos.getByChannelId(channelData.id),
+            db.analytics.getByChannelId(channelData.id, 30),
+          ])
+
+          setVideos(videosData)
+          setAnalytics(analyticsData)
+        }
+      } catch (error) {
+        console.error("Error fetching overview data:", error)
+      } finally {
+        setIsLoadingData(false)
+      }
+    }
+
+    if (channelData) {
+      fetchData()
+    }
+  }, [channelData])
+
+  // Calculate stats
+  const totalViews = videos.reduce((sum, video) => sum + Number(video.views || 0), 0)
+  const totalLikes = videos.reduce((sum, video) => sum + Number(video.likes || 0), 0)
+  const totalComments = videos.reduce((sum, video) => sum + Number(video.comments || 0), 0)
+
+  // Calculate growth percentages (mock data for now)
+  const viewsGrowth = "+12.5%"
+  const subscribersGrowth = "+2.5%"
+  const videosGrowth = "+3"
+  const watchTimeGrowth = "+7.2%"
+  const likesGrowth = "+18.2%"
+  const commentsGrowth = "+5.3%"
+
+  if (isLoading || isLoadingData) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading channel data...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -25,9 +76,9 @@ export function OverviewTab({ channelData }) {
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(mockStats.subscribers)}</div>
+          <div className="text-2xl font-bold">{formatNumber(channelData?.subscribers)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+2.5%</span> from last month
+            <span className="text-green-500">{subscribersGrowth}</span> from last month
           </p>
         </CardContent>
       </Card>
@@ -37,9 +88,9 @@ export function OverviewTab({ channelData }) {
           <Video className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(mockStats.videos)}</div>
+          <div className="text-2xl font-bold">{formatNumber(videos.length)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+3</span> new this month
+            <span className="text-green-500">{videosGrowth}</span> new this month
           </p>
         </CardContent>
       </Card>
@@ -49,9 +100,9 @@ export function OverviewTab({ channelData }) {
           <Eye className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(mockStats.views)}</div>
+          <div className="text-2xl font-bold">{formatNumber(totalViews)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+12.5%</span> from last month
+            <span className="text-green-500">{viewsGrowth}</span> from last month
           </p>
         </CardContent>
       </Card>
@@ -61,9 +112,11 @@ export function OverviewTab({ channelData }) {
           <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(mockStats.watchTime)}</div>
+          <div className="text-2xl font-bold">
+            {formatNumber(analytics.reduce((sum, item) => sum + Number(item.watch_time || 0), 0))}
+          </div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+7.2%</span> from last month
+            <span className="text-green-500">{watchTimeGrowth}</span> from last month
           </p>
         </CardContent>
       </Card>
@@ -73,9 +126,9 @@ export function OverviewTab({ channelData }) {
           <ThumbsUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(mockStats.likes)}</div>
+          <div className="text-2xl font-bold">{formatNumber(totalLikes)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+18.2%</span> from last month
+            <span className="text-green-500">{likesGrowth}</span> from last month
           </p>
         </CardContent>
       </Card>
@@ -85,9 +138,9 @@ export function OverviewTab({ channelData }) {
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(mockStats.comments)}</div>
+          <div className="text-2xl font-bold">{formatNumber(totalComments)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+5.3%</span> from last month
+            <span className="text-green-500">{commentsGrowth}</span> from last month
           </p>
         </CardContent>
       </Card>
@@ -101,24 +154,22 @@ export function OverviewTab({ channelData }) {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Channel Name</h3>
-                <p className="text-sm">{channelData?.title || "Demo YouTube Channel"}</p>
+                <p className="text-sm">{channelData?.title || "Not available"}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Channel ID</h3>
-                <p className="text-sm">{channelData?.id || "UC123456789"}</p>
+                <p className="text-sm">{channelData?.id || "Not available"}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
-                <p className="text-sm">
-                  {channelData?.description || "This is a demo YouTube channel for preview mode"}
-                </p>
+                <p className="text-sm line-clamp-3">{channelData?.description || "No description available"}</p>
               </div>
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Last Updated</h3>
                 <p className="text-sm">
                   {channelData?.last_updated
                     ? new Date(channelData.last_updated).toLocaleDateString()
-                    : new Date().toLocaleDateString()}
+                    : "Not available"}
                 </p>
               </div>
             </div>

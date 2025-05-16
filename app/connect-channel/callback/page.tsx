@@ -5,29 +5,56 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
-import { Check, XCircle } from "lucide-react"
+import { Check, XCircle, AlertCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
+import { isPreviewEnvironment } from "@/lib/db"
 
 export default function YouTubeCallback() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [errorMessage, setErrorMessage] = useState("")
+  const [debugInfo, setDebugInfo] = useState<any>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, isLoading } = useAuth()
   const { toast } = useToast()
+  const isPreview = isPreviewEnvironment()
 
   useEffect(() => {
     // Redirect to login if not authenticated
-    if (!isLoading && !user) {
+    if (!isLoading && !user && !isPreview) {
       router.push("/login")
       return
+    }
+
+    // In preview mode, simulate success after a short delay
+    if (isPreview) {
+      const timer = setTimeout(() => {
+        setStatus("success")
+        toast({
+          title: "Preview Mode",
+          description: "YouTube channel connection simulated successfully.",
+        })
+      }, 1500)
+
+      return () => clearTimeout(timer)
     }
 
     async function handleCallback() {
       try {
         const code = searchParams.get("code")
         const error = searchParams.get("error")
+        const state = searchParams.get("state")
+
+        // Verify state parameter
+        const savedState = localStorage.getItem("youtube_auth_state")
+        localStorage.removeItem("youtube_auth_state") // Clear it after use
+
+        if (state && savedState && state !== savedState) {
+          setStatus("error")
+          setErrorMessage("Invalid state parameter. This could be a security issue.")
+          return
+        }
 
         if (error) {
           setStatus("error")
@@ -65,6 +92,21 @@ export default function YouTubeCallback() {
         } else {
           setStatus("error")
           setErrorMessage(data.error || "Failed to connect YouTube channel")
+
+          // Collect debug info
+          try {
+            const debugResponse = await fetch("/api/debug/youtube-callback", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ code, error: data.error }),
+            })
+            const debugData = await debugResponse.json()
+            setDebugInfo(debugData)
+          } catch (debugError) {
+            console.error("Error fetching debug info:", debugError)
+          }
         }
       } catch (error: any) {
         console.error("Error during callback:", error)
@@ -73,18 +115,10 @@ export default function YouTubeCallback() {
       }
     }
 
-    if (user) {
+    if (user && !isPreview) {
       handleCallback()
     }
-  }, [searchParams, router, user, isLoading, toast])
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">Loading...</div>
-      </div>
-    )
-  }
+  }, [searchParams, router, user, isLoading, toast, isPreview])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900 sm:px-6 lg:px-8">
@@ -122,9 +156,19 @@ export default function YouTubeCallback() {
               </div>
 
               <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Error Details</AlertTitle>
                 <AlertDescription>{errorMessage}</AlertDescription>
               </Alert>
+
+              {debugInfo && (
+                <div className="mt-4 w-full rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                  <p className="mb-2 text-sm font-medium">Debug Information:</p>
+                  <pre className="max-h-40 overflow-auto rounded-md bg-gray-100 p-2 text-xs dark:bg-gray-700">
+                    {JSON.stringify(debugInfo, null, 2)}
+                  </pre>
+                </div>
+              )}
 
               <Button onClick={() => router.push("/connect-channel")}>Try Again</Button>
             </>
