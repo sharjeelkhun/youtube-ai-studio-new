@@ -36,11 +36,17 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
+      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        throw new Error("Supabase credentials are not configured")
+      }
       await signIn(email, password)
-      // The auth context will handle the redirect
     } catch (err: any) {
       console.error("Login error:", err)
-      setError(err.message || "Failed to sign in")
+      if (err.message === "Failed to fetch") {
+        setError("Cannot connect to authentication service. Please check your internet connection or try again later.")
+      } else {
+        setError(err.message || "Failed to sign in")
+      }
     } finally {
       setIsLoading(false)
     }
