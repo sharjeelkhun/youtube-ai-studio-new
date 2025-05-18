@@ -9,11 +9,13 @@ import { Check, XCircle, AlertCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { isPreviewEnvironment } from "@/lib/db"
+import { youtubeService } from "@/lib/youtube-service"
 
 export default function YouTubeCallback() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [errorMessage, setErrorMessage] = useState("")
   const [debugInfo, setDebugInfo] = useState<any>(null)
+  const [connectionStep, setConnectionStep] = useState<string | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, isLoading } = useAuth()
@@ -23,25 +25,23 @@ export default function YouTubeCallback() {
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!isLoading && !user && !isPreview) {
-      router.push("/login")
+      router.push("/login?redirect=/connect-channel")
       return
     }
 
-    // In preview mode, simulate success after a short delay
-    if (isPreview) {
-      const timer = setTimeout(() => {
-        setStatus("success")
-        toast({
-          title: "Preview Mode",
-          description: "YouTube channel connection simulated successfully.",
-        })
-      }, 1500)
+    // Check if this is a preview mode callback
+    const isPreviewCallback = searchParams.get("preview") === "true"
 
-      return () => clearTimeout(timer)
+    // In preview mode or preview callback, simulate success after a short delay
+    if (isPreview || isPreviewCallback) {
+      simulateCallbackSteps()
+      return
     }
 
     async function handleCallback() {
       try {
+        setConnectionStep("Verifying authorization...")
+
         const code = searchParams.get("code")
         const error = searchParams.get("error")
         const state = searchParams.get("state")
@@ -68,57 +68,88 @@ export default function YouTubeCallback() {
           return
         }
 
+        setConnectionStep("Exchanging authorization code...")
+
         // Exchange the code for tokens
-        const response = await fetch("/api/youtube/auth-callback", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ code }),
+        const exchangeResult = await youtubeService.exchangeCodeForTokens(code)
+
+        setConnectionStep("Fetching channel data...")
+
+        setConnectionStep("Saving channel information...")
+
+        setConnectionStep("Connection complete!")
+
+        setStatus("success")
+        toast({
+          title: "Channel connected!",
+          description: "Your YouTube channel has been connected successfully.",
         })
 
-        const data = await response.json()
-
-        if (response.ok) {
-          setStatus("success")
-          toast({
-            title: "Channel connected!",
-            description: "Your YouTube channel has been connected successfully.",
-          })
-          // Wait a moment before redirecting
-          setTimeout(() => {
-            router.push("/dashboard")
-          }, 2000)
-        } else {
-          setStatus("error")
-          setErrorMessage(data.error || "Failed to connect YouTube channel")
-
-          // Collect debug info
-          try {
-            const debugResponse = await fetch("/api/debug/youtube-callback", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({ code, error: data.error }),
-            })
-            const debugData = await debugResponse.json()
-            setDebugInfo(debugData)
-          } catch (debugError) {
-            console.error("Error fetching debug info:", debugError)
-          }
-        }
+        // Wait a moment before redirecting
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 2000)
       } catch (error: any) {
         console.error("Error during callback:", error)
         setStatus("error")
         setErrorMessage(error.message || "An unknown error occurred")
+
+        // Collect debug info
+        try {
+          const code = searchParams.get("code")
+          const debugResponse = await fetch("/api/debug/youtube-callback", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ code, error: error.message }),
+          })
+          const debugData = await debugResponse.json()
+          setDebugInfo(debugData)
+        } catch (debugError) {
+          console.error("Error fetching debug info:", debugError)
+        }
+      } finally {
+        setConnectionStep(null)
       }
     }
 
-    if (user && !isPreview) {
+    if (user && !isPreview && !isPreviewCallback) {
       handleCallback()
     }
   }, [searchParams, router, user, isLoading, toast, isPreview])
+
+  // Simulate callback steps for preview mode
+  async function simulateCallbackSteps() {
+    setConnectionStep("Verifying authorization...")
+    await delay(600)
+
+    setConnectionStep("Exchanging authorization code...")
+    await delay(600)
+
+    setConnectionStep("Fetching channel data...")
+    await delay(600)
+
+    setConnectionStep("Saving channel information...")
+    await delay(600)
+
+    setConnectionStep("Connection complete!")
+    await delay(600)
+
+    setStatus("success")
+    toast({
+      title: "Preview Mode",
+      description: "YouTube channel connection simulated successfully.",
+    })
+
+    // Wait a moment before redirecting
+    setTimeout(() => {
+      router.push("/dashboard")
+    }, 1500)
+  }
+
+  // Helper function to delay execution
+  const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900 sm:px-6 lg:px-8">
@@ -137,7 +168,18 @@ export default function YouTubeCallback() {
         </CardHeader>
         <CardContent className="flex flex-col items-center space-y-4">
           {status === "loading" && (
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+            <div className="w-full space-y-4">
+              {connectionStep && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-center">{connectionStep}</p>
+                </div>
+              )}
+              {!connectionStep && (
+                <div className="flex justify-center">
+                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+                </div>
+              )}
+            </div>
           )}
 
           {status === "success" && (
@@ -145,6 +187,9 @@ export default function YouTubeCallback() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
                 <Check className="h-8 w-8 text-green-600 dark:text-green-300" />
               </div>
+              <p className="text-center text-sm text-gray-600 dark:text-gray-400">
+                You can now access your YouTube analytics, manage videos, and get AI-powered recommendations.
+              </p>
               <Button onClick={() => router.push("/dashboard")}>Go to Dashboard</Button>
             </>
           )}
@@ -170,7 +215,12 @@ export default function YouTubeCallback() {
                 </div>
               )}
 
-              <Button onClick={() => router.push("/connect-channel")}>Try Again</Button>
+              <div className="flex gap-2">
+                <Button onClick={() => router.push("/connect-channel")}>Try Again</Button>
+                <Button variant="outline" onClick={() => router.push("/dashboard")}>
+                  Skip for now
+                </Button>
+              </div>
             </>
           )}
         </CardContent>

@@ -2,11 +2,6 @@ import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
-// Define your YouTube OAuth configuration
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "https://youtube-ai-studio-new.vercel.app"}/connect-channel/callback`
-
 export async function POST(request: Request) {
   try {
     // Get the authorization code from the request body
@@ -15,6 +10,11 @@ export async function POST(request: Request) {
     if (!code) {
       return NextResponse.json({ error: "Authorization code is required" }, { status: 400 })
     }
+
+    // Define your YouTube OAuth configuration
+    const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
+    const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
+    const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/connect-channel/callback`
 
     // Validate environment variables
     if (!CLIENT_ID || !CLIENT_SECRET) {

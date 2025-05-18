@@ -2,9 +2,10 @@ import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const { code, error } = await request.json()
+    const body = await request.json()
+    const { code, error } = body
 
-    // Collect environment variables (safely)
+    // Collect environment information
     const envInfo = {
       GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? "Set" : "Not set",
       GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ? "Set" : "Not set",
@@ -14,21 +15,20 @@ export async function POST(request: Request) {
     }
 
     // Construct the redirect URI that would be used
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || "https://youtube-ai-studio-new.vercel.app"}/connect-channel/callback`
+    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/connect-channel/callback`
 
-    // Return debug information
     return NextResponse.json({
+      timestamp: new Date().toISOString(),
       environment: envInfo,
       redirectUri,
-      codeReceived: !!code,
+      codeReceived: code ? "Yes" : "No",
       codeLength: code ? code.length : 0,
-      error,
-      timestamp: new Date().toISOString(),
+      error: error || "None",
     })
   } catch (error: any) {
     return NextResponse.json({
-      error: `Error collecting debug info: ${error.message}`,
-      timestamp: new Date().toISOString(),
+      error: `An error occurred while collecting debug information: ${error.message}`,
+      stack: error.stack,
     })
   }
 }

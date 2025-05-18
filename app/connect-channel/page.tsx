@@ -9,11 +9,13 @@ import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { isPreviewEnvironment, db } from "@/lib/db"
+import { youtubeService } from "@/lib/youtube-service"
 
 export default function ConnectChannel() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<any>(null)
+  const [connectionStep, setConnectionStep] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const { user, isLoading } = useAuth()
@@ -22,7 +24,8 @@ export default function ConnectChannel() {
   useEffect(() => {
     // Redirect to login if not authenticated
     if (!isLoading && !user && !isPreview) {
-      router.push("/login")
+      router.push("/login?redirect=/connect-channel")
+      return
     }
 
     // Check if user already has a connected channel
@@ -30,6 +33,7 @@ export default function ConnectChannel() {
       if (!user && !isPreview) return
 
       try {
+        setConnectionStep("Checking for existing channel...")
         const channelData = await db.channels.getByUserId(isPreview ? "preview-user-id" : user?.id || "")
 
         if (channelData) {
@@ -44,6 +48,8 @@ export default function ConnectChannel() {
         }
       } catch (err) {
         console.error("Error checking existing channel:", err)
+      } finally {
+        setConnectionStep(null)
       }
     }
 
@@ -56,38 +62,28 @@ export default function ConnectChannel() {
     setDebugInfo(null)
 
     try {
+      setConnectionStep("Initializing YouTube connection...")
+
       if (isPreview) {
         // In preview mode, simulate connection and redirect to dashboard
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+
         toast({
           title: "Preview Mode",
           description: "YouTube channel connection simulated successfully.",
         })
 
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 1500)
+        router.push("/dashboard")
         return
       }
 
-      // Get the authorization URL from our API
-      const response = await fetch("/api/youtube/connect")
-      const data = await response.json()
+      // Get the authorization URL
+      const authUrl = await youtubeService.getAuthUrl(user?.id || "")
 
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to initiate YouTube connection")
-      }
+      setConnectionStep("Redirecting to Google authorization...")
 
-      if (data.authUrl) {
-        // Save state to localStorage for verification
-        if (data.state) {
-          localStorage.setItem("youtube_auth_state", data.state)
-        }
-
-        // Redirect to the Google OAuth consent screen
-        window.location.href = data.authUrl
-      } else {
-        throw new Error(data.error || "Failed to initiate YouTube connection")
-      }
+      // Redirect to the Google OAuth consent screen
+      window.location.href = authUrl
     } catch (error: any) {
       console.error("Error connecting YouTube channel:", error)
       setError(error.message || "Something went wrong. Please try again later.")
@@ -108,6 +104,7 @@ export default function ConnectChannel() {
       })
     } finally {
       setIsConnecting(false)
+      setConnectionStep(null)
     }
   }
 
@@ -135,6 +132,12 @@ export default function ConnectChannel() {
               By connecting your YouTube channel, you will be able to see analytics, manage videos, and get
               recommendations.
             </p>
+
+            {connectionStep && (
+              <div className="mt-4">
+                <p className="text-sm font-medium">{connectionStep}</p>
+              </div>
+            )}
 
             {error && (
               <Alert variant="destructive" className="mt-4">

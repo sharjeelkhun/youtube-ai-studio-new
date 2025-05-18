@@ -18,14 +18,9 @@ export async function GET() {
 
     // Define your YouTube OAuth configuration
     const CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-    const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "https://youtube-ai-studio-new.vercel.app"}/connect-channel/callback`
+    const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/connect-channel/callback`
 
-    // Scopes needed for YouTube access
-    const SCOPES = [
-      "https://www.googleapis.com/auth/youtube.readonly",
-      "https://www.googleapis.com/auth/youtube.force-ssl",
-    ]
-
+    // Validate Google API credentials
     if (!CLIENT_ID) {
       return NextResponse.json(
         {
@@ -42,6 +37,12 @@ export async function GET() {
       )
     }
 
+    // Scopes needed for YouTube access
+    const SCOPES = [
+      "https://www.googleapis.com/auth/youtube.readonly",
+      "https://www.googleapis.com/auth/youtube.force-ssl",
+    ]
+
     // Generate a state parameter for security
     const state = uuidv4()
 
@@ -54,6 +55,7 @@ export async function GET() {
     authUrl.searchParams.append("access_type", "offline")
     authUrl.searchParams.append("prompt", "consent")
     authUrl.searchParams.append("state", state)
+    authUrl.searchParams.append("include_granted_scopes", "true")
 
     return NextResponse.json({
       authUrl: authUrl.toString(),
@@ -61,6 +63,7 @@ export async function GET() {
       debug: {
         redirectUri: REDIRECT_URI,
         scopes: SCOPES,
+        userId: session.user.id,
       },
     })
   } catch (error: any) {

@@ -4,7 +4,8 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { useAuth } from "./auth-context"
 import { db, type YouTubeChannel, isPreviewEnvironment } from "@/lib/db"
 import { useToast } from "@/hooks/use-toast"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { youtubeService, isTokenExpired } from "@/lib/youtube-service"
 
 interface YouTubeChannelContextType {
   channel: YouTubeChannel | null
@@ -24,6 +25,7 @@ export function YouTubeChannelProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
   const { toast } = useToast()
   const pathname = usePathname()
+  const router = useRouter()
   const isPreview = isPreviewEnvironment()
 
   // Determine if we're on a page that requires a channel
@@ -59,11 +61,25 @@ export function YouTubeChannelProvider({ children }: { children: ReactNode }) {
         setHasConnectedChannel(true)
 
         // Check if token is expired and needs refresh
-        const tokenExpiresAt = new Date(channelData.token_expires_at || 0)
-        if (tokenExpiresAt < new Date()) {
-          // Token is expired, should refresh
-          // This would be implemented in a real app
-          console.log("Token expired, should refresh")
+        if (isTokenExpired(channelData.token_expires_at)) {
+          try {
+            // Token is expired, refresh it
+            const refreshResult = await youtubeService.refreshToken(channelData.id, channelData.refresh_token || "")
+
+            // Update the channel with the new token
+            const updatedChannel = await db.channels.update(channelData.id, {
+              access_token: refreshResult.access_token,
+              token_expires_at: refreshResult.expires_at,
+            })
+
+            if (updatedChannel) {
+              setChannel(updatedChannel)
+            }
+          } catch (refreshError) {
+            console.error("Error refreshing token:", refreshError)
+            // If we can't refresh the token, we'll continue with the expired token
+            // The user might need to reconnect their channel
+          }
         }
       } else {
         setChannel(null)

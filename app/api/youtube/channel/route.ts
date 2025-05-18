@@ -39,13 +39,19 @@ export async function GET(request: Request) {
 
     if (now >= tokenExpiresAt) {
       // Token is expired, refresh it
-      const refreshResponse = await fetch("/api/youtube/refresh-token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const refreshResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/youtube/refresh-token`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            channelId: channelData.id,
+            refreshToken: channelData.refresh_token,
+          }),
         },
-        body: JSON.stringify({ refreshToken: channelData.refresh_token }),
-      })
+      )
 
       if (!refreshResponse.ok) {
         return NextResponse.json({ error: "Failed to refresh access token" }, { status: refreshResponse.status })
