@@ -17,11 +17,35 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
   const { signIn, session } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const message = searchParams.get("message")
   const redirect = searchParams.get("redirect") || "/dashboard"
+
+  const checkConnection = async () => {
+    try {
+      const response = await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL || '', {
+        method: 'HEAD',
+      });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  const checkSupabaseConfig = () => {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      console.error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable");
+      return false;
+    }
+    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable");
+      return false;
+    }
+    return true;
+  }
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
@@ -36,16 +60,33 @@ export default function LoginPage() {
     setIsLoading(true)
 
     try {
-      if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-        throw new Error("Supabase credentials are not configured")
+      if (!checkSupabaseConfig()) {
+        throw new Error("Please contact support: Authentication service configuration is missing")
       }
+
+      // Check connection before attempting sign in
+      const isConnected = await checkConnection();
+      if (!isConnected) {
+        throw new Error("Unable to connect to authentication service. The project may be paused - please contact support.")
+      }
+
       await signIn(email, password)
     } catch (err: any) {
       console.error("Login error:", err)
-      if (err.message === "Failed to fetch") {
-        setError("Cannot connect to authentication service. Please check your internet connection or try again later.")
+      const errorMessage = err.message?.toLowerCase() || ""
+      
+      if (errorMessage.includes("configuration")) {
+        setError("Authentication service is not configured. Please contact support.")
+      } else if (errorMessage.includes("paused")) {
+        setError("The service is currently paused. Please contact support to restore access.")
+      } else if (errorMessage.includes("failed to fetch") || !navigator.onLine) {
+        setError("Network error. Please check your connection and try again.")
+      } else if (errorMessage.includes("invalid login credentials")) {
+        setError("Invalid email or password. Please try again.")
+      } else if (errorMessage.includes("too many attempts")) {
+        setError("Too many login attempts. Please try again later.")
       } else {
-        setError(err.message || "Failed to sign in")
+        setError(err.message || "Failed to sign in. Please try again.")
       }
     } finally {
       setIsLoading(false)
