@@ -1,8 +1,8 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useEffect } from "react"
+import { supabase } from '@/lib/supabase'
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
@@ -24,28 +24,23 @@ export default function LoginPage() {
   const message = searchParams.get("message")
   const redirect = searchParams.get("redirect") || "/dashboard"
 
-  const checkConnection = async () => {
-    try {
-      console.log('Attempting to connect to Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
-        method: 'GET',
-        headers: {
-          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store'
-      });
-      
-      if (!response.ok) {
-        console.error('Supabase connection failed:', response.status, response.statusText);
-        return false;
+  useEffect(() => {
+    // Validate connection
+    const checkConnection = async () => {
+      try {
+        const { error } = await supabase.auth.getSession()
+        if (error) {
+          console.error("Supabase connection error:", error)
+          setError("Unable to connect to authentication service")
+        }
+      } catch (err) {
+        console.error("Failed to initialize authentication:", err)
+        setError("Authentication service unavailable")
       }
-      return true;
-    } catch (error) {
-      console.error('Connection check failed:', error);
-      return false;
     }
-  }
+    
+    checkConnection()
+  }, [])
 
   // If already logged in, redirect to dashboard
   useEffect(() => {
@@ -59,7 +54,6 @@ export default function LoginPage() {
     setError(null)
     setIsLoading(true)
 
-    // Add rate limiting
     if (retryCount >= 5) {
       setError("Too many attempts. Please wait a few minutes before trying again.");
       setIsLoading(false);
@@ -67,33 +61,23 @@ export default function LoginPage() {
     }
 
     try {
-      const isConnected = await checkConnection();
-      if (!isConnected) {
-        setRetryCount(prev => prev + 1);
-        throw new Error("Connection failed. Please check if:\n- Your internet connection is stable\n- The authentication service is available");
-      }
-
+      // Attempt sign in directly using auth context
       await signIn(email, password);
+      
     } catch (err: any) {
       console.error("Login error:", err);
+      setRetryCount(prev => prev + 1);
+      
       const errorMessage = err.message?.toLowerCase() || "";
       
-      if (!navigator.onLine) {
+      if (errorMessage.includes("invalid login credentials")) {
+        setError("Invalid email or password. Please try again.");
+      } else if (errorMessage.includes("too many requests")) {
+        setError("Too many attempts. Please try again later.");
+      } else if (!navigator.onLine) {
         setError("You appear to be offline. Please check your internet connection.");
-      } else if (errorMessage.includes("connection failed")) {
-        setError(err.message);
-      } else if (errorMessage.includes("configuration") || errorMessage.includes("invalid")) {
-        setError("Authentication service configuration error. Please check your environment variables.")
-      } else if (errorMessage.includes("paused")) {
-        setError("The service is currently paused. Please contact support to restore access.")
-      } else if (errorMessage.includes("failed to fetch") || !navigator.onLine) {
-        setError("Network error. Please check your connection and try again.")
-      } else if (errorMessage.includes("invalid login credentials")) {
-        setError("Invalid email or password. Please try again.")
-      } else if (errorMessage.includes("too many attempts")) {
-        setError("Too many login attempts. Please try again later.")
       } else {
-        setError(err.message || "Failed to sign in. Please try again.")
+        setError("Unable to sign in. Please try again.");
       }
     } finally {
       setIsLoading(false);
