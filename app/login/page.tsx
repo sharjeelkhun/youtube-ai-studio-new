@@ -26,25 +26,25 @@ export default function LoginPage() {
 
   const checkConnection = async () => {
     try {
-      const response = await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL || '', {
-        method: 'HEAD',
+      console.log('Attempting to connect to Supabase:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/`, {
+        method: 'GET',
+        headers: {
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string,
+          'Content-Type': 'application/json',
+        },
+        cache: 'no-store'
       });
-      return response.ok;
-    } catch {
+      
+      if (!response.ok) {
+        console.error('Supabase connection failed:', response.status, response.statusText);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Connection check failed:', error);
       return false;
     }
-  }
-
-  const checkSupabaseConfig = () => {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-      console.error("Missing NEXT_PUBLIC_SUPABASE_URL environment variable");
-      return false;
-    }
-    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      console.error("Missing NEXT_PUBLIC_SUPABASE_ANON_KEY environment variable");
-      return false;
-    }
-    return true;
   }
 
   // If already logged in, redirect to dashboard
@@ -59,24 +59,31 @@ export default function LoginPage() {
     setError(null)
     setIsLoading(true)
 
-    try {
-      if (!checkSupabaseConfig()) {
-        throw new Error("Please contact support: Authentication service configuration is missing")
-      }
+    // Add rate limiting
+    if (retryCount >= 5) {
+      setError("Too many attempts. Please wait a few minutes before trying again.");
+      setIsLoading(false);
+      return;
+    }
 
-      // Check connection before attempting sign in
+    try {
       const isConnected = await checkConnection();
       if (!isConnected) {
-        throw new Error("Unable to connect to authentication service. The project may be paused - please contact support.")
+        setRetryCount(prev => prev + 1);
+        throw new Error("Connection failed. Please check if:\n- Your internet connection is stable\n- The authentication service is available");
       }
 
-      await signIn(email, password)
+      await signIn(email, password);
     } catch (err: any) {
-      console.error("Login error:", err)
-      const errorMessage = err.message?.toLowerCase() || ""
+      console.error("Login error:", err);
+      const errorMessage = err.message?.toLowerCase() || "";
       
-      if (errorMessage.includes("configuration")) {
-        setError("Authentication service is not configured. Please contact support.")
+      if (!navigator.onLine) {
+        setError("You appear to be offline. Please check your internet connection.");
+      } else if (errorMessage.includes("connection failed")) {
+        setError(err.message);
+      } else if (errorMessage.includes("configuration") || errorMessage.includes("invalid")) {
+        setError("Authentication service configuration error. Please check your environment variables.")
       } else if (errorMessage.includes("paused")) {
         setError("The service is currently paused. Please contact support to restore access.")
       } else if (errorMessage.includes("failed to fetch") || !navigator.onLine) {
@@ -89,7 +96,7 @@ export default function LoginPage() {
         setError(err.message || "Failed to sign in. Please try again.")
       }
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }
 
