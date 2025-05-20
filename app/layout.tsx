@@ -1,17 +1,18 @@
 import type React from "react"
+import "./globals.css"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
+import { YouTubeChannelProvider } from "@/contexts/youtube-channel-context"
 import { Toaster } from "@/components/ui/toaster"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import "./globals.css"
+import { DebugButton } from "@/components/debug-button"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "YouTube AI Studio",
-  description: "AI-powered YouTube analytics and optimization platform",
+  title: "YouTube Dashboard",
+  description: "Manage your YouTube channel with advanced analytics and AI-powered suggestions",
     generator: 'v0.dev'
 }
 
@@ -21,10 +22,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <AuthProvider>
-            <TooltipProvider>
+            <YouTubeChannelProvider>
               {children}
               <Toaster />
-            </TooltipProvider>
+              <DebugButton />
+            </YouTubeChannelProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
