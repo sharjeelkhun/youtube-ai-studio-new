@@ -1,102 +1,74 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
+import { createClient } from "@supabase/supabase-js"
 
-// Check if we're in a preview environment
+// Check if we're in the v0 preview environment
 const isPreviewEnvironment = (request: NextRequest) => {
-  return (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    request.headers.get("host")?.includes("v0.dev") ||
-    request.headers.get("host")?.includes("lite.vusercontent.net")
-  )
+  return request.headers.get("host")?.includes("vusercontent.net") || request.headers.get("host") === "v0.dev"
 }
 
 export async function middleware(request: NextRequest) {
-  // Create response to modify
-  const res = NextResponse.next()
+  // Get the pathname
+  const path = request.nextUrl.pathname
 
   // Check if we're in preview mode
   const isPreview = isPreviewEnvironment(request)
 
-  // Initialize session
-  let session = null
-
-  // Handle authentication
-  if (!isPreview) {
-    try {
-      // Create Supabase middleware client
-      const supabase = createMiddlewareClient({ req: request, res })
-
-      // Get session
-      const { data, error } = await supabase.auth.getSession()
-
-      if (error) {
-        console.error("Middleware session error:", error)
-      } else {
-        session = data.session
-      }
-    } catch (error) {
-      console.error("Middleware error:", error)
-    }
-  } else {
-    // For preview mode, check for preview login cookie
+  // For preview mode, check for a special cookie
+  if (isPreview) {
     const previewLoggedIn = request.cookies.get("preview_logged_in")?.value === "true"
 
-    if (previewLoggedIn) {
-      // Simulate a session for preview mode
-      session = { user: { id: "preview-user" } } as any
+    // Public paths that don't require authentication
+    const isPublicPath = path === "/login" || path === "/signup" || path === "/forgot-password"
+
+    // If user is not logged in and the path is not public, redirect to login
+    if (!previewLoggedIn && !isPublicPath) {
+      return NextResponse.redirect(new URL("/login", request.url))
     }
+
+    // If user is logged in and the path is public, redirect to dashboard
+    if (previewLoggedIn && isPublicPath) {
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
+
+    return NextResponse.next()
   }
 
-  // Get current path
-  const path = request.nextUrl.pathname
+  // For real environments, use Supabase auth
+  // Public paths that don't require authentication
+  const isPublicPath = path === "/login" || path === "/signup" || path === "/forgot-password"
 
-  // Protected routes
-  const protectedRoutes = ["/dashboard", "/(dashboard)", "/connect-channel", "/profile", "/settings"]
+  // Get the session from the request
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  // Check if current path is protected
-  const isProtectedRoute = protectedRoutes.some((route) => path.startsWith(route))
-
-  // Auth pages
-  const authPages = ["/login", "/signup", "/forgot-password"]
-  const isAuthPage = authPages.includes(path)
-
-  // Handle protected routes
-  if (isProtectedRoute && !session) {
-    // Redirect to login with return URL
-    const redirectUrl = new URL("/login", request.url)
-    redirectUrl.searchParams.set("redirect", path)
-    return NextResponse.redirect(redirectUrl)
+  // If Supabase credentials are missing, allow access
+  if (!supabaseUrl || !supabaseKey) {
+    return NextResponse.next()
   }
 
-  // Handle auth pages when already logged in
-  if (isAuthPage && session) {
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false,
+    },
+  })
+
+  const { data } = await supabase.auth.getSession()
+
+  // If user is not logged in and the path is not public, redirect to login
+  if (!data.session && !isPublicPath) {
+    return NextResponse.redirect(new URL("/login", request.url))
+  }
+
+  // If user is logged in and the path is public, redirect to dashboard
+  if (data.session && isPublicPath) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
-  // Handle root path
-  if (path === "/") {
-    if (session) {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    } else {
-      return NextResponse.redirect(new URL("/login", request.url))
-    }
-  }
-
-  return res
+  return NextResponse.next()
 }
 
+// Only run middleware on these paths
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - api (API routes)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!_next/static|_next/image|api|favicon.ico|public).*)",
-  ],
+  matcher: ["/", "/login", "/signup", "/dashboard/:path*", "/settings/:path*", "/profile/:path*"],
 }
