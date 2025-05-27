@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,26 +16,27 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/contexts/auth-context"
 import { LogOut, Settings, User } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { isPreviewEnvironment } from "@/lib/db"
+import { useToast } from "@/components/ui/use-toast"
 
 export function UserMenu({ user, profile }) {
   const { signOut } = useAuth()
   const router = useRouter()
-  const isPreview = isPreviewEnvironment()
+  const { toast } = useToast()
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleSignOut = async () => {
-    if (isPreview) {
-      // In preview mode, just redirect to login
-      router.push("/login")
-      return
-    }
-
     try {
+      setIsLoggingOut(true)
       await signOut()
-      router.push("/login")
     } catch (error) {
       console.error("Error signing out:", error)
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoggingOut(false)
     }
   }
 
@@ -60,7 +63,7 @@ export function UserMenu({ user, profile }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem onClick={() => router.push("/profile")}>
+          <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
             <DropdownMenuShortcut>⇧P</DropdownMenuShortcut>
@@ -72,9 +75,9 @@ export function UserMenu({ user, profile }) {
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleSignOut}>
+        <DropdownMenuItem onClick={handleSignOut} disabled={isLoggingOut} className="text-red-600 focus:text-red-600">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{isLoggingOut ? "Logging out..." : "Log out"}</span>
           <DropdownMenuShortcut>⇧⌘Q</DropdownMenuShortcut>
         </DropdownMenuItem>
       </DropdownMenuContent>

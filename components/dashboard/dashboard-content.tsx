@@ -6,29 +6,28 @@ import { VideosTab } from "./videos-tab"
 import { AnalyticsTab } from "./analytics-tab"
 import { CommentsTab } from "./comments-tab"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
-import { YouTubeConnectionStatus } from "@/components/youtube-connection-status"
+import { EmptyChannelState } from "@/components/empty-channel-state"
 
 export function DashboardContent() {
-  const { hasConnectedChannel, isLoading } = useYouTubeChannel()
+  const { isLoading, isConnected, channelData } = useYouTubeChannel()
 
-  if (isLoading) {
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center space-y-4">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-muted-foreground">Loading...</p>
+          </div>
+        </div>
+      )
+    }
+
+    if (!isConnected || !channelData) {
+      return <EmptyChannelState />
+    }
+
     return (
-      <div className="flex justify-center p-8">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
-      </div>
-    )
-  }
-
-  if (!hasConnectedChannel) {
-    return (
-      <div className="mx-auto max-w-md p-4">
-        <YouTubeConnectionStatus />
-      </div>
-    )
-  }
-
-  return (
-    <div>
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -36,19 +35,21 @@ export function DashboardContent() {
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
         </TabsList>
-        <TabsContent value="overview" className="space-y-4">
-          <OverviewTab />
+        <TabsContent value="overview">
+          <OverviewTab channelData={channelData} isLoading={isLoading} />
         </TabsContent>
-        <TabsContent value="videos" className="space-y-4">
-          <VideosTab />
+        <TabsContent value="videos">
+          <VideosTab channelData={channelData} isLoading={isLoading} />
         </TabsContent>
-        <TabsContent value="analytics" className="space-y-4">
-          <AnalyticsTab />
+        <TabsContent value="analytics">
+          <AnalyticsTab channelData={channelData} isLoading={isLoading} />
         </TabsContent>
-        <TabsContent value="comments" className="space-y-4">
-          <CommentsTab />
+        <TabsContent value="comments">
+          <CommentsTab channelData={channelData} isLoading={isLoading} />
         </TabsContent>
       </Tabs>
-    </div>
-  )
+    )
+  }
+
+  return <div className="w-full">{renderContent()}</div>
 }

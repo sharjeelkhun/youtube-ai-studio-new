@@ -1,136 +1,142 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
+import type { YouTubeChannel } from "@/lib/db"
 import { useAuth } from "./auth-context"
-import { db, type YouTubeChannel, isPreviewEnvironment } from "@/lib/db"
-import { useToast } from "@/hooks/use-toast"
-import { usePathname, useRouter } from "next/navigation"
-import { youtubeService, isTokenExpired } from "@/lib/youtube-service"
+import { supabase } from "@/lib/supabase"
+import { youtubeService } from "@/lib/youtube-service"
+
+// Add cache duration constant (15 minutes)
+const CACHE_DURATION = 15 * 60 * 1000
 
 interface YouTubeChannelContextType {
-  channel: YouTubeChannel | null
   isLoading: boolean
+  isConnected: boolean
+  channelData: YouTubeChannel | null
   error: string | null
   refreshChannel: () => Promise<void>
-  hasConnectedChannel: boolean
 }
 
 const YouTubeChannelContext = createContext<YouTubeChannelContextType | undefined>(undefined)
 
-export function YouTubeChannelProvider({ children }: { children: ReactNode }) {
-  const [channel, setChannel] = useState<YouTubeChannel | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+export function YouTubeChannelProvider({ children }: { children: React.ReactNode }) {
+  const [isLoading, setIsLoading] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+  const [channelData, setChannelData] = useState<YouTubeChannel | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [hasConnectedChannel, setHasConnectedChannel] = useState(false)
   const { user } = useAuth()
-  const { toast } = useToast()
-  const pathname = usePathname()
-  const router = useRouter()
-  const isPreview = isPreviewEnvironment()
 
-  // Determine if we're on a page that requires a channel
-  const requiresChannel =
-    pathname?.includes("/dashboard") &&
-    !pathname?.includes("/connect-channel") &&
-    !pathname?.includes("/settings") &&
-    !pathname?.includes("/profile")
-
-  const fetchChannel = async () => {
-    setIsLoading(true)
-    setError(null)
+  const fetchChannel = useCallback(async () => {
+    if (!user) return
 
     try {
-      if (isPreview) {
-        // Use mock data in preview mode
-        const mockChannel = await db.channels.getByUserId("preview-user-id")
-        setChannel(mockChannel)
-        setHasConnectedChannel(true)
+      setIsLoading(true)
+      setError(null)
+
+      const { data: channel, error: channelError } = await supabase
+        .from('youtube_channels')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (channelError || !channel?.access_token) {
+        setIsConnected(false)
+        setChannelData(null)
         return
       }
 
-      if (!user) {
-        setChannel(null)
-        setHasConnectedChannel(false)
-        return
-      }
-
-      const channelData = await db.channels.getByUserId(user.id)
-
-      if (channelData) {
-        setChannel(channelData)
-        setHasConnectedChannel(true)
-
-        // Check if token is expired and needs refresh
-        if (isTokenExpired(channelData.token_expires_at)) {
-          try {
-            // Token is expired, refresh it
-            const refreshResult = await youtubeService.refreshToken(channelData.id, channelData.refresh_token || "")
-
-            // Update the channel with the new token
-            const updatedChannel = await db.channels.update(channelData.id, {
-              access_token: refreshResult.access_token,
-              token_expires_at: refreshResult.expires_at,
-            })
-
-            if (updatedChannel) {
-              setChannel(updatedChannel)
-            }
-          } catch (refreshError) {
-            console.error("Error refreshing token:", refreshError)
-            // If we can't refresh the token, we'll continue with the expired token
-            // The user might need to reconnect their channel
+      try {
+        const response = await fetch('/api/youtube/channel', {
+          headers: {
+            'Authorization': `Bearer ${channel.access_token}`,
+            'Accept': 'application/json',
           }
-        }
-      } else {
-        setChannel(null)
-        setHasConnectedChannel(false)
-
-        if (requiresChannel) {
-          toast({
-            title: "No YouTube Channel",
-            description: "Please connect your YouTube channel to continue",
-            variant: "destructive",
-          })
-        }
-      }
-    } catch (err: any) {
-      console.error("Error in fetchChannel:", err)
-      setError(`An unexpected error occurred: ${err.message}`)
-
-      if (requiresChannel) {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: `Failed to fetch YouTube channel: ${err.message}`,
         })
+
+        const data = await response.json()
+
+        if (!response.ok) {
+          // Handle quota exceeded silently
+          if (response.status === 429 || data.error?.includes('quota')) {
+            console.warn('YouTube API quota exceeded - Using cached data:', {
+              channelId: channel.id,
+              lastUpdated: channel.last_updated
+            })
+            // Silently use cached data without showing error to user
+            setChannelData(channel)
+            setIsConnected(true)
+            return
+          }
+          throw new Error(data.error || 'Failed to fetch channel data')
+        }
+
+        const channelData = data.items?.[0]
+        if (!channelData) {
+          throw new Error('No channel data found')
+        }
+
+        const updatedChannel = {
+          ...channel,
+          subscribers: parseInt(channelData.statistics?.subscriberCount) || channel.subscribers || 0,
+          videos: parseInt(channelData.statistics?.videoCount) || channel.videos || 0,
+          views: parseInt(channelData.statistics?.viewCount) || channel.views || 0,
+          thumbnail: channelData.snippet?.thumbnails?.default?.url,
+          title: channelData.snippet?.title || channel.title,
+          last_updated: new Date().toISOString()
+        }
+
+        await supabase
+          .from('youtube_channels')
+          .update(updatedChannel)
+          .eq('id', channel.id)
+
+        setChannelData(updatedChannel)
+        setIsConnected(true)
+        setError(null)
+      } catch (apiError: any) {
+        console.error('YouTube API Error:', apiError)
+        // Use cached data without showing error to user
+        if (channel) {
+          console.info('Falling back to cached channel data from:', channel.last_updated)
+          setChannelData(channel)
+          setIsConnected(true)
+        }
       }
+    } catch (err) {
+      console.error("Error fetching channel:", err)
+      setError("Unable to load channel data")
+      setChannelData(null)
+      setIsConnected(false)
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user])
 
-  const refreshChannel = async () => {
-    await fetchChannel()
-  }
-
+  // Single effect to handle both initial load and URL params
   useEffect(() => {
-    if (user || isPreview) {
-      fetchChannel()
-    } else {
-      setIsLoading(false)
-      setChannel(null)
-      setHasConnectedChannel(false)
+    if (!user) return
+
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('connected') === 'true') {
+      window.history.replaceState({}, '', '/dashboard')
     }
-  }, [user, isPreview])
+    
+    fetchChannel()
+  }, [user, fetchChannel])
+
+  const refreshChannel = useCallback(async () => {
+    if (!user || isLoading) return
+    await fetchChannel()
+  }, [user, isLoading, fetchChannel])
 
   return (
     <YouTubeChannelContext.Provider
       value={{
-        channel,
         isLoading,
+        isConnected,
+        channelData,
         error,
         refreshChannel,
-        hasConnectedChannel,
       }}
     >
       {children}

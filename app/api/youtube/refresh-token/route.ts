@@ -1,97 +1,80 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
-import { NextResponse } from "next/server"
+import { createServerClient } from '@/lib/supabase-server'
+import { cookies } from 'next/headers'
+import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
-    // Get the refresh token from the request body
     const { channelId, refreshToken } = await request.json()
 
     if (!channelId || !refreshToken) {
-      return NextResponse.json({ error: "Channel ID and refresh token are required" }, { status: 400 })
-    }
-
-    // Define your YouTube OAuth configuration
-    const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
-    const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-
-    // Validate environment variables
-    if (!CLIENT_ID || !CLIENT_SECRET) {
-      return NextResponse.json({ error: "Google OAuth credentials are not properly configured" }, { status: 500 })
-    }
-
-    // Exchange refresh token for a new access token
-    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
-        refresh_token: refreshToken,
-        grant_type: "refresh_token",
-      }),
-    })
-
-    const tokenData = await tokenResponse.json()
-
-    if (!tokenResponse.ok) {
-      console.error("Token refresh error:", tokenData)
       return NextResponse.json(
-        {
-          error: tokenData.error_description || "Failed to refresh token",
-          details: tokenData,
-        },
-        { status: tokenResponse.status },
+        { error: 'Missing required parameters' },
+        { status: 400 }
       )
     }
 
-    // Extract tokens and expiry
-    const { access_token, expires_in } = tokenData
-    const expiryDate = new Date(Date.now() + expires_in * 1000)
+    // Get Google OAuth credentials
+    const clientId = process.env.GOOGLE_CLIENT_ID
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET
 
-    // Access the authenticated user
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    if (!clientId || !clientSecret) {
+      return NextResponse.json(
+        { error: 'OAuth credentials not configured' },
+        { status: 500 }
+      )
     }
 
-    // Update the channel with the new access token and expiry
+    // Request new access token from Google
+    const response = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        refresh_token: refreshToken,
+        grant_type: 'refresh_token',
+      }),
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      console.error('Token refresh error:', data)
+      return NextResponse.json(
+        { error: data.error || 'Failed to refresh token' },
+        { status: response.status }
+      )
+    }
+
+    // Update the channel in database with new token
+    const supabase = createServerClient()
     const { error: updateError } = await supabase
-      .from("youtube_channels")
+      .from('youtube_channels')
       .update({
-        access_token,
-        token_expires_at: expiryDate.toISOString(),
-        last_updated: new Date().toISOString(),
+        access_token: data.access_token,
+        token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
       })
-      .eq("id", channelId)
-      .eq("user_id", session.user.id)
+      .eq('id', channelId)
 
     if (updateError) {
-      console.error("Database update error:", updateError)
-      return NextResponse.json({ error: `Failed to update token: ${updateError.message}` }, { status: 500 })
+      console.error('Database update error:', updateError)
+      return NextResponse.json(
+        { error: 'Failed to update channel' },
+        { status: 500 }
+      )
     }
 
     return NextResponse.json({
-      success: true,
-      access_token,
-      expires_in,
-      expires_at: expiryDate.toISOString(),
+      access_token: data.access_token,
+      expires_in: data.expires_in,
     })
-  } catch (error: any) {
-    console.error("Token refresh error:", error)
+  } catch (error) {
+    console.error('Token refresh error:', error)
     return NextResponse.json(
-      {
-        error: `An unexpected error occurred: ${error.message}`,
-        stack: error.stack,
-      },
-      { status: 500 },
+      { error: 'Internal server error' },
+      { status: 500 }
     )
   }
 }

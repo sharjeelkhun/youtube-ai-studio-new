@@ -1,78 +1,65 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { createMiddlewareClient } from "@supabase/auth-helpers-nextjs"
+import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  // Check if we're in a preview environment
-  const isPreview =
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    request.headers.get("host")?.includes("v0.dev")
+  const path = request.nextUrl.pathname
 
-  // Create response to modify
-  const res = NextResponse.next()
-
-  // Create supabase middleware client
-  let session = null
-
-  if (!isPreview) {
-    const supabase = createMiddlewareClient({ req: request, res })
-    // Refresh session if expired
-    const { data } = await supabase.auth.getSession()
-    session = data.session
+  // Skip middleware for static files and API routes
+  if (path.match(/(\..*|api|_next|favicon\.ico)/)) {
+    return NextResponse.next()
   }
 
-  // For preview mode, we'll create a simulated session based on a special cookie
-  if (isPreview) {
-    const previewLoggedIn = request.cookies.get("preview_logged_in")?.value === "true"
-    if (previewLoggedIn) {
-      // Simulate a session for preview mode
-      session = { user: { id: "preview-user" } } as any
+  let response = NextResponse.next()
+
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name) {
+            return request.cookies.get(name)?.value
+          },
+          set(name, value, options) {
+            // Ensure cookie is set with correct options
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+              sameSite: 'lax',
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+            })
+          },
+          remove(name) {
+            response.cookies.delete(name)
+          },
+        },
+      }
+    )
+
+    const { data: { session }, error } = await supabase.auth.getSession()
+
+    // Handle dashboard access
+    if (path.startsWith('/dashboard')) {
+      if (!session) {
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
     }
-  }
 
-  // Auth condition for protected routes - ALWAYS check regardless of preview mode
-  if (
-    (request.nextUrl.pathname.startsWith("/dashboard") ||
-      request.nextUrl.pathname.startsWith("/(dashboard)") ||
-      request.nextUrl.pathname.startsWith("/connect-channel") ||
-      request.nextUrl.pathname.startsWith("/profile") ||
-      request.nextUrl.pathname.startsWith("/settings")) &&
-    !session
-  ) {
-    // Redirect to login with return URL
-    const redirectUrl = new URL("/login", request.url)
-    redirectUrl.searchParams.set("redirect", request.nextUrl.pathname)
-    return NextResponse.redirect(redirectUrl)
-  }
-
-  // Auth condition for auth pages when already logged in
-  if ((request.nextUrl.pathname === "/login" || request.nextUrl.pathname === "/signup") && session) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  // Redirect root to dashboard if logged in, otherwise to login
-  if (request.nextUrl.pathname === "/") {
-    if (session) {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    } else {
-      return NextResponse.redirect(new URL("/login", request.url))
+    // Handle auth pages access
+    if ((path === '/login' || path === '/signup') && session) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
     }
-  }
 
-  return res
+    return response
+  } catch (error) {
+    console.error('Middleware error:', error)
+    // On error, redirect to login
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - api (API routes)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!_next/static|_next/image|api|favicon.ico|public).*)",
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }

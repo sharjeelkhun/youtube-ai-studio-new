@@ -1,79 +1,92 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { v4 as uuidv4 } from "uuid"
 
-export async function GET() {
-  try {
-    // Get the authenticated user
-    const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-    }
-
-    // Define your YouTube OAuth configuration
-    const CLIENT_ID = process.env.GOOGLE_CLIENT_ID
-    const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/connect-channel/callback`
-
-    // Validate Google API credentials
-    if (!CLIENT_ID) {
-      return NextResponse.json(
-        {
-          error: "Google Client ID is not configured",
-          debug: {
-            env: {
-              GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
-              GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
-              NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-            },
-          },
+export async function GET(request: Request) {
+  const cookieStore = cookies()
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value
         },
-        { status: 500 },
-      )
+        set(name: string, value: string, options: any) {
+          cookieStore.set({ name, value, ...options })
+        },
+        remove(name: string, options: any) {
+          cookieStore.delete(name)
+        },
+      },
     }
+  )
 
-    // Scopes needed for YouTube access
-    const SCOPES = [
-      "https://www.googleapis.com/auth/youtube.readonly",
-      "https://www.googleapis.com/auth/youtube.force-ssl",
-    ]
-
-    // Generate a state parameter for security
-    const state = uuidv4()
-
-    // Create the authorization URL
-    const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
-    authUrl.searchParams.append("client_id", CLIENT_ID)
-    authUrl.searchParams.append("redirect_uri", REDIRECT_URI)
-    authUrl.searchParams.append("response_type", "code")
-    authUrl.searchParams.append("scope", SCOPES.join(" "))
-    authUrl.searchParams.append("access_type", "offline")
-    authUrl.searchParams.append("prompt", "consent")
-    authUrl.searchParams.append("state", state)
-    authUrl.searchParams.append("include_granted_scopes", "true")
-
-    return NextResponse.json({
-      authUrl: authUrl.toString(),
-      state,
-      debug: {
-        redirectUri: REDIRECT_URI,
-        scopes: SCOPES,
-        userId: session.user.id,
-      },
-    })
-  } catch (error: any) {
-    console.error("YouTube connect error:", error)
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session) {
     return NextResponse.json(
-      {
-        error: `An unexpected error occurred: ${error.message}`,
-        stack: error.stack,
-      },
-      { status: 500 },
+      { error: "Not authenticated" },
+      { status: 401 }
     )
   }
+
+  const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000/connect-channel/callback'
+
+  // Validate Google API credentials
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return NextResponse.json(
+      { 
+        error: "Google OAuth credentials are not configured",
+        debug: {
+          clientId: !!process.env.GOOGLE_CLIENT_ID,
+          clientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+          redirectUri: REDIRECT_URI,
+          env: process.env.NODE_ENV
+        }
+      },
+      { status: 500 }
+    )
+  }
+
+  const SCOPES = [
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/youtube.force-ssl",
+  ]
+
+  const state = uuidv4()
+  const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
+  
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'code',
+    scope: SCOPES.join(' '),
+    access_type: 'offline',
+    state: state,
+    prompt: 'consent'
+  })
+
+  authUrl.search = params.toString()
+
+  // Store state in a cookie for verification
+  cookieStore.set('youtube_oauth_state', state, {
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 60 * 10 // 10 minutes
+  })
+
+  return NextResponse.json({
+    authUrl: authUrl.toString(),
+    state,
+    debug: {
+      redirectUri: REDIRECT_URI,
+      clientIdConfigured: !!process.env.GOOGLE_CLIENT_ID,
+      appUrl: process.env.NEXT_PUBLIC_APP_URL,
+      env: process.env.NODE_ENV
+    }
+  })
 }

@@ -1,170 +1,65 @@
-"use client"
+import { CheckCircle, Youtube } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ConnectYouTubeButton } from "@/components/connect-youtube-button"
 
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Youtube, AlertCircle } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useEffect, useState } from "react"
-import { useToast } from "@/hooks/use-toast"
-import { useAuth } from "@/contexts/auth-context"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { isPreviewEnvironment, db } from "@/lib/db"
-import { youtubeService } from "@/lib/youtube-service"
-
-export default function ConnectChannel() {
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [debugInfo, setDebugInfo] = useState<any>(null)
-  const [connectionStep, setConnectionStep] = useState<string | null>(null)
-  const router = useRouter()
-  const { toast } = useToast()
-  const { user, isLoading } = useAuth()
-  const isPreview = isPreviewEnvironment()
-
-  useEffect(() => {
-    // Redirect to login if not authenticated
-    if (!isLoading && !user && !isPreview) {
-      router.push("/login?redirect=/connect-channel")
-      return
-    }
-
-    // Check if user already has a connected channel
-    const checkExistingChannel = async () => {
-      if (!user && !isPreview) return
-
-      try {
-        setConnectionStep("Checking for existing channel...")
-        const channelData = await db.channels.getByUserId(isPreview ? "preview-user-id" : user?.id || "")
-
-        if (channelData) {
-          toast({
-            title: "Channel Already Connected",
-            description: "You already have a connected YouTube channel. Redirecting to dashboard.",
-          })
-
-          setTimeout(() => {
-            router.push("/dashboard")
-          }, 1500)
-        }
-      } catch (err) {
-        console.error("Error checking existing channel:", err)
-      } finally {
-        setConnectionStep(null)
-      }
-    }
-
-    checkExistingChannel()
-  }, [user, isLoading, router, toast, isPreview])
-
-  async function connectYouTubeChannel() {
-    setIsConnecting(true)
-    setError(null)
-    setDebugInfo(null)
-
-    try {
-      setConnectionStep("Initializing YouTube connection...")
-
-      if (isPreview) {
-        // In preview mode, simulate connection and redirect to dashboard
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-
-        toast({
-          title: "Preview Mode",
-          description: "YouTube channel connection simulated successfully.",
-        })
-
-        router.push("/dashboard")
-        return
-      }
-
-      // Get the authorization URL
-      const authUrl = await youtubeService.getAuthUrl(user?.id || "")
-
-      setConnectionStep("Redirecting to Google authorization...")
-
-      // Redirect to the Google OAuth consent screen
-      window.location.href = authUrl
-    } catch (error: any) {
-      console.error("Error connecting YouTube channel:", error)
-      setError(error.message || "Something went wrong. Please try again later.")
-
-      // Collect debug info
-      try {
-        const debugResponse = await fetch("/api/debug/youtube-connect")
-        const debugData = await debugResponse.json()
-        setDebugInfo(debugData)
-      } catch (debugError) {
-        console.error("Error fetching debug info:", debugError)
-      }
-
-      toast({
-        variant: "destructive",
-        title: "Connection failed",
-        description: error.message || "Something went wrong. Please try again later.",
-      })
-    } finally {
-      setIsConnecting(false)
-      setConnectionStep(null)
-    }
-  }
-
-  if (isLoading && !isPreview) {
+export default function ConnectChannelPage() {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">Loading...</div>
+      <div className="p-4">
+        <h1 className="text-2xl font-bold mb-4">Connect YouTube Channel</h1>
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+          <p className="font-bold">Error</p>
+          <p>Google Client ID is not configured</p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Connect YouTube Channel</CardTitle>
-          <CardDescription>Connect your YouTube channel to get analytics and insights</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center space-y-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
-            <Youtube className="h-8 w-8 text-red-600 dark:text-red-300" />
+    <div className="min-h-[80vh] flex items-center justify-center p-4">
+      <Card className="border-2 border-dashed w-full max-w-2xl transition-all duration-300 hover:border-red-200 hover:shadow-lg">
+        <CardHeader className="text-center pb-2">
+          <div className="rounded-full bg-red-50 w-20 h-20 mx-auto flex items-center justify-center mb-6">
+            <Youtube className="w-10 h-10 text-red-600" />
           </div>
-          <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              By connecting your YouTube channel, you will be able to see analytics, manage videos, and get
-              recommendations.
-            </p>
-
-            {connectionStep && (
-              <div className="mt-4">
-                <p className="text-sm font-medium">{connectionStep}</p>
-              </div>
-            )}
-
-            {error && (
-              <Alert variant="destructive" className="mt-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {debugInfo && (
-              <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
-                <p className="mb-2 text-sm font-medium">Debug Information:</p>
-                <pre className="max-h-40 overflow-auto rounded-md bg-gray-100 p-2 text-xs dark:bg-gray-700">
-                  {JSON.stringify(debugInfo, null, 2)}
-                </pre>
-              </div>
-            )}
+          <CardTitle className="text-3xl font-bold bg-gradient-to-r from-red-600 to-red-500 bg-clip-text text-transparent">
+            Connect Your YouTube Channel
+          </CardTitle>
+          <CardDescription className="text-lg mt-2">
+            Unlock powerful insights and analytics for your content
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-6 mt-4">
+            <div className="grid gap-8">
+              {[
+                {
+                  title: "Channel Analytics",
+                  description: "View detailed analytics and performance metrics for your channel growth"
+                },
+                {
+                  title: "Video Management",
+                  description: "Efficiently manage and optimize your video content strategy"
+                },
+                {
+                  title: "AI-Powered Insights",
+                  description: "Get intelligent recommendations to improve your content and reach"
+                }
+              ].map((feature, index) => (
+                <div key={index} className="flex items-start space-x-4 p-4 rounded-lg transition-all duration-200 hover:bg-red-50">
+                  <CheckCircle className="w-6 h-6 text-red-600 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h3 className="font-semibold text-lg">{feature.title}</h3>
+                    <p className="text-gray-600">{feature.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-center mt-8">
+              <ConnectYouTubeButton />
+            </div>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <Button className="w-full" onClick={connectYouTubeChannel} disabled={isConnecting}>
-            {isConnecting ? "Connecting..." : "Connect YouTube Channel"}
-          </Button>
-          <Button variant="outline" className="w-full" onClick={() => router.push("/dashboard")}>
-            Skip for now
-          </Button>
-        </CardFooter>
       </Card>
     </div>
   )

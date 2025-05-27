@@ -1,8 +1,16 @@
 import { supabase } from "./supabase"
 import type { Database } from "./database.types"
+import { toast } from '@/components/ui/use-toast'
 
 // Type for YouTube channel
-export type YouTubeChannel = Database["public"]["Tables"]["youtube_channels"]["Row"]
+export type YouTubeChannel = Database["public"]["Tables"]["youtube_channels"]["Row"] & {
+  watch_time: number
+  previous_watch_time: number
+  likes: number
+  previous_likes: number
+  comments: number
+  previous_comments: number
+}
 export type Video = Database["public"]["Tables"]["videos"]["Row"]
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
 export type AnalyticsData = Database["public"]["Tables"]["analytics_data"]["Row"]
@@ -10,11 +18,9 @@ export type AnalyticsData = Database["public"]["Tables"]["analytics_data"]["Row"
 // Check if we're in a preview environment
 export const isPreviewEnvironment = () => {
   return (
+    process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true' || 
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_VERCEL_ENV === "preview" ||
-    (typeof window !== "undefined" &&
-      (window.location.hostname === "v0.dev" || window.location.hostname.includes("lite.vusercontent.net")))
+    !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   )
 }
 
@@ -135,24 +141,33 @@ export const db = {
   // Channel operations
   channels: {
     async getByUserId(userId: string): Promise<YouTubeChannel | null> {
-      if (isPreviewEnvironment()) {
-        return mockData.channel
-      }
+      try {
+        if (isPreviewEnvironment()) {
+          return mockData.channel
+        }
 
-      const { data, error } = await supabase
-        .from("youtube_channels")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single()
+        const { data, error } = await supabase
+          .from("youtube_channels")
+          .select(`
+            *,
+            videos:videos(count),
+            analytics:analytics_data(
+              views,
+              subscribers,
+              engagement,
+              watch_time
+            )
+          `)
+          .eq("user_id", userId)
+          .order('created_at', { ascending: false })
+          .maybeSingle() // Use maybeSingle instead of single
 
-      if (error) {
+        if (error) throw error
+        return data
+      } catch (error: any) {
         console.error("Error fetching channel:", error)
         return null
       }
-
-      return data
     },
 
     async create(channel: Omit<YouTubeChannel, "id" | "created_at">): Promise<YouTubeChannel | null> {
@@ -363,7 +378,11 @@ export const db = {
         } as Profile
       }
 
-      const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).single()
+      const { data, error } = await supabase
+        .from('profiles')
+        .select()
+        .match({ id: userId })
+        .maybeSingle()
 
       if (error) {
         console.error("Error fetching profile:", error)
@@ -397,4 +416,28 @@ export const db = {
       return data
     },
   },
+}
+
+export async function getYouTubeChannels(userId: string) {
+  try {
+    const { data, error } = await supabase
+      .from('youtube_channels')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .throwOnError()
+
+    if (error) throw error
+
+    return {
+      data: data || [],
+      error: null
+    }
+  } catch (error: any) {
+    console.error('Error fetching channels:', error)
+    return {
+      data: [],
+      error: error.message
+    }
+  }
 }

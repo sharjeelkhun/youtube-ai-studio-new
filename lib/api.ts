@@ -255,7 +255,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 export async function getVideos(search?: string, filter?: string): Promise<Video[]> {
   try {
     // Check if we have a YouTube connection
-    const token = localStorage.getItem("youtube_access_token")
+    const token = sessionStorage.getItem("youtube_access_token")
     if (!token) {
       // Fall back to mock data if no connection
       return getMockVideos(search, filter)
@@ -265,7 +265,7 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
     const query = "videos?part=snippet,statistics,status&mine=true&maxResults=50"
 
     // Fetch videos from YouTube API
-    const data = await fetchFromYouTubeAPI(query)
+    const data = await fetchFromYouTubeAPI(query, token)
 
     // Map the response to our Video type
     let videos = data.items.map((item: any) => ({
@@ -325,8 +325,47 @@ function getMockVideos(search?: string, filter?: string): Promise<Video[]> {
 }
 
 export async function getVideo(id: string): Promise<Video | null> {
-  await delay(500)
-  return mockVideos.find((video) => video.id === id) || null
+  try {
+    // Check if we have a YouTube connection
+    const token = sessionStorage.getItem("youtube_access_token")
+    if (!token) {
+      // Fall back to mock data if no connection
+      return mockVideos.find((video) => video.id === id) || null
+    }
+
+    // Build the query parameters
+    const query = `videos?part=snippet,statistics,status&id=${id}`
+
+    // Fetch video from YouTube API
+    const data = await fetchFromYouTubeAPI(query, token)
+
+    if (!data.items || data.items.length === 0) {
+      return null
+    }
+
+    const item = data.items[0]
+    return {
+      id: item.id,
+      thumbnail: item.snippet.thumbnails.medium.url,
+      title: item.snippet.title,
+      status:
+        item.status.privacyStatus === "public"
+          ? "Published"
+          : item.status.privacyStatus === "private"
+            ? "Draft"
+            : "Scheduled",
+      views: Number.parseInt(item.statistics.viewCount, 10),
+      likes: Number.parseInt(item.statistics.likeCount, 10),
+      comments: Number.parseInt(item.statistics.commentCount, 10),
+      publishedAt: new Date(item.snippet.publishedAt).toLocaleDateString(),
+      description: item.snippet.description,
+      tags: item.snippet.tags || [],
+    }
+  } catch (error) {
+    console.error("Error fetching video from YouTube:", error)
+    // Fall back to mock data on error
+    return mockVideos.find((video) => video.id === id) || null
+  }
 }
 
 export async function createVideo(video: Omit<Video, "id">): Promise<Video> {

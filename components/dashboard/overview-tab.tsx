@@ -3,61 +3,32 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowUpRight, Users, Video, Eye, ThumbsUp, MessageSquare, Loader2 } from "lucide-react"
-import { db, type Video as VideoType, type AnalyticsData } from "@/lib/db"
-import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
+import type { YouTubeChannel } from "@/lib/db"
 
-// Format numbers with commas
-const formatNumber = (num: number | string | null | undefined) => {
-  if (num === null || num === undefined) return "0"
-  return Number(num).toLocaleString()
+interface OverviewTabProps {
+  channelData: YouTubeChannel | null
+  isLoading: boolean
 }
 
-export function OverviewTab({ channelData, isLoading }) {
-  const [videos, setVideos] = useState<VideoType[]>([])
-  const [analytics, setAnalytics] = useState<AnalyticsData[]>([])
-  const [isLoadingData, setIsLoadingData] = useState(true)
-  const { channel } = useYouTubeChannel()
+// Helper function to format numbers
+function formatNumber(num: number | null | undefined): string {
+  if (!num) return '0'
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1) + 'M'
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1) + 'K'
+  }
+  return num.toString()
+}
 
-  useEffect(() => {
-    async function fetchData() {
-      setIsLoadingData(true)
-      try {
-        if (channelData?.id) {
-          // Fetch videos and analytics in parallel
-          const [videosData, analyticsData] = await Promise.all([
-            db.videos.getByChannelId(channelData.id),
-            db.analytics.getByChannelId(channelData.id, 30),
-          ])
+function calculateGrowth(current: number, previous: number): number {
+  if (!previous) return 0
+  return ((current - previous) / previous) * 100
+}
 
-          setVideos(videosData)
-          setAnalytics(analyticsData)
-        }
-      } catch (error) {
-        console.error("Error fetching overview data:", error)
-      } finally {
-        setIsLoadingData(false)
-      }
-    }
-
-    if (channelData) {
-      fetchData()
-    }
-  }, [channelData])
-
-  // Calculate stats
-  const totalViews = videos.reduce((sum, video) => sum + Number(video.views || 0), 0)
-  const totalLikes = videos.reduce((sum, video) => sum + Number(video.likes || 0), 0)
-  const totalComments = videos.reduce((sum, video) => sum + Number(video.comments || 0), 0)
-
-  // Calculate growth percentages (mock data for now)
-  const viewsGrowth = "+12.5%"
-  const subscribersGrowth = "+2.5%"
-  const videosGrowth = "+3"
-  const watchTimeGrowth = "+7.2%"
-  const likesGrowth = "+18.2%"
-  const commentsGrowth = "+5.3%"
-
-  if (isLoading || isLoadingData) {
+export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
+  if (isLoading) {
     return (
       <div className="flex h-[400px] items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
@@ -68,6 +39,54 @@ export function OverviewTab({ channelData, isLoading }) {
     )
   }
 
+  const stats = {
+    subscribers: {
+      current: channelData?.subscribers || 0,
+      previous: channelData?.previous_subscribers || 0,
+      get growth() {
+        return calculateGrowth(this.current, this.previous)
+      }
+    },
+    videos: {
+      current: channelData?.videos || 0,
+      growth: 0
+    },
+    views: {
+      current: channelData?.views || 0,
+      previous: 0, // No previous views data available
+      get growth() {
+        return 0 // Growth calculation disabled for views
+      }
+    },
+    watchTime: {
+      current: channelData?.watch_time || 0,
+      previous: channelData?.previous_watch_time || 0,
+      get growth() {
+        return calculateGrowth(this.current, this.previous)
+      }
+    },
+    likes: {
+      current: channelData?.likes || 0,
+      previous: channelData?.previous_likes || 0,
+      get growth() {
+        return calculateGrowth(this.current, this.previous)
+      }
+    },
+    comments: {
+      current: channelData?.comments || 0,
+      previous: channelData?.previous_comments || 0,
+      get growth() {
+        return calculateGrowth(this.current, this.previous)
+      }
+    }
+  }
+
+  const formatGrowth = (value: number) => {
+    const formatted = Math.abs(value).toFixed(1)
+    const sign = value >= 0 ? '+' : '-'
+    return `${sign}${formatted}`
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card>
@@ -76,74 +95,84 @@ export function OverviewTab({ channelData, isLoading }) {
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(channelData?.subscribers)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.subscribers.current)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">{subscribersGrowth}</span> from last month
+            <span className="text-green-500">+{stats.subscribers.growth}%</span> from last month
           </p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Videos</CardTitle>
           <Video className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(videos.length)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.videos.current)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">{videosGrowth}</span> new this month
+            <span className="text-green-500">+{stats.videos.growth}</span> new this month
           </p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Views</CardTitle>
           <Eye className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(totalViews)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.views.current)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">{viewsGrowth}</span> from last month
+            <span className="text-green-500">+{stats.views.growth}%</span> from last month
           </p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Watch Time (hours)</CardTitle>
           <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">
-            {formatNumber(analytics.reduce((sum, item) => sum + Number(item.watch_time || 0), 0))}
-          </div>
+          <div className="text-2xl font-bold">{formatNumber(stats.watchTime.current)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">{watchTimeGrowth}</span> from last month
+            <span className={stats.watchTime.growth >= 0 ? "text-green-500" : "text-red-500"}>
+              {formatGrowth(stats.watchTime.growth)}%
+            </span> from last month
           </p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
           <ThumbsUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(totalLikes)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.likes.current)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">{likesGrowth}</span> from last month
+            <span className={stats.likes.growth >= 0 ? "text-green-500" : "text-red-500"}>
+              {formatGrowth(stats.likes.growth)}%
+            </span> from last month
           </p>
         </CardContent>
       </Card>
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Comments</CardTitle>
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(totalComments)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.comments.current)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">{commentsGrowth}</span> from last month
+            <span className={stats.comments.growth >= 0 ? "text-green-500" : "text-red-500"}>
+              {formatGrowth(stats.comments.growth)}%
+            </span> from last month
           </p>
         </CardContent>
       </Card>
+
       <Card className="md:col-span-2 lg:col-span-3">
         <CardHeader>
           <CardTitle>Channel Information</CardTitle>
