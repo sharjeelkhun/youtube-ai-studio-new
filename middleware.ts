@@ -1,74 +1,65 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-
-// Check if we're in the v0 preview environment
-const isPreviewEnvironment = (request: NextRequest) => {
-  return request.headers.get("host")?.includes("vusercontent.net") || request.headers.get("host") === "v0.dev"
-}
+import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient } from '@supabase/ssr'
 
 export async function middleware(request: NextRequest) {
-  // Get the pathname
   const path = request.nextUrl.pathname
 
-  // Check if we're in preview mode
-  const isPreview = isPreviewEnvironment(request)
-
-  // For preview mode, check for a special cookie
-  if (isPreview) {
-    const previewLoggedIn = request.cookies.get("preview_logged_in")?.value === "true"
-
-    // Public paths that don't require authentication
-    const isPublicPath = path === "/login" || path === "/signup" || path === "/forgot-password"
-
-    // If user is not logged in and the path is not public, redirect to login
-    if (!previewLoggedIn && !isPublicPath) {
-      return NextResponse.redirect(new URL("/login", request.url))
-    }
-
-    // If user is logged in and the path is public, redirect to dashboard
-    if (previewLoggedIn && isPublicPath) {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    }
-
+  // Skip middleware for static files and API routes
+  if (path.match(/(\..*|api|_next|favicon\.ico)/)) {
     return NextResponse.next()
   }
 
-  // For real environments, use Supabase auth
-  // Public paths that don't require authentication
-  const isPublicPath = path === "/login" || path === "/signup" || path === "/forgot-password"
+  let response = NextResponse.next()
 
-  // Get the session from the request
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name) {
+            return request.cookies.get(name)?.value
+          },
+          set(name, value, options) {
+            // Ensure cookie is set with correct options
+            response.cookies.set({
+              name,
+              value,
+              ...options,
+              sameSite: 'lax',
+              httpOnly: true,
+              secure: process.env.NODE_ENV === 'production',
+            })
+          },
+          remove(name) {
+            response.cookies.delete(name)
+          },
+        },
+      }
+    )
 
-  // If Supabase credentials are missing, allow access
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.next()
+    const { data: { session }, error } = await supabase.auth.getSession()
+
+    // Handle dashboard access
+    if (path.startsWith('/dashboard')) {
+      if (!session) {
+        return NextResponse.redirect(new URL('/login', request.url))
+      }
+    }
+
+    // Handle auth pages access
+    if ((path === '/login' || path === '/signup') && session) {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    return response
+  } catch (error) {
+    console.error('Middleware error:', error)
+    // On error, redirect to login
+    return NextResponse.redirect(new URL('/login', request.url))
   }
-
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    auth: {
-      persistSession: false,
-    },
-  })
-
-  const { data } = await supabase.auth.getSession()
-
-  // If user is not logged in and the path is not public, redirect to login
-  if (!data.session && !isPublicPath) {
-    return NextResponse.redirect(new URL("/login", request.url))
-  }
-
-  // If user is logged in and the path is public, redirect to dashboard
-  if (data.session && isPublicPath) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  return NextResponse.next()
 }
 
-// Only run middleware on these paths
 export const config = {
-  matcher: ["/", "/login", "/signup", "/dashboard/:path*", "/settings/:path*", "/profile/:path*"],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 }
