@@ -3,7 +3,6 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -17,8 +16,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const { signIn, isLoading } = useAuth()
-  const router = useRouter()
+  const { signIn, isLoading, isPreview } = useAuth()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,8 +34,17 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold">Sign in</CardTitle>
+          {isPreview && (
+            <CardDescription className="text-center">Preview Mode: Enter any email and password</CardDescription>
+          )}
         </CardHeader>
         <CardContent>
+          {isPreview && (
+            <Alert className="mb-4">
+              <AlertDescription>This is running in preview mode. Any email and password will work.</AlertDescription>
+            </Alert>
+          )}
+
           {error && (
             <Alert variant="destructive" className="mb-4">
               <AlertDescription>{error}</AlertDescription>
