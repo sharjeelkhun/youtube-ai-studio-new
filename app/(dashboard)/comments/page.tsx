@@ -10,7 +10,7 @@ export default function CommentsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Comments</h1>
-      <CommentsTab channelData={{}} />
+      <CommentsTab channelData={{}} isLoading={false} />
     </div>
   )
 }
