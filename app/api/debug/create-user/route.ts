@@ -47,6 +47,6 @@ export async function POST(request: Request) {
       user: userData.user,
     })
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'An unknown error occurred' }, { status: 500 })
   }
 }
