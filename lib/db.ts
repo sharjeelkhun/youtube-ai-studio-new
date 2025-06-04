@@ -4,12 +4,14 @@ import { toast } from '@/components/ui/use-toast'
 
 // Type for YouTube channel
 export type YouTubeChannel = Database["public"]["Tables"]["youtube_channels"]["Row"] & {
-  watch_time: number
-  previous_watch_time: number
-  likes: number
-  previous_likes: number
-  comments: number
-  previous_comments: number
+  views?: number
+  watch_time?: number
+  previous_subscribers?: number
+  previous_watch_time?: number
+  likes?: number
+  previous_likes?: number
+  comments?: number
+  previous_comments?: number
 }
 export type Video = Database["public"]["Tables"]["videos"]["Row"]
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"]
@@ -39,6 +41,14 @@ export const mockData = {
     token_expires_at: new Date(Date.now() + 3600000).toISOString(),
     last_updated: new Date().toISOString(),
     created_at: new Date().toISOString(),
+    views: 250000,
+    watch_time: 15000,
+    previous_subscribers: 9800,
+    previous_watch_time: 14200,
+    likes: 8500,
+    previous_likes: 7800,
+    comments: 1200,
+    previous_comments: 1050,
   } as YouTubeChannel,
 
   videos: [
