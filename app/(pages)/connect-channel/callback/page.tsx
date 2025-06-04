@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast"
 import { isPreviewEnvironment } from "@/lib/db"
 import { youtubeService } from "@/lib/youtube-service"
 
-export default function YouTubeCallback() {
+function YouTubeCallbackContent() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [errorMessage, setErrorMessage] = useState("")
   const [debugInfo, setDebugInfo] = useState<any>(null)
@@ -226,5 +226,27 @@ export default function YouTubeCallback() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+export default function YouTubeCallback() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900 sm:px-6 lg:px-8">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold">Loading...</CardTitle>
+            <CardDescription>Preparing YouTube connection...</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center space-y-4">
+            <div className="flex justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <YouTubeCallbackContent />
+    </Suspense>
   )
 }

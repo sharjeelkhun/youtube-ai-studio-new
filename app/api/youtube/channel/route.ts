@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
 import { createServerClient } from '@/lib/supabase-server'
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 export async function GET(request: Request) {
   try {
     const headersList = headers()
