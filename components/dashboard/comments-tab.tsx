@@ -9,7 +9,7 @@ import { CheckCircle, MessageCircle, ThumbsUp, Loader2, Search } from "lucide-re
 import { db } from "@/lib/db"
 import { Input } from "@/components/ui/input"
 
-export function CommentsTab({ channelData, isLoading }) {
+export function CommentsTab({ channelData, isLoading }: { channelData: any; isLoading: boolean }) {
   const [comments, setComments] = useState<any[]>([])
   const [filteredComments, setFilteredComments] = useState<any[]>([])
   const [isLoadingComments, setIsLoadingComments] = useState(true)

@@ -7,7 +7,7 @@ import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { Loader2 } from "lucide-react"
 import { db, type AnalyticsData } from "@/lib/db"
 
-export function AnalyticsTab({ channelData, isLoading }) {
+export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isLoading: boolean }) {
   const [analytics, setAnalytics] = useState<AnalyticsData[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [dateRange, setDateRange] = useState("30d")

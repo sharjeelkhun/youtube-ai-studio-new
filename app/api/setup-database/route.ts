@@ -39,6 +39,6 @@ export async function POST() {
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Database setup error:", error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'An unknown error occurred' }, { status: 500 })
   }
 }

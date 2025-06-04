@@ -11,9 +11,13 @@ interface AuthContextType {
   session: Session | null
   isLoading: boolean
   isPreview: boolean
+  isMockAuth: boolean
   signUp: (email: string, password: string, fullName: string) => Promise<void>
   signIn: (email: string, password: string) => Promise<{ success: boolean }>
   signOut: () => Promise<void>
+  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>
+  validateEmail: (email: string) => { valid: boolean; error?: string }
+  validatePassword: (password: string) => { valid: boolean; error?: string }
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -154,15 +158,78 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      if (isPreview) {
+        // Simulate password reset in preview mode
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        return { success: true }
+      }
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      })
+
+      if (error) {
+        return { success: false, error: error.message }
+      }
+
+      return { success: true }
+    } catch (error: any) {
+      return { success: false, error: error.message || 'An unexpected error occurred' }
+    }
+  }
+
+  const validateEmail = (email: string): { valid: boolean; error?: string } => {
+    if (!email) {
+      return { valid: false, error: 'Email is required' }
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return { valid: false, error: 'Please enter a valid email address' }
+    }
+
+    return { valid: true }
+  }
+
+  const validatePassword = (password: string): { valid: boolean; error?: string } => {
+    if (!password) {
+      return { valid: false, error: 'Password is required' }
+    }
+
+    if (password.length < 8) {
+      return { valid: false, error: 'Password must be at least 8 characters long' }
+    }
+
+    if (!/(?=.*[a-z])/.test(password)) {
+      return { valid: false, error: 'Password must contain at least one lowercase letter' }
+    }
+
+    if (!/(?=.*[A-Z])/.test(password)) {
+      return { valid: false, error: 'Password must contain at least one uppercase letter' }
+    }
+
+    if (!/(?=.*\d)/.test(password)) {
+      return { valid: false, error: 'Password must contain at least one number' }
+    }
+
+    return { valid: true }
+  }
+
   return (
     <AuthContext.Provider value={{
       user,
       session,
       isLoading,
       isPreview,
+      isMockAuth: isPreview,
       signUp,
       signIn,
-      signOut
+      signOut,
+      resetPassword,
+      validateEmail,
+      validatePassword
     }}>
       {children}
     </AuthContext.Provider>

@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
     const passwordValidation = validatePassword(password)
 
     if (!passwordValidation.valid) {
-      setError(passwordValidation.error)
+      setError(passwordValidation.error || 'Invalid password')
       return
     }
 
@@ -115,7 +115,7 @@ export default function ResetPasswordPage() {
       setTimeout(() => {
         router.push("/login?message=Your password has been reset successfully")
       }, 2000)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Password reset error:", error)
       setError(error.message || "Failed to reset password")
     } finally {

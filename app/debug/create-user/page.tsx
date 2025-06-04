@@ -49,7 +49,7 @@ export default function CreateUserPage() {
     } catch (err) {
       setResult({
         success: false,
-        error: err.message || "An error occurred",
+        error: err instanceof Error ? err.message : "An error occurred",
       })
     } finally {
       setLoading(false)

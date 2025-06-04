@@ -46,7 +46,7 @@ export default function SetupDatabasePage() {
         setStatus("error")
         setMessage(`Database setup failed: ${data.error}`)
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Database setup error:", error)
       setStatus("error")
       setMessage(`Database setup failed: ${error.message}`)

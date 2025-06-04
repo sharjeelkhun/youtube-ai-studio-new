@@ -25,7 +25,7 @@ export default function TablesDebugPage() {
       const result = await response.json()
       setData(result)
     } catch (err) {
-      setError(err.message || "An error occurred")
+      setError(err instanceof Error ? err.message : "An error occurred")
       console.error("Error checking tables:", err)
     } finally {
       setLoading(false)

@@ -6,7 +6,7 @@ export async function GET() {
     // Check if tables exist
     const tables = ["profiles", "youtube_channels", "videos", "analytics_data"]
 
-    const results = {}
+    const results: Record<string, { exists: boolean; error: string | null; hasData: boolean }> = {}
 
     for (const table of tables) {
       // Try to get the first row from each table
@@ -15,7 +15,7 @@ export async function GET() {
       results[table] = {
         exists: !error,
         error: error ? error.message : null,
-        hasData: data && data.length > 0,
+        hasData: !!(data && data.length > 0),
       }
     }
 
@@ -25,7 +25,7 @@ export async function GET() {
       const { data, error } = await supabase.auth.getSession()
       authStatus = error ? "error" : data.session ? "authenticated" : "not authenticated"
     } catch (e) {
-      authStatus = "error: " + e.message
+      authStatus = "error: " + (e instanceof Error ? e.message : 'Unknown error')
     }
 
     return NextResponse.json({
@@ -34,6 +34,6 @@ export async function GET() {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'An unknown error occurred' }, { status: 500 })
   }
 }

@@ -48,7 +48,7 @@ export async function GET() {
       {
         status: "error",
         message: "Exception testing Supabase connection",
-        error: error.message,
+        error: error instanceof Error ? error.message : 'An unknown error occurred',
       },
       { status: 500 },
     )

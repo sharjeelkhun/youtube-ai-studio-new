@@ -31,7 +31,7 @@ export default function SupabaseDebugPage() {
       }
 
       setDetails(data)
-    } catch (error) {
+    } catch (error: any) {
       setStatus("error")
       setMessage("Failed to check Supabase connection")
       setDetails({ error: error.message })

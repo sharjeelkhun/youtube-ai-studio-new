@@ -28,7 +28,7 @@ export default function ForgotPasswordPage() {
     if (touched) {
       const emailValidation = validateEmail(email)
       if (!emailValidation.valid) {
-        setError(emailValidation.error)
+        setError(emailValidation.error || 'Invalid email')
       } else {
         setError(null)
       }
@@ -44,7 +44,7 @@ export default function ForgotPasswordPage() {
     const emailValidation = validateEmail(email)
 
     if (!emailValidation.valid) {
-      setError(emailValidation.error)
+      setError(emailValidation.error || 'Invalid email')
       return
     }
 
@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
         setSuccess("Password reset email sent. Please check your inbox.")
         setEmail("")
       } else {
-        setError(result.error)
+        setError(result.error || 'Password reset failed')
       }
     } catch (error) {
       setError("An unexpected error occurred")

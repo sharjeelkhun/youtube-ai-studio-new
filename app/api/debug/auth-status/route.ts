@@ -51,7 +51,7 @@ export async function GET() {
       {
         status: "error",
         message: "Unexpected error checking auth status",
-        error: error.message,
+        error: error instanceof Error ? error.message : 'An unknown error occurred',
       },
       { status: 500 },
     )
