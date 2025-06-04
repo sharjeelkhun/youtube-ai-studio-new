@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 export function YouTubeConnectionStatus() {
-  const { channel, isLoading, error, refreshChannel, hasConnectedChannel } = useYouTubeChannel()
+  const { channelData: channel, isLoading, error, refreshChannel, isConnected: hasConnectedChannel } = useYouTubeChannel()
   const [isRefreshing, setIsRefreshing] = useState(false)
   const router = useRouter()
 

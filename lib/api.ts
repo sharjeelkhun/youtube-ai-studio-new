@@ -288,12 +288,12 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
 
     // Apply search filter if provided
     if (search) {
-      videos = videos.filter((video) => video.title.toLowerCase().includes(search.toLowerCase()))
+      videos = videos.filter((video: Video) => video.title.toLowerCase().includes(search.toLowerCase()))
     }
 
     // Apply status filter if provided
     if (filter && filter !== "all") {
-      videos = videos.filter((video) => video.status.toLowerCase() === filter.toLowerCase())
+      videos = videos.filter((video: Video) => video.status.toLowerCase() === filter.toLowerCase())
     }
 
     return videos

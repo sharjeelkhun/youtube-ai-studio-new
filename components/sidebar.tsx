@@ -7,7 +7,11 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 
-export function Sidebar({ className }) {
+interface SidebarProps {
+  className?: string
+}
+
+export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
 
   return (

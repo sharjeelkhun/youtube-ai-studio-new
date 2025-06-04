@@ -15,10 +15,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/contexts/auth-context"
-import { LogOut, Settings, User } from "lucide-react"
+import { LogOut, Settings, User as UserIcon } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
+import type { User } from "@supabase/supabase-js"
+import type { Profile } from "@/lib/db"
 
-export function UserMenu({ user, profile }) {
+interface UserMenuProps {
+  user: User | null
+  profile: Profile | null
+}
+
+export function UserMenu({ user, profile }: UserMenuProps) {
   const { signOut } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
@@ -64,7 +71,7 @@ export function UserMenu({ user, profile }) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
-            <User className="mr-2 h-4 w-4" />
+            <UserIcon className="mr-2 h-4 w-4" />
             <span>Profile</span>
             <DropdownMenuShortcut>⇧P</DropdownMenuShortcut>
           </DropdownMenuItem>

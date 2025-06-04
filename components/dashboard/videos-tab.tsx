@@ -4,13 +4,18 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Eye, ThumbsUp, MessageSquare, Loader2, Search, Filter } from "lucide-react"
-import { db, type Video } from "@/lib/db"
+import { db, type Video, type YouTubeChannel } from "@/lib/db"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
 
-export function VideosTab({ channelData, isLoading }) {
+interface VideosTabProps {
+  channelData: YouTubeChannel | null
+  isLoading: boolean
+}
+
+export function VideosTab({ channelData, isLoading }: VideosTabProps) {
   const [videos, setVideos] = useState<Video[]>([])
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([])
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)

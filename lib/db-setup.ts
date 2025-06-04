@@ -11,7 +11,7 @@ export async function setupDatabase() {
       return { success: false, error: tablesError.message }
     }
 
-    const hasProfilesTable = tables?.some((table) => table === "profiles")
+    const hasProfilesTable = tables?.some((table: string) => table === "profiles")
 
     if (!hasProfilesTable) {
       // Create profiles table
@@ -24,9 +24,9 @@ export async function setupDatabase() {
     }
 
     return { success: true }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Database setup error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }
 
@@ -50,8 +50,8 @@ export async function createStoredProcedures() {
     }
 
     return { success: true }
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Stored procedures setup error:", error)
-    return { success: false, error: error.message }
+    return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }

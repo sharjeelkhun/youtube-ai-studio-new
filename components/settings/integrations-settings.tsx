@@ -11,7 +11,7 @@ import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 export function IntegrationsSettings() {
   const { toast } = useToast()
   const router = useRouter()
-  const { channelData, isLoading, isConnected, disconnectChannel, refreshChannelData } = useYouTubeChannel()
+  const { channelData, isLoading, isConnected, refreshChannel } = useYouTubeChannel()
 
   const handleConnectYouTube = () => {
     router.push("/connect-channel")
@@ -19,7 +19,11 @@ export function IntegrationsSettings() {
 
   const handleDisconnectYouTube = async () => {
     try {
-      await disconnectChannel()
+      // TODO: Implement disconnect functionality
+      toast({
+        title: "Disconnect feature",
+        description: "Disconnect functionality will be implemented soon.",
+      })
     } catch (error) {
       console.error("Error disconnecting YouTube:", error)
     }
@@ -27,9 +31,18 @@ export function IntegrationsSettings() {
 
   const handleSyncChannel = async () => {
     try {
-      await refreshChannelData()
+      await refreshChannel()
+      toast({
+        title: "Channel synced",
+        description: "Your channel data has been refreshed.",
+      })
     } catch (error) {
       console.error("Error syncing channel:", error)
+      toast({
+        title: "Error",
+        description: "Failed to sync channel data.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -79,7 +92,7 @@ export function IntegrationsSettings() {
               <div className="rounded-lg border bg-card/50 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Last synced:</span>
-                  <span className="text-sm">{new Date(channelData.lastUpdated).toLocaleString()}</span>
+                  <span className="text-sm">{new Date(channelData.last_updated).toLocaleString()}</span>
                 </div>
               </div>
 
