@@ -10,81 +10,66 @@ interface OverviewTabProps {
   isLoading: boolean
 }
 
-// Helper function to format numbers
-function formatNumber(num: number | null | undefined): string {
-  if (!num) return '0'
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K'
-  }
-  return num.toString()
-}
-
-function calculateGrowth(current: number, previous: number): number {
-  if (!previous) return 0
-  return ((current - previous) / previous) * 100
-}
-
 export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
-  if (isLoading) {
-    return (
-      <div className="flex h-[400px] items-center justify-center">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading channel data...</p>
-        </div>
-      </div>
-    )
-  }
+  const [stats, setStats] = useState({
+    subscribers: { current: 0, growth: 0 },
+    videos: { current: 0, growth: 0 },
+    views: { current: 0, growth: 0 },
+    watchTime: { current: 0, growth: 0 },
+    likes: { current: 0, growth: 0 },
+    comments: { current: 0, growth: 0 }
+  })
 
-  const stats = {
+  useEffect(() => {
+    if (channelData) {
+      setStats({
     subscribers: {
-      current: channelData?.subscribers || 0,
-      previous: channelData?.previous_subscribers || 0,
-      get growth() {
-        return calculateGrowth(this.current, this.previous)
-      }
+          current: channelData.subscriber_count || 0,
+          growth: calculateGrowth(channelData.subscriber_count, channelData.previous_subscribers)
     },
     videos: {
-      current: channelData?.videos || 0,
-      growth: 0
+          current: channelData.video_count || 0,
+          growth: 0 // This would need to be calculated from historical data
     },
     views: {
-      current: channelData?.views || 0,
-      previous: 0, // No previous views data available
-      get growth() {
-        return 0 // Growth calculation disabled for views
-      }
+          current: channelData.view_count || 0,
+          growth: 0 // This would need to be calculated from historical data
     },
     watchTime: {
-      current: channelData?.watch_time || 0,
-      previous: channelData?.previous_watch_time || 0,
-      get growth() {
-        return calculateGrowth(this.current, this.previous)
-      }
+          current: channelData.watch_time || 0,
+          growth: calculateGrowth(channelData.watch_time, channelData.previous_watch_time)
     },
     likes: {
-      current: channelData?.likes || 0,
-      previous: channelData?.previous_likes || 0,
-      get growth() {
-        return calculateGrowth(this.current, this.previous)
-      }
+          current: channelData.likes || 0,
+          growth: calculateGrowth(channelData.likes, channelData.previous_likes)
     },
     comments: {
-      current: channelData?.comments || 0,
-      previous: channelData?.previous_comments || 0,
-      get growth() {
-        return calculateGrowth(this.current, this.previous)
-      }
+          current: channelData.comments || 0,
+          growth: calculateGrowth(channelData.comments, channelData.previous_comments)
+        }
+      })
     }
+  }, [channelData])
+
+  const calculateGrowth = (current: number | undefined, previous: number | undefined) => {
+    if (!current || !previous || previous === 0) return 0
+    return ((current - previous) / previous) * 100
   }
 
-  const formatGrowth = (value: number) => {
-    const formatted = Math.abs(value).toFixed(1)
-    const sign = value >= 0 ? '+' : '-'
-    return `${sign}${formatted}`
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat().format(num)
+  }
+
+  const formatGrowth = (growth: number) => {
+    return growth >= 0 ? `+${growth.toFixed(1)}` : growth.toFixed(1)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   return (
@@ -97,7 +82,7 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
         <CardContent>
           <div className="text-2xl font-bold">{formatNumber(stats.subscribers.current)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+{stats.subscribers.growth}%</span> from last month
+            <span className="text-green-500">+{stats.subscribers.growth.toFixed(1)}%</span> from last month
           </p>
         </CardContent>
       </Card>
@@ -123,7 +108,7 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
         <CardContent>
           <div className="text-2xl font-bold">{formatNumber(stats.views.current)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+{stats.views.growth}%</span> from last month
+            <span className="text-green-500">+{stats.views.growth.toFixed(1)}%</span> from last month
           </p>
         </CardContent>
       </Card>

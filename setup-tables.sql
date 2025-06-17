@@ -9,16 +9,38 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 -- Create youtube_channels table if it doesn't exist
 CREATE TABLE IF NOT EXISTS youtube_channels (
-  id SERIAL PRIMARY KEY,
+  id TEXT PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  channel_id TEXT NOT NULL,
-  channel_title TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  thumbnail TEXT,
+  subscriber_count INTEGER DEFAULT 0,
+  video_count INTEGER DEFAULT 0,
+  view_count INTEGER DEFAULT 0,
   access_token TEXT,
   refresh_token TEXT,
-  token_expiry TIMESTAMP WITH TIME ZONE,
+  token_expires_at TIMESTAMP WITH TIME ZONE,
+  last_synced TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(user_id, channel_id)
+  UNIQUE(user_id, id)
+);
+
+-- Create videos table if it doesn't exist
+CREATE TABLE IF NOT EXISTS videos (
+  id TEXT PRIMARY KEY,
+  channel_id TEXT REFERENCES youtube_channels(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  thumbnail_url TEXT,
+  published_at TIMESTAMP WITH TIME ZONE,
+  view_count INTEGER DEFAULT 0,
+  like_count INTEGER DEFAULT 0,
+  comment_count INTEGER DEFAULT 0,
+  duration TEXT,
+  status TEXT DEFAULT 'private',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Create RLS policies for profiles
@@ -50,6 +72,49 @@ CREATE POLICY "Users can update their own channels"
 CREATE POLICY "Users can delete their own channels"
   ON youtube_channels FOR DELETE
   USING (auth.uid() = user_id);
+
+-- Create RLS policies for videos
+ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view videos from their channels"
+  ON videos FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM youtube_channels
+      WHERE youtube_channels.id = videos.channel_id
+      AND youtube_channels.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can insert videos to their channels"
+  ON videos FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM youtube_channels
+      WHERE youtube_channels.id = videos.channel_id
+      AND youtube_channels.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can update videos from their channels"
+  ON videos FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM youtube_channels
+      WHERE youtube_channels.id = videos.channel_id
+      AND youtube_channels.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can delete videos from their channels"
+  ON videos FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM youtube_channels
+      WHERE youtube_channels.id = videos.channel_id
+      AND youtube_channels.user_id = auth.uid()
+    )
+  );
 
 -- Create function to handle user creation
 CREATE OR REPLACE FUNCTION public.handle_new_user()

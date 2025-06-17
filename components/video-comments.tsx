@@ -22,7 +22,11 @@ interface Comment {
   isLiked: boolean
 }
 
-export function VideoComments({ videoId }: { videoId: string }) {
+interface VideoCommentsProps {
+  videoId: string
+}
+
+export function VideoComments({ videoId }: VideoCommentsProps) {
   const { toast } = useToast()
   const [comments, setComments] = useState<Comment[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -150,88 +154,68 @@ export function VideoComments({ videoId }: { videoId: string }) {
   }
 
   return (
+    <div className="space-y-6">
     <Card>
       <CardHeader>
-        <CardTitle>Comments</CardTitle>
+          <CardTitle>Add a Comment</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex gap-4">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src="/placeholder.svg" alt="Your avatar" />
-            <AvatarFallback>YO</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 space-y-2">
+        <CardContent>
+          <form onSubmit={handleSubmitComment} className="space-y-4">
             <Textarea
-              placeholder="Add a comment..."
+              placeholder="Write a comment..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              className="min-h-[80px]"
+              rows={3}
             />
             <div className="flex justify-end">
-              <Button onClick={handleSubmitComment} disabled={!newComment.trim() || isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Posting...
-                  </>
-                ) : (
-                  "Post Comment"
-                )}
-              </Button>
+              <Button type="submit">Post Comment</Button>
             </div>
-          </div>
-        </div>
+          </form>
+        </CardContent>
+      </Card>
 
-        {isLoading ? (
-          <div className="flex h-[200px] items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
           <div className="space-y-4">
             {comments.map((comment) => (
-              <div key={comment.id} className="flex gap-4 pt-4 border-t">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={comment.author.avatar} alt={comment.author.name} />
+          <Card key={comment.id}>
+            <CardContent className="pt-6">
+              <div className="flex gap-4">
+                <Avatar>
+                  <AvatarImage src={comment.author.avatar} />
                   <AvatarFallback>{comment.author.initials}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{comment.author.name}</p>
-                      <p className="text-xs text-muted-foreground">{comment.timestamp}</p>
-                    </div>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
+                <div className="flex-1 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{comment.author.name}</span>
+                    <span className="text-sm text-muted-foreground">{comment.timestamp}</span>
                   </div>
-                  <p className="mt-2 text-sm">{comment.content}</p>
-                  <div className="mt-2 flex items-center gap-4">
+                  <p className="text-sm">{comment.content}</p>
+                  <div className="flex items-center gap-4">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className={`h-8 px-2 ${comment.isLiked ? "text-primary" : ""}`}
+                      className={`gap-1 ${comment.isLiked ? "text-primary" : ""}`}
                       onClick={() => toggleLike(comment.id)}
                     >
-                      <ThumbsUp className="mr-1 h-4 w-4" />
+                      <ThumbsUp className="h-4 w-4" />
                       {comment.likes}
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 px-2">
-                      <MessageSquare className="mr-1 h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="gap-1">
+                      <MessageSquare className="h-4 w-4" />
                       {comment.replies > 0
                         ? `${comment.replies} ${comment.replies === 1 ? "reply" : "replies"}`
                         : "Reply"}
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-8 px-2">
-                      <Flag className="mr-1 h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="gap-1">
+                      <Flag className="h-4 w-4" />
                       Report
                     </Button>
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
             ))}
           </div>
-        )}
-      </CardContent>
-    </Card>
+    </div>
   )
 }

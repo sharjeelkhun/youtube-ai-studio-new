@@ -1,35 +1,39 @@
+'use client';
+
 import type React from "react"
-import type { Metadata } from "next"
-import { redirect } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { YouTubeChannelProvider } from "@/contexts/youtube-channel-context"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { createServerClient } from "@/lib/supabase-server"
+import { useSession } from "@/contexts/session-context"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { Loader2 } from "lucide-react"
 
-export const metadata: Metadata = {
-  title: "Dashboard",
-  description: "YouTube AI Studio Dashboard",
-}
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { session, isLoading } = useSession()
+  const router = useRouter()
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  // Check if we're in a preview environment
-  const isPreview = !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-  // For non-preview, check server-side auth
-  if (!isPreview) {
-    const supabase = createServerClient()
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (!session) {
-      // Not authenticated, redirect to login
-      redirect("/login")
+  useEffect(() => {
+    if (!isLoading && !session?.user) {
+      console.log('Dashboard Layout - No session, redirecting to login');
+      router.replace('/login');
     }
+  }, [session, isLoading, router]);
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      </div>
+    );
   }
 
-  // For preview, we rely on the middleware and client-side auth check
+  // Don't render anything if not authenticated
+  if (!session?.user) {
+    return null;
+  }
 
   return (
     <YouTubeChannelProvider>
@@ -45,5 +49,5 @@ export default async function DashboardLayout({ children }: { children: React.Re
         </div>
       </TooltipProvider>
     </YouTubeChannelProvider>
-  )
+  );
 }

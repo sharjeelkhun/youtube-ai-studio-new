@@ -1,29 +1,30 @@
-"use client"
+'use client';
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Loader2 } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function AuthCallbackPage() {
-  const router = useRouter()
+  const router = useRouter();
+  const supabase = createClientComponentClient();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const { error } = await supabase.auth.getSession()
+      const { error } = await supabase.auth.getSession();
 
       if (error) {
-        console.error("Error during auth callback:", error)
-        router.push("/login?error=auth")
-        return
+        console.error('Error during auth callback:', error);
+        router.push('/login?error=auth');
+        return;
       }
 
       // Redirect to dashboard on successful login
-      router.push("/dashboard")
-    }
+      router.push('/dashboard');
+    };
 
-    handleAuthCallback()
-  }, [router])
+    handleAuthCallback();
+  }, [router, supabase.auth]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
@@ -33,5 +34,5 @@ export default function AuthCallbackPage() {
         <p className="text-muted-foreground">Please wait while we log you in.</p>
       </div>
     </div>
-  )
-}
+  );
+} 

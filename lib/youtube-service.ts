@@ -38,8 +38,14 @@ export const youtubeService = {
   // Exchange authorization code for tokens
   async exchangeCodeForTokens(code: string): Promise<any> {
     try {
+      console.log("Starting token exchange with code:", {
+        codeLength: code.length,
+        isPreview: isPreviewEnvironment()
+      })
+
       // In preview mode, return mock data
       if (isPreviewEnvironment()) {
+        console.log("Using preview mode, returning mock data")
         return {
           access_token: "mock_access_token",
           refresh_token: "mock_refresh_token",
@@ -49,6 +55,7 @@ export const youtubeService = {
         }
       }
 
+      console.log("Making token exchange request to /api/youtube/auth-callback")
       const response = await fetch("/api/youtube/auth-callback", {
         method: "POST",
         headers: {
@@ -57,12 +64,38 @@ export const youtubeService = {
         body: JSON.stringify({ code }),
       })
 
+      console.log("Token exchange response:", {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      })
+
+      const result = await response.json()
+      console.log("Token exchange response data:", {
+        success: result.success,
+        hasAccessToken: !!result.access_token,
+        hasRefreshToken: !!result.refresh_token,
+        expiresIn: result.expires_in,
+        channelId: result.channelId,
+        channelTitle: result.channelTitle
+      })
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || "Failed to exchange code for tokens")
+        console.error("Token exchange failed:", {
+          status: response.status,
+          error: result.error,
+          details: result.details,
+          debug: result.debug
+        })
+        throw new Error(result.error || "Failed to exchange code for tokens")
       }
 
-      return await response.json()
+      if (!result.success || !result.access_token) {
+        console.error("Invalid token exchange response:", result)
+        throw new Error("Invalid response from token exchange")
+      }
+
+      return result
     } catch (error: any) {
       console.error("Error exchanging code for tokens:", error)
       throw error

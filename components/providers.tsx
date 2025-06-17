@@ -1,17 +1,17 @@
 "use client"
 
+import { SessionProvider } from "@/contexts/session-context"
 import { AuthProvider } from "@/contexts/auth-context"
 import { YouTubeChannelProvider } from "@/contexts/youtube-channel-context"
-import { TooltipProvider } from "@/components/ui/tooltip"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <AuthProvider>
-      <YouTubeChannelProvider>
-        <TooltipProvider>
+    <SessionProvider>
+      <AuthProvider>
+        <YouTubeChannelProvider>
           {children}
-        </TooltipProvider>
-      </YouTubeChannelProvider>
-    </AuthProvider>
+        </YouTubeChannelProvider>
+      </AuthProvider>
+    </SessionProvider>
   )
 }

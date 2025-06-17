@@ -1,239 +1,204 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
+import React, { createContext, useContext, useEffect, useState } from "react"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { useSession } from "./session-context"
+import type { Database } from "@/types/supabase"
 import { supabase } from "@/lib/supabase"
-import type { Session, User, AuthError } from "@supabase/supabase-js"
-import { useToast } from "@/components/ui/use-toast"
+import type { User } from "@supabase/supabase-js"
 
 interface AuthContextType {
   user: User | null
-  session: Session | null
+  session: any | null
   isLoading: boolean
   isPreview: boolean
-  isMockAuth: boolean
-  signUp: (email: string, password: string, fullName: string) => Promise<void>
-  signIn: (email: string, password: string) => Promise<{ success: boolean }>
+  signIn: (email: string, password: string) => Promise<{ error: any }>
+  signUp: (email: string, password: string) => Promise<void>
   signOut: () => Promise<void>
-  resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>
-  validateEmail: (email: string) => { valid: boolean; error?: string }
-  validatePassword: (password: string) => { valid: boolean; error?: string }
+  resetPassword: (email: string) => Promise<void>
+  validateEmail: (email: string) => boolean
+  validatePassword: (password: string) => boolean
+  isMockAuth: boolean
+  loading: boolean
+  error: Error | null
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const AuthContext = createContext<AuthContextType | null>(null)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { session, loading: sessionLoading } = useSession()
   const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [isPreview] = useState(process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true')
   const router = useRouter()
-  const { toast } = useToast()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    // Initialize auth state
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      setIsLoading(false)
+    if (session?.user) {
+      setUser({
+        id: session.user.id,
+        email: session.user.email!,
+        name: session.user.user_metadata?.name,
+        avatar_url: session.user.user_metadata?.avatar_url,
+      })
+    } else {
+      setUser(null)
+    }
+    setIsLoading(false)
+  }, [session])
+
+  useEffect(() => {
+    console.log('Auth context - Session state:', {
+      hasSession: !!session,
+      userId: session?.user?.id,
+      currentPath: pathname
     })
+  }, [session, pathname])
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-    })
-
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const signUp = async (email: string, password: string, fullName: string) => {
-    setIsLoading(true)
+  const signIn = async (email: string, password: string) => {
+    console.log('Starting sign in process...')
+    setLoading(true)
+    setError(null)
+    
     try {
-      // Input validation
-      if (!email || !password || !fullName) {
-        throw new Error("All fields are required")
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      
+      if (error) {
+        console.error('Sign in error:', error)
+        return { error }
       }
-      if (password.length < 8) {
-        throw new Error("Password must be at least 8 characters long")
+      
+      console.log('Sign in successful:', {
+        userId: data.user?.id,
+        hasSession: !!data.session
+      })
+
+      // Wait for session to be set
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      
+      // Force a refresh of the session
+      const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('Error getting session after sign in:', sessionError)
+        return { error: sessionError }
       }
 
+      if (!newSession) {
+        console.error('No session after sign in')
+        return { error: new Error('No session after sign in') }
+      }
+
+      return { error: null }
+    } catch (err) {
+      console.error('Unexpected error during sign in:', err)
+      const error = err instanceof Error ? err : new Error('Failed to sign in')
+      setError(error)
+      return { error }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signUp = async (email: string, password: string) => {
+    console.log('Starting sign up process...')
+    setLoading(true)
+    setError(null)
+    
+    try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: fullName },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
-        }
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       })
-
-      if (error) throw error
-
-      if (data.user?.identities?.length === 0) {
-        throw new Error("This email is already registered. Please try logging in instead.")
-      }
-
-      if (data.user) {
-        await supabase.from("profiles").insert([
-          { id: data.user.id, full_name: fullName }
-        ])
-
-        toast({
-          title: "One more step required",
-          description: "We've sent you a confirmation email. Please check your inbox and click the verification link to activate your account.",
-          duration: 8000
-        })
-
-        // Wait a moment before redirecting
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        router.push("/login?verification=pending&email=" + encodeURIComponent(email))
-      }
-    } catch (error: any) {
-      toast({
-        title: "Sign up failed",
-        description: error.message || "Could not create account",
-        variant: "destructive",
-        duration: 4000
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const signIn = async (email: string, password: string) => {
-    setIsLoading(true)
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      })
-
-      if (error) throw error
-
-      // Wait for session to be fully established
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      const { data: { session: currentSession } } = await supabase.auth.getSession()
       
-      if (currentSession) {
-        setUser(currentSession.user)
-        setSession(currentSession)
-        
-        toast({
-          title: "Success",
-          description: "Successfully logged in"
-        })
-
-        window.location.href = '/dashboard'
-        return { success: true }
-      } else {
-        throw new Error('Failed to establish session')
+      if (error) {
+        console.error('Sign up error:', error)
+        throw error
       }
-    } catch (error) {
-      console.error('Sign in error:', error)
-      toast({
-        title: "Error",
-        description: "Invalid credentials",
-        variant: "destructive"
+      
+      console.log('Sign up successful:', {
+        userId: data.user?.id,
+        hasSession: !!data.session
       })
-      throw error
+
+      // Let the middleware handle the redirect
+      router.refresh()
+    } catch (err) {
+      console.error('Unexpected error during sign up:', err)
+      setError(err instanceof Error ? err : new Error('Failed to sign up'))
+      throw err
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   const signOut = async () => {
+    console.log('Starting sign out process...')
+    setLoading(true)
+    setError(null)
+    
     try {
-      await supabase.auth.signOut()
-      setUser(null)
-      setSession(null)
-      window.location.replace('/login')
-    } catch (error) {
-      console.error('Sign out error:', error)
-      toast({
-        title: "Error",
-        description: "Failed to sign out",
-        variant: "destructive"
-      })
-    }
-  }
-
-  const resetPassword = async (email: string): Promise<{ success: boolean; error?: string }> => {
-    try {
-      if (isPreview) {
-        // Simulate password reset in preview mode
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        return { success: true }
-      }
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`
-      })
-
+      const { error } = await supabase.auth.signOut()
       if (error) {
-        return { success: false, error: error.message }
+        console.error('Sign out error:', error)
+        throw error
       }
 
-      return { success: true }
-    } catch (error: any) {
-      return { success: false, error: error.message || 'An unexpected error occurred' }
+      console.log('Sign out successful')
+      // Let the middleware handle the redirect
+      router.refresh()
+    } catch (err) {
+      console.error('Unexpected error during sign out:', err)
+      setError(err instanceof Error ? err : new Error('Failed to sign out'))
+      throw err
+    } finally {
+      setLoading(false)
     }
   }
 
-  const validateEmail = (email: string): { valid: boolean; error?: string } => {
-    if (!email) {
-      return { valid: false, error: 'Email is required' }
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email)
+      if (error) throw error
+    } catch (error) {
+      console.error('Reset password error:', error)
+      throw error
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return { valid: false, error: 'Please enter a valid email address' }
-    }
-
-    return { valid: true }
   }
 
-  const validatePassword = (password: string): { valid: boolean; error?: string } => {
-    if (!password) {
-      return { valid: false, error: 'Password is required' }
-    }
-
-    if (password.length < 8) {
-      return { valid: false, error: 'Password must be at least 8 characters long' }
-    }
-
-    if (!/(?=.*[a-z])/.test(password)) {
-      return { valid: false, error: 'Password must contain at least one lowercase letter' }
-    }
-
-    if (!/(?=.*[A-Z])/.test(password)) {
-      return { valid: false, error: 'Password must contain at least one uppercase letter' }
-    }
-
-    if (!/(?=.*\d)/.test(password)) {
-      return { valid: false, error: 'Password must contain at least one number' }
-    }
-
-    return { valid: true }
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   }
 
-  return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      isLoading,
-      isPreview,
-      isMockAuth: isPreview,
-      signUp,
-      signIn,
-      signOut,
-      resetPassword,
-      validateEmail,
-      validatePassword
-    }}>
-      {children}
-    </AuthContext.Provider>
-  )
+  const validatePassword = (password: string) => {
+    return password.length >= 6
+  }
+
+  const value = {
+    user,
+    session,
+    isLoading: isLoading || sessionLoading,
+    isPreview: false,
+    signIn,
+    signUp,
+    signOut,
+    resetPassword,
+    validateEmail,
+    validatePassword,
+    isMockAuth: false,
+    loading,
+    error,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

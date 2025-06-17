@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { BarChart as LucideBarChart, LineChart, PieChart } from 'lucide-react'
 
 const viewsData = [
   { date: "Jan 1", views: 1200 },
@@ -52,7 +53,11 @@ const demographicsData = [
   { age: "65+", male: 2, female: 1 },
 ]
 
-export function VideoAnalytics({ videoId }: { videoId: string }) {
+interface VideoAnalyticsProps {
+  videoId: string
+}
+
+export function VideoAnalytics({ videoId }: VideoAnalyticsProps) {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(true)
   const [dateRange, setDateRange] = useState("7d")
@@ -87,193 +92,93 @@ export function VideoAnalytics({ videoId }: { videoId: string }) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between">
-        <Tabs defaultValue="overview" className="w-full">
-          <div className="flex items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="engagement">Engagement</TabsTrigger>
-              <TabsTrigger value="audience">Audience</TabsTrigger>
-              <TabsTrigger value="revenue">Revenue</TabsTrigger>
-            </TabsList>
-            <Select defaultValue={dateRange} onValueChange={setDateRange}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Select date range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="28d">Last 28 days</SelectItem>
-                <SelectItem value="90d">Last 90 days</SelectItem>
-                <SelectItem value="365d">Last year</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <TabsContent value="overview" className="mt-4 space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
-                <CardHeader>
-                  <CardTitle>Views Over Time</CardTitle>
-                  <CardDescription>Daily views for this video</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Views</CardTitle>
+            <LucideBarChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={viewsData}>
-                      <defs>
-                        <linearGradient id="colorViews" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                      <YAxis stroke="hsl(var(--muted-foreground))" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          borderColor: "hsl(var(--border))",
-                          color: "hsl(var(--foreground))",
-                        }}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="views"
-                        stroke="hsl(var(--primary))"
-                        fillOpacity={1}
-                        fill="url(#colorViews)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+          <CardContent>
+            <div className="text-2xl font-bold">1,234</div>
+            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
                 </CardContent>
               </Card>
-
               <Card>
-                <CardHeader>
-                  <CardTitle>Audience Retention</CardTitle>
-                  <CardDescription>Percentage of viewers at each point in the video</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Watch Time</CardTitle>
+            <LineChart className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={retentionData}>
-                      <defs>
-                        <linearGradient id="colorRetention" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.8} />
-                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <XAxis dataKey="second" stroke="hsl(var(--muted-foreground))" />
-                      <YAxis stroke="hsl(var(--muted-foreground))" domain={[0, 100]} />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          borderColor: "hsl(var(--border))",
-                          color: "hsl(var(--foreground))",
-                        }}
-                        formatter={(value) => [`${value}%`, "Retention"]}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="retention"
-                        stroke="hsl(var(--primary))"
-                        fillOpacity={1}
-                        fill="url(#colorRetention)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
+          <CardContent>
+            <div className="text-2xl font-bold">45.2K</div>
+            <p className="text-xs text-muted-foreground">+15.3% from last month</p>
+                </CardContent>
+              </Card>
+              <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Engagement Rate</CardTitle>
+            <PieChart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">12.4%</div>
+            <p className="text-xs text-muted-foreground">+2.1% from last month</p>
+                </CardContent>
+              </Card>
+              <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Subscribers Gained</CardTitle>
+            <LucideBarChart className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">+23</div>
+            <p className="text-xs text-muted-foreground">+8.2% from last month</p>
                 </CardContent>
               </Card>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Traffic Sources</CardTitle>
-                  <CardDescription>Where your viewers are coming from</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={trafficSourceData} layout="vertical">
-                      <XAxis type="number" stroke="hsl(var(--muted-foreground))" />
-                      <YAxis dataKey="source" type="category" width={150} stroke="hsl(var(--muted-foreground))" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          borderColor: "hsl(var(--border))",
-                          color: "hsl(var(--foreground))",
-                        }}
-                        formatter={(value) => [`${value}%`, "Percentage"]}
-                      />
-                      <Bar dataKey="percentage" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Demographics</CardTitle>
-                  <CardDescription>Age and gender of your viewers</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[300px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={demographicsData}>
-                      <XAxis dataKey="age" stroke="hsl(var(--muted-foreground))" />
-                      <YAxis stroke="hsl(var(--muted-foreground))" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--background))",
-                          borderColor: "hsl(var(--border))",
-                          color: "hsl(var(--foreground))",
-                        }}
-                        formatter={(value) => [`${value}%`, "Percentage"]}
-                      />
-                      <Bar dataKey="male" name="Male" fill="hsl(var(--primary))" />
-                      <Bar dataKey="female" name="Female" fill="hsl(var(--secondary))" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="engagement" className="mt-4">
+      <Tabs defaultValue="views" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="views">Views</TabsTrigger>
+          <TabsTrigger value="engagement">Engagement</TabsTrigger>
+          <TabsTrigger value="audience">Audience</TabsTrigger>
+        </TabsList>
+        <TabsContent value="views" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Engagement Metrics</CardTitle>
-                <CardDescription>Detailed engagement data for this video</CardDescription>
+              <CardTitle>Views Over Time</CardTitle>
               </CardHeader>
-              <CardContent className="h-[400px] flex items-center justify-center">
-                <p className="text-muted-foreground">Engagement metrics content</p>
+            <CardContent>
+              <div className="h-[300px] flex items-center justify-center border rounded-lg">
+                <p className="text-muted-foreground">Views chart will be displayed here</p>
+              </div>
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="audience" className="mt-4">
+        <TabsContent value="engagement" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Audience Metrics</CardTitle>
-                <CardDescription>Detailed audience data for this video</CardDescription>
+              <CardTitle>Engagement Metrics</CardTitle>
               </CardHeader>
-              <CardContent className="h-[400px] flex items-center justify-center">
-                <p className="text-muted-foreground">Audience metrics content</p>
+            <CardContent>
+              <div className="h-[300px] flex items-center justify-center border rounded-lg">
+                <p className="text-muted-foreground">Engagement metrics will be displayed here</p>
+              </div>
               </CardContent>
             </Card>
           </TabsContent>
-
-          <TabsContent value="revenue" className="mt-4">
+        <TabsContent value="audience" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Revenue Metrics</CardTitle>
-                <CardDescription>Detailed revenue data for this video</CardDescription>
+              <CardTitle>Audience Demographics</CardTitle>
               </CardHeader>
-              <CardContent className="h-[400px] flex items-center justify-center">
-                <p className="text-muted-foreground">Revenue metrics content</p>
+            <CardContent>
+              <div className="h-[300px] flex items-center justify-center border rounded-lg">
+                <p className="text-muted-foreground">Audience demographics will be displayed here</p>
+              </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   )
 }

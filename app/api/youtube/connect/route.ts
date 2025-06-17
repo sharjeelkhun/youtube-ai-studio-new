@@ -53,6 +53,7 @@ export async function GET(request: Request) {
   const SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/youtube.force-ssl",
+    "https://www.googleapis.com/auth/youtube",
   ]
 
   const state = uuidv4()

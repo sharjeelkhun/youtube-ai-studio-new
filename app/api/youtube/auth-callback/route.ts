@@ -7,17 +7,35 @@ export async function POST(request: Request) {
     // Get the authorization code from the request body
     const { code } = await request.json()
 
+    console.log("Received auth callback request:", {
+      hasCode: !!code,
+      codeLength: code?.length,
+      requestHeaders: Object.fromEntries(request.headers.entries())
+    })
+
     if (!code) {
+      console.error("Missing authorization code in request")
       return NextResponse.json({ error: "Authorization code is required" }, { status: 400 })
     }
 
     // Define your YouTube OAuth configuration
     const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
     const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-    const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/connect-channel/callback`
+    const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000/connect-channel/callback'
+
+    console.log("OAuth configuration:", {
+      hasClientId: !!CLIENT_ID,
+      hasClientSecret: !!CLIENT_SECRET,
+      redirectUri: REDIRECT_URI
+    })
 
     // Validate environment variables
     if (!CLIENT_ID || !CLIENT_SECRET) {
+      console.error("Missing OAuth credentials:", {
+        clientId: !!CLIENT_ID,
+        clientSecret: !!CLIENT_SECRET,
+        redirectUri: REDIRECT_URI
+      })
       return NextResponse.json(
         {
           error: "Google OAuth credentials are not properly configured",
@@ -25,13 +43,19 @@ export async function POST(request: Request) {
             env: {
               GOOGLE_CLIENT_ID: !!process.env.GOOGLE_CLIENT_ID,
               GOOGLE_CLIENT_SECRET: !!process.env.GOOGLE_CLIENT_SECRET,
-              NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+              NEXT_PUBLIC_REDIRECT_URI: process.env.NEXT_PUBLIC_REDIRECT_URI,
             },
           },
         },
         { status: 500 },
       )
     }
+
+    console.log("Exchanging code for tokens with:", {
+      redirectUri: REDIRECT_URI,
+      clientIdConfigured: !!CLIENT_ID,
+      codeLength: code.length
+    })
 
     // Exchange code for access token and refresh token
     const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -51,7 +75,17 @@ export async function POST(request: Request) {
     const tokenData = await tokenResponse.json()
 
     if (!tokenResponse.ok) {
-      console.error("Token exchange error:", tokenData)
+      console.error("Token exchange error:", {
+        status: tokenResponse.status,
+        error: tokenData.error,
+        errorDescription: tokenData.error_description,
+        redirectUri: REDIRECT_URI,
+        requestBody: {
+          codeLength: code.length,
+          redirectUri: REDIRECT_URI,
+          grantType: "authorization_code"
+        }
+      })
       return NextResponse.json(
         {
           error: tokenData.error_description || "Failed to exchange authorization code",
@@ -59,6 +93,7 @@ export async function POST(request: Request) {
           debug: {
             code: code.substring(0, 10) + "...", // Only show part of the code for security
             redirectUri: REDIRECT_URI,
+            status: tokenResponse.status
           },
         },
         { status: tokenResponse.status },
@@ -68,6 +103,12 @@ export async function POST(request: Request) {
     // Extract tokens and expiry
     const { access_token, refresh_token, expires_in } = tokenData
     const expiryDate = new Date(Date.now() + expires_in * 1000)
+
+    console.log("Token exchange successful:", {
+      hasAccessToken: !!access_token,
+      hasRefreshToken: !!refresh_token,
+      expiresIn: expires_in
+    })
 
     // Get user's YouTube channel information
     const channelResponse = await fetch(
@@ -186,9 +227,9 @@ export async function POST(request: Request) {
             title: videoTitle,
             description: videoDescription,
             thumbnail: videoThumbnail,
-            views: stats.viewCount || 0,
-            likes: stats.likeCount || 0,
-            comments: stats.commentCount || 0,
+            views: parseInt(stats.viewCount || '0'),
+            likes: parseInt(stats.likeCount || '0'),
+            comments: parseInt(stats.commentCount || '0'),
             status: "Published",
             published_at: publishedAt,
             created_at: new Date().toISOString(),
@@ -213,10 +254,18 @@ export async function POST(request: Request) {
       // Continue anyway, as we've already connected the channel
     }
 
+    // Return success response with the expected format
     return NextResponse.json({
       success: true,
-      channelId,
-      channelTitle,
+      access_token: access_token,
+      refresh_token: refresh_token,
+      expires_in: expires_in,
+      channelId: channelId,
+      channelTitle: channelTitle,
+      channelDescription: channelDescription,
+      channelThumbnail: channelThumbnail,
+      subscriberCount: subscriberCount,
+      videoCount: videoCount
     })
   } catch (error: any) {
     console.error("YouTube auth callback error:", error)

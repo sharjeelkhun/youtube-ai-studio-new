@@ -32,42 +32,48 @@ export interface Database {
           user_id: string
           title: string
           description: string | null
-          subscribers: number
-          videos: number
           thumbnail: string | null
+          subscriber_count: number
+          video_count: number
+          view_count: number
           access_token: string | null
           refresh_token: string | null
           token_expires_at: string | null
-          last_updated: string
+          last_synced: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id: string
           user_id: string
           title: string
           description?: string | null
-          subscribers?: number
-          videos?: number
           thumbnail?: string | null
+          subscriber_count?: number
+          video_count?: number
+          view_count?: number
           access_token?: string | null
           refresh_token?: string | null
           token_expires_at?: string | null
-          last_updated?: string
+          last_synced?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
           user_id?: string
           title?: string
           description?: string | null
-          subscribers?: number
-          videos?: number
           thumbnail?: string | null
+          subscriber_count?: number
+          video_count?: number
+          view_count?: number
           access_token?: string | null
           refresh_token?: string | null
           token_expires_at?: string | null
-          last_updated?: string
+          last_synced?: string | null
           created_at?: string
+          updated_at?: string
         }
       }
       videos: {
@@ -76,12 +82,13 @@ export interface Database {
           channel_id: string
           title: string
           description: string | null
-          thumbnail: string | null
-          status: string | null
-          views: number
-          likes: number
-          comments: number
+          thumbnail_url: string | null
           published_at: string | null
+          view_count: number
+          like_count: number
+          comment_count: number
+          duration: string | null
+          status: string
           created_at: string
           updated_at: string
         }
@@ -90,12 +97,13 @@ export interface Database {
           channel_id: string
           title: string
           description?: string | null
-          thumbnail?: string | null
-          status?: string | null
-          views?: number
-          likes?: number
-          comments?: number
+          thumbnail_url?: string | null
           published_at?: string | null
+          view_count?: number
+          like_count?: number
+          comment_count?: number
+          duration?: string | null
+          status?: string
           created_at?: string
           updated_at?: string
         }
@@ -104,12 +112,13 @@ export interface Database {
           channel_id?: string
           title?: string
           description?: string | null
-          thumbnail?: string | null
-          status?: string | null
-          views?: number
-          likes?: number
-          comments?: number
+          thumbnail_url?: string | null
           published_at?: string | null
+          view_count?: number
+          like_count?: number
+          comment_count?: number
+          duration?: string | null
+          status?: string
           created_at?: string
           updated_at?: string
         }

@@ -6,24 +6,24 @@ import { ChannelIndicator } from "@/components/channel-indicator"
 import { UserNav } from "@/components/user-nav"
 
 export function TopBar() {
-  const { channelData, isConnected, isLoading } = useYouTubeChannel()
+  const { channel, loading, isConnected } = useYouTubeChannel()
 
   return (
     <div className="border-b">
       <div className="flex h-16 items-center px-4">
         <div className="flex-1">
-          {isLoading ? (
+          {loading ? (
             <div className="w-[200px] h-5 bg-gray-200 animate-pulse rounded" />
           ) : (
             <ChannelIndicator
               isConnected={isConnected}
-              channelTitle={channelData?.title}
-              channelThumbnail={channelData?.thumbnail}
+              channelTitle={channel?.title}
+              channelThumbnail={channel?.thumbnail}
             />
           )}
         </div>
         <div className="flex items-center gap-4">
-          {!isConnected && !isLoading && (
+          {!isConnected && !loading && (
             <Button
               variant="default"
               size="sm"

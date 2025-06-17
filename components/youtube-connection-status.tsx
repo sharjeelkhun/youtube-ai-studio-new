@@ -1,124 +1,76 @@
 "use client"
 
-import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle, Youtube, RefreshCw } from "lucide-react"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
+import Image from 'next/image'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+import { Users, Video, AlertCircle } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
-export function YouTubeConnectionStatus() {
-  const { channelData: channel, isLoading, error, refreshChannel, isConnected: hasConnectedChannel } = useYouTubeChannel()
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const router = useRouter()
+interface Channel {
+  id: string
+  title: string
+  description: string
+  thumbnail: string
+  subscribers: number
+  videos: number
+}
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    try {
-      await refreshChannel()
-    } finally {
-      setIsRefreshing(false)
-    }
-  }
+interface YoutubeConnectionStatusProps {
+  channel: Channel | null
+}
 
-  if (isLoading) {
+export function YoutubeConnectionStatus({ channel }: YoutubeConnectionStatusProps) {
+  const { toast } = useToast()
+
+  if (!channel) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>YouTube Connection</CardTitle>
-          <CardDescription>Checking connection status...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+      <Card className="p-6">
+        <div className="flex flex-col items-center text-center">
+          <div className="mb-4 rounded-full bg-yellow-100 p-3 dark:bg-yellow-900">
+            <AlertCircle className="h-6 w-6 text-yellow-600 dark:text-yellow-300" />
           </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>YouTube Connection</CardTitle>
-          <CardDescription>There was an error checking your connection</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Error</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={handleRefresh} disabled={isRefreshing}>
-            {isRefreshing ? "Refreshing..." : "Try Again"}
-          </Button>
-        </CardFooter>
-      </Card>
-    )
-  }
-
-  if (!hasConnectedChannel) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>YouTube Connection</CardTitle>
-          <CardDescription>Connect your YouTube channel to get started</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center space-y-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
-              <Youtube className="h-8 w-8 text-red-600 dark:text-red-300" />
-            </div>
-            <p className="text-center text-sm text-gray-600 dark:text-gray-400">
-              You need to connect your YouTube channel to use this feature.
-            </p>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button className="w-full" onClick={() => router.push("/connect-channel")}>
-            Connect YouTube Channel
-          </Button>
-        </CardFooter>
+          <h2 className="text-xl font-semibold mb-2">No YouTube Channel Connected</h2>
+          <p className="text-muted-foreground mb-4">
+            Connect your YouTube channel to view and manage your videos.
+          </p>
+          <Link href="/connect-channel">
+            <Button>Connect Channel</Button>
+          </Link>
+        </div>
       </Card>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>YouTube Connection</CardTitle>
-        <CardDescription>Your YouTube channel is connected</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex items-center space-x-4">
-          <div className="flex-shrink-0">
-            <img
-              src={channel?.thumbnail || "/placeholder.svg?height=48&width=48"}
-              alt={channel?.title || "Channel"}
-              className="h-12 w-12 rounded-full"
-            />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium">{channel?.title}</h3>
-            <p className="text-sm text-gray-500">
-              {channel?.subscribers.toLocaleString()} subscribers • {channel?.videos.toLocaleString()} videos
-            </p>
+    <Card className="p-6">
+      <div className="flex items-start gap-4">
+        <div className="relative h-16 w-16 overflow-hidden rounded-full">
+          <Image
+            src={channel.thumbnail || '/placeholder.svg'}
+            alt={channel.title}
+            fill
+            className="object-cover"
+          />
+        </div>
+        <div className="flex-1">
+          <h2 className="text-xl font-semibold mb-1">{channel.title}</h2>
+          <p className="text-muted-foreground text-sm mb-4 line-clamp-2">{channel.description}</p>
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{channel.subscribers.toLocaleString()} subscribers</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Video className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">{channel.videos.toLocaleString()} videos</span>
+            </div>
           </div>
         </div>
-      </CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={handleRefresh} disabled={isRefreshing}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          {isRefreshing ? "Refreshing..." : "Refresh"}
-        </Button>
-        <Button variant="outline" onClick={() => router.push("/connect-channel")}>
-          Reconnect
-        </Button>
-      </CardFooter>
+        <Link href="/connect-channel">
+          <Button variant="outline">Manage Connection</Button>
+        </Link>
+      </div>
     </Card>
   )
 }

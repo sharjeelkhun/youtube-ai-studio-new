@@ -1,65 +1,28 @@
-import { NextResponse, type NextRequest } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export async function middleware(request: NextRequest) {
-  const path = request.nextUrl.pathname
+export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = createMiddlewareClient({ req, res });
 
-  // Skip middleware for static files and API routes
-  if (path.match(/(\..*|api|_next|favicon\.ico)/)) {
-    return NextResponse.next()
-  }
+    // Refresh session if expired
+  const { data: { session } } = await supabase.auth.getSession();
 
-  let response = NextResponse.next()
-
-  try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name) {
-            return request.cookies.get(name)?.value
-          },
-          set(name, value, options) {
-            // Ensure cookie is set with correct options
-            response.cookies.set({
-              name,
-              value,
-              ...options,
-              sameSite: 'lax',
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-            })
-          },
-          remove(name) {
-            response.cookies.delete(name)
-          },
-        },
+  // If no session and trying to access protected routes, redirect to login
+  if (!session && req.nextUrl.pathname.startsWith('/videos')) {
+    const redirectUrl = new URL('/login', req.url);
+    redirectUrl.searchParams.set('redirectTo', req.nextUrl.pathname);
+        return NextResponse.redirect(redirectUrl);
       }
-    )
 
-    const { data: { session }, error } = await supabase.auth.getSession()
-
-    // Handle dashboard access
-    if (path.startsWith('/dashboard')) {
-      if (!session) {
-        return NextResponse.redirect(new URL('/login', request.url))
-      }
+  return res;
     }
-
-    // Handle auth pages access
-    if ((path === '/login' || path === '/signup') && session) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
-    }
-
-    return response
-  } catch (error) {
-    console.error('Middleware error:', error)
-    // On error, redirect to login
-    return NextResponse.redirect(new URL('/login', request.url))
-  }
-}
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-}
+  matcher: [
+    '/videos/:path*',
+    '/settings/:path*',
+    '/dashboard/:path*'
+  ]
+};

@@ -6,6 +6,7 @@ import { BarChart3, Home, MessageSquare, PlusCircle, Settings, User, Video, Yout
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 
 interface SidebarProps {
   className?: string
@@ -13,6 +14,7 @@ interface SidebarProps {
 
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
+  const { isConnected } = useYouTubeChannel()
 
   return (
     <div className={cn("flex h-full flex-col border-r bg-background", className)}>
@@ -86,6 +88,7 @@ export function Sidebar({ className }: SidebarProps) {
           </Link>
         </nav>
       </ScrollArea>
+      {!isConnected && (
       <div className="mt-auto border-t p-4">
         <Button asChild variant="outline" size="sm" className="w-full justify-start">
           <Link href="/connect-channel" className="flex items-center gap-2">
@@ -94,6 +97,7 @@ export function Sidebar({ className }: SidebarProps) {
           </Link>
         </Button>
       </div>
+      )}
     </div>
   )
 }

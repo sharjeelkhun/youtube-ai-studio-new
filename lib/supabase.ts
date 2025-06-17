@@ -1,45 +1,68 @@
-import { createBrowserClient } from '@supabase/ssr'
-import type { Database } from "@/lib/database.types"
+import { createClient } from '@supabase/supabase-js';
+import { Database } from '@/types/supabase';
 
-const createClient = () => {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  return createBrowserClient<Database>(
-    supabaseUrl,
-    supabaseKey,
-    {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true,
-        flowType: 'pkce',
-      },
-      cookies: {
-        get: (name: string) => {
-          if (typeof document === 'undefined') return ''
-          const cookie = document.cookie
-            .split('; ')
-            .find((row) => row.startsWith(`${name}=`))
-          return cookie ? cookie.split('=')[1] : ''
-        },
-        set: (name: string, value: string, options: { path?: string; domain?: string; maxAge?: number; secure?: boolean }) => {
-          if (typeof document === 'undefined') return
-          let cookie = `${name}=${value}; path=${options.path || '/'}`
-          if (options.maxAge) cookie += `; max-age=${options.maxAge}`
-          if (options.secure) cookie += '; secure; samesite=strict'
-          document.cookie = cookie
-        },
-        remove: (name: string) => {
-          if (typeof document === 'undefined') return
-          document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT`
+// Create a single supabase client for interacting with your database
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: {
+      getItem: (key) => {
+        if (typeof window === 'undefined') {
+          return null;
         }
+        // First try to get from cookie
+        const cookieValue = document.cookie
+          .split('; ')
+          .find(row => row.startsWith(`${key}=`))
+          ?.split('=')[1];
+        
+        if (cookieValue) {
+          try {
+            return JSON.parse(decodeURIComponent(cookieValue));
+          } catch {
+            return cookieValue;
+          }
+        }
+        
+        // Fallback to localStorage
+        const value = localStorage.getItem(key);
+        if (!value) return null;
+        try {
+          return JSON.parse(value);
+        } catch {
+          return value;
+        }
+      },
+      setItem: (key, value) => {
+        if (typeof window === 'undefined') {
+          return;
+        }
+        // Set in both cookie and localStorage
+        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        document.cookie = `${key}=${encodeURIComponent(stringValue)}; path=/; max-age=2592000; SameSite=Lax`;
+        localStorage.setItem(key, stringValue);
+      },
+      removeItem: (key) => {
+        if (typeof window === 'undefined') {
+          return;
+        }
+        // Remove from both cookie and localStorage
+        document.cookie = `${key}=; path=/; max-age=0; SameSite=Lax`;
+        localStorage.removeItem(key);
       }
     }
-  )
-}
-
-export const supabase = createClient()
+  },
+  global: {
+    headers: {
+      'x-application-name': 'youtube-ai-studio'
+    }
+  }
+});
 
 // Preview/Mock mode utilities
 export const isPreview = process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true'
