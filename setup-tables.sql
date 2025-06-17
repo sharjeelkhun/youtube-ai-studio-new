@@ -26,8 +26,8 @@ CREATE TABLE IF NOT EXISTS youtube_channels (
   UNIQUE(user_id, id)
 );
 
--- Create videos table if it doesn't exist
-CREATE TABLE IF NOT EXISTS videos (
+-- Create youtube_videos table if it doesn't exist
+CREATE TABLE IF NOT EXISTS youtube_videos (
   id TEXT PRIMARY KEY,
   channel_id TEXT REFERENCES youtube_channels(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
@@ -39,9 +39,23 @@ CREATE TABLE IF NOT EXISTS videos (
   comment_count INTEGER DEFAULT 0,
   duration TEXT,
   status TEXT DEFAULT 'private',
+  tags TEXT[] DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add tags column if it doesn't exist
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_name = 'youtube_videos' 
+    AND column_name = 'tags'
+  ) THEN
+    ALTER TABLE youtube_videos ADD COLUMN tags TEXT[] DEFAULT '{}';
+  END IF;
+END $$;
 
 -- Create RLS policies for profiles
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -74,44 +88,44 @@ CREATE POLICY "Users can delete their own channels"
   USING (auth.uid() = user_id);
 
 -- Create RLS policies for videos
-ALTER TABLE videos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE youtube_videos ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view videos from their channels"
-  ON videos FOR SELECT
+  ON youtube_videos FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM youtube_channels
-      WHERE youtube_channels.id = videos.channel_id
+      WHERE youtube_channels.id = youtube_videos.channel_id
       AND youtube_channels.user_id = auth.uid()
     )
   );
 
 CREATE POLICY "Users can insert videos to their channels"
-  ON videos FOR INSERT
+  ON youtube_videos FOR INSERT
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM youtube_channels
-      WHERE youtube_channels.id = videos.channel_id
+      WHERE youtube_channels.id = youtube_videos.channel_id
       AND youtube_channels.user_id = auth.uid()
     )
   );
 
 CREATE POLICY "Users can update videos from their channels"
-  ON videos FOR UPDATE
+  ON youtube_videos FOR UPDATE
   USING (
     EXISTS (
       SELECT 1 FROM youtube_channels
-      WHERE youtube_channels.id = videos.channel_id
+      WHERE youtube_channels.id = youtube_videos.channel_id
       AND youtube_channels.user_id = auth.uid()
     )
   );
 
 CREATE POLICY "Users can delete videos from their channels"
-  ON videos FOR DELETE
+  ON youtube_videos FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM youtube_channels
-      WHERE youtube_channels.id = videos.channel_id
+      WHERE youtube_channels.id = youtube_videos.channel_id
       AND youtube_channels.user_id = auth.uid()
     )
   );

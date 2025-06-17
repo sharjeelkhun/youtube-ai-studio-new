@@ -12,34 +12,34 @@ import { Loader2 } from 'lucide-react'
 
 export default function LoginPage() {
   const { signIn } = useAuth()
-  const { session, loading } = useSession()
+  const { session, isLoading } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/dashboard'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Debug logging
   console.log('Login page - Session state:', {
     hasSession: !!session,
     userId: session?.user?.id,
-    loading
+    isLoading
   })
 
   useEffect(() => {
-    if (session && !loading) {
+    if (session && !isLoading) {
       console.log('Login page - Session detected, redirecting to:', redirectTo)
       // Use window.location for a full page reload to ensure session is properly set
       window.location.href = redirectTo
     }
-  }, [session, loading, redirectTo])
+  }, [session, isLoading, redirectTo])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
+    setIsSubmitting(true)
     setError(null)
 
     try {
@@ -54,11 +54,11 @@ export default function LoginPage() {
       setError('An unexpected error occurred')
       console.error('Login error:', err)
     } finally {
-      setIsLoading(false)
+      setIsSubmitting(false)
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -104,8 +104,8 @@ export default function LoginPage() {
             )}
           </CardContent>
           <CardFooter>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Signing in...

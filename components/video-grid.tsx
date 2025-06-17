@@ -42,74 +42,26 @@ import { useSession } from '@/contexts/session-context'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-interface Video {
-  id: string
-  title: string
-  description: string
-  thumbnail_url: string
-  published_at: string
-  view_count: number
-  like_count: number
-  comment_count: number
-  duration: string
-  status: string
+interface VideoGridProps {
+  videos: Video[]
+  onVideoDeleted?: () => void
 }
 
-export default function VideoGrid() {
+export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
   const router = useRouter()
   const { channel } = useYouTubeChannel()
   const { session } = useAuth()
-  const [videos, setVideos] = useState<Video[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false)
   const [isSyncing, setIsSyncing] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [error, setError] = useState<string | null>(null)
   const supabase = createClientComponentClient<Database>()
 
-  useEffect(() => {
-    if (channel?.id) {
-    fetchVideos()
-    }
-  }, [channel?.id])
-
-  const fetchVideos = async () => {
-    console.log('Fetching videos for channel:', channel?.id)
-    setIsLoading(true)
-      setError(null)
-
-    try {
-      if (!channel?.id) {
-        console.log('No channel connected')
-        setIsLoading(false)
-        return
-      }
-
-      const { data: videosData, error: videosError } = await supabase
-        .from('youtube_videos')
-        .select('*')
-        .eq('channel_id', channel.id)
-        .order('published_at', { ascending: false })
-
-      if (videosError) {
-        console.error('Error fetching videos:', videosError)
-        throw new Error('Failed to fetch videos')
-      }
-
-      console.log('Videos fetched from database:', videosData?.length || 0)
-      setVideos(videosData || [])
-    } catch (err) {
-      console.error('Error in fetchVideos:', err)
-      setError(err instanceof Error ? err.message : 'Failed to fetch videos')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const handleSync = async () => {
     console.log('Starting video sync...')
     setIsSyncing(true)
-      setError(null)
+    setError(null)
 
     try {
       const response = await fetch('/api/youtube/videos/sync', {
@@ -128,48 +80,27 @@ export default function VideoGrid() {
       console.log('Sync response:', result)
 
       if (result.success) {
-        await fetchVideos()
+        // Refresh the videos list
+        if (onVideoDeleted) {
+          onVideoDeleted()
+        }
+        toast.success(`Successfully synced ${result.videos.length} videos`)
       } else {
         throw new Error(result.error || 'Failed to sync videos')
       }
     } catch (err) {
       console.error('Error in handleSync:', err)
       setError(err instanceof Error ? err.message : 'Failed to sync videos')
+      toast.error('Failed to sync videos')
     } finally {
       setIsSyncing(false)
     }
   }
 
-  const handleVideoClick = (videoId: string) => {
-    console.log('Navigating to video:', videoId)
-    console.log('Video details:', videos.find(v => v.id === videoId))
-    router.push(`/videos/${videoId}`)
-  }
-
-  const formatNumber = (num: number) => {
-    return new Intl.NumberFormat().format(num)
-  }
-
-  const formatDuration = (duration: string) => {
-    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
-    if (!match) return duration
-
-    const hours = (match[1] || '').replace('H', '')
-    const minutes = (match[2] || '').replace('M', '')
-    const seconds = (match[3] || '').replace('S', '')
-
-    let result = ''
-    if (hours) result += `${hours}:`
-    result += `${minutes.padStart(2, '0')}:`
-    result += seconds.padStart(2, '0')
-
-    return result
-  }
-
   const filteredVideos = videos.filter(video => {
     const matchesSearch = video.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      video.description.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || video.status === statusFilter
+      (video.description?.toLowerCase() || '').includes(searchQuery.toLowerCase())
+    const matchesStatus = statusFilter === 'all' || video.status.toLowerCase() === statusFilter.toLowerCase()
     return matchesSearch && matchesStatus
   })
 
@@ -213,9 +144,9 @@ export default function VideoGrid() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="public">Public</SelectItem>
-              <SelectItem value="private">Private</SelectItem>
-              <SelectItem value="unlisted">Unlisted</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -258,8 +189,19 @@ export default function VideoGrid() {
           {filteredVideos.map((video) => (
             <VideoCard
               key={video.id}
-              video={video}
-              onVideoUpdated={fetchVideos}
+              video={{
+                id: video.id,
+                title: video.title,
+                description: video.description || '',
+                thumbnail_url: video.thumbnail_url,
+                published_at: video.published_at,
+                view_count: video.view_count,
+                like_count: video.like_count,
+                comment_count: video.comment_count,
+                duration: video.duration || '0:00',
+                status: video.status
+              }}
+              onVideoUpdated={onVideoDeleted}
             />
           ))}
         </div>

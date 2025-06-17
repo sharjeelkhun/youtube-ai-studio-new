@@ -7,13 +7,24 @@ import { Button } from "@/components/ui/button"
 import { Clock, Edit2, Eye, MessageSquare, ThumbsUp } from "lucide-react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import type { Video } from "@/lib/types"
 
 interface VideoCardProps {
-  video: Video
+  video: {
+    id: string
+    title: string
+    description: string
+    thumbnail_url: string
+    published_at: string
+    view_count: number
+    like_count: number
+    comment_count: number
+    duration: string
+    status: string
+  }
+  onVideoUpdated?: () => void
 }
 
-export function VideoCard({ video }: VideoCardProps) {
+export function VideoCard({ video, onVideoUpdated }: VideoCardProps) {
   const router = useRouter()
 
   const getStatusColor = (status: string) => {
@@ -30,19 +41,22 @@ export function VideoCard({ video }: VideoCardProps) {
   }
 
   const formatDuration = (duration: string) => {
-    const match = duration.match(/PT(\d+H)?(\d+M)?(\d+S)?/)
-    if (!match) return duration
+    // Handle empty or invalid duration
+    if (!duration) return '0:00'
 
-    const hours = (match[1] || '').replace('H', '')
-    const minutes = (match[2] || '').replace('M', '')
-    const seconds = (match[3] || '').replace('S', '')
+    // Parse ISO 8601 duration format (e.g., PT1H2M3S)
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+    if (!match) return '0:00'
 
-    let result = ''
-    if (hours) result += `${hours}:`
-    result += `${minutes.padStart(2, '0')}:`
-    result += seconds.padStart(2, '0')
+    const hours = match[1] ? parseInt(match[1]) : 0
+    const minutes = match[2] ? parseInt(match[2]) : 0
+    const seconds = match[3] ? parseInt(match[3]) : 0
 
-    return result
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+    } else {
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`
+    }
   }
 
   const formatNumber = (num: number) => {
