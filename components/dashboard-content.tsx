@@ -13,7 +13,7 @@ import { useAuth } from "@/contexts/auth-context"
 export function DashboardContent() {
   const [activeTab, setActiveTab] = useState("overview")
   const router = useRouter()
-  const { isConnected, channelData } = useYouTubeChannel()
+  const { isConnected, channelData, isLoading: isChannelLoading } = useYouTubeChannel()
   const { user, isLoading: isAuthLoading } = useAuth()
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
@@ -47,8 +47,17 @@ export function DashboardContent() {
     return null // Or a loading indicator if preferred
   }
 
+  // If channel data is still loading, show a loading state
+  if (isChannelLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   // If no channel is connected, show a connection prompt
-  if (!isConnected) {
+  if (!isConnected || !channelData) {
     return (
       <div className="space-y-4">
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
@@ -103,23 +112,21 @@ export function DashboardContent() {
         </TabsList>
       </div>
 
-      {channelData && (
-        <div className="flex items-center gap-3 px-2 py-1 bg-muted/30 rounded-md">
-          <div className="relative h-8 w-8 overflow-hidden rounded-full border">
-            <img
-              src={channelData.thumbnail || "/placeholder.svg"}
-              alt={channelData.title}
-              className="h-full w-full object-cover"
-            />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{channelData.title}</span>
-            <span className="text-xs text-muted-foreground">
-              {channelData.subscribers.toLocaleString()} subscribers • {channelData.videos} videos
-            </span>
-          </div>
+      <div className="flex items-center gap-3 px-2 py-1 bg-muted/30 rounded-md">
+        <div className="relative h-8 w-8 overflow-hidden rounded-full border">
+          <img
+            src={channelData.thumbnail || "/placeholder.svg"}
+            alt={channelData.title}
+            className="h-full w-full object-cover"
+          />
         </div>
-      )}
+        <div className="flex flex-col">
+          <span className="text-sm font-medium">{channelData.title}</span>
+          <span className="text-xs text-muted-foreground">
+            {channelData.subscribers.toLocaleString()} subscribers • {channelData.videos} videos
+          </span>
+        </div>
+      </div>
 
       <TabsContent value="overview" className="space-y-4">
         <OverviewTab />

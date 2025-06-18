@@ -33,6 +33,8 @@ interface YouTubeChannelContextType {
   error: string | null
   isConnected: boolean
   refreshChannel: () => Promise<void>
+  channelData: YouTubeChannel | null
+  isLoading: boolean
 }
 
 const YouTubeChannelContext = createContext<YouTubeChannelContextType>({
@@ -41,6 +43,8 @@ const YouTubeChannelContext = createContext<YouTubeChannelContextType>({
   error: null,
   isConnected: false,
   refreshChannel: async () => {},
+  channelData: null,
+  isLoading: true
 })
 
 // Create a single Supabase client instance
@@ -408,6 +412,8 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
         error,
         isConnected: !!channel,
         refreshChannel,
+        channelData: channel,
+        isLoading: loading
       }}
     >
       {children}
@@ -420,5 +426,9 @@ export function useYouTubeChannel() {
   if (!context) {
     throw new Error('useYouTubeChannel must be used within a YouTubeChannelProvider')
   }
-  return context
+  return {
+    ...context,
+    channelData: context.channel,
+    isLoading: context.loading
+  }
 }
