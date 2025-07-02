@@ -7,7 +7,7 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/database.types'
 
 export default function VideosPage() {
-  const [videos, setVideos] = useState([])
+  const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { channel } = useYouTubeChannel()
   const supabase = createClientComponentClient<Database>()
