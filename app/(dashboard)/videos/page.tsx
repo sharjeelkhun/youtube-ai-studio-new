@@ -38,7 +38,19 @@ export default function VideosPage() {
 
   return (
     <div className="container py-6">
-      <VideoGrid videos={videos} />
+      <VideoGrid videos={videos.map(video => ({
+        id: video.id,
+        thumbnail: video.thumbnail_url || '',
+        title: video.title,
+        status: (video.status === 'Published' || video.status === 'Draft' || video.status === 'Scheduled') ? video.status : 'Published',
+        views: video.view_count,
+        likes: video.like_count,
+        comments: video.comment_count,
+        publishedAt: video.published_at || '',
+        description: video.description || '',
+        tags: video.tags || [],
+        url: undefined // or construct a URL if needed
+      }))} />
     </div>
   )
 }
