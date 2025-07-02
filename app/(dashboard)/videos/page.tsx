@@ -4,7 +4,7 @@ import { VideoGrid } from '@/components/video-grid'
 import { useEffect, useState } from 'react'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types/supabase'
+import type { Database } from '@/lib/database.types'
 
 export default function VideosPage() {
   const [videos, setVideos] = useState([])
