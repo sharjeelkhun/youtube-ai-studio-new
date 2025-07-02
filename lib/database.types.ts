@@ -172,6 +172,56 @@ export interface Database {
           created_at?: string
         }
       }
+      youtube_videos: {
+        Row: {
+          id: string
+          channel_id: string
+          title: string
+          description: string | null
+          thumbnail_url: string | null
+          published_at: string | null
+          view_count: number
+          like_count: number
+          comment_count: number
+          duration: string | null
+          status: string
+          created_at: string
+          updated_at: string
+          tags?: string[]
+        }
+        Insert: {
+          id: string
+          channel_id: string
+          title: string
+          description?: string | null
+          thumbnail_url?: string | null
+          published_at?: string | null
+          view_count?: number
+          like_count?: number
+          comment_count?: number
+          duration?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          tags?: string[]
+        }
+        Update: {
+          id?: string
+          channel_id?: string
+          title?: string
+          description?: string | null
+          thumbnail_url?: string | null
+          published_at?: string | null
+          view_count?: number
+          like_count?: number
+          comment_count?: number
+          duration?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          tags?: string[]
+        }
+      }
     }
   }
 }
