@@ -112,21 +112,21 @@ export function DashboardContent() {
         </TabsList>
       </div>
 
-      <div className="flex items-center gap-3 px-2 py-1 bg-muted/30 rounded-md">
-        <div className="relative h-8 w-8 overflow-hidden rounded-full border">
-          <img
-            src={channelData.thumbnail || "/placeholder.svg"}
-            alt={channelData.title}
-            className="h-full w-full object-cover"
-          />
+        <div className="flex items-center gap-3 px-2 py-1 bg-muted/30 rounded-md">
+          <div className="relative h-8 w-8 overflow-hidden rounded-full border">
+            <img
+              src={channelData.thumbnail || "/placeholder.svg"}
+              alt={channelData.title}
+              className="h-full w-full object-cover"
+            />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{channelData.title}</span>
+            <span className="text-xs text-muted-foreground">
+              {channelData.subscribers.toLocaleString()} subscribers • {channelData.videos} videos
+            </span>
+          </div>
         </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-medium">{channelData.title}</span>
-          <span className="text-xs text-muted-foreground">
-            {channelData.subscribers.toLocaleString()} subscribers • {channelData.videos} videos
-          </span>
-        </div>
-      </div>
 
       <TabsContent value="overview" className="space-y-4">
         <OverviewTab />

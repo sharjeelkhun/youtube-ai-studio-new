@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import supabase from '@/lib/supabase/client'
 import { useSession } from './session-context'
 import { Database } from '@/lib/database.types'
 
@@ -46,9 +46,6 @@ const YouTubeChannelContext = createContext<YouTubeChannelContextType>({
   channelData: null,
   isLoading: true
 })
-
-// Create a single Supabase client instance
-const supabase = createClientComponentClient<Database>()
 
 export function YouTubeChannelProvider({ children }: { children: React.ReactNode }) {
   const [channel, setChannel] = useState<YouTubeChannel | null>(null)
@@ -118,7 +115,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
     }
   }, [session?.user?.id])
 
-  const fetchChannelStats = async (accessToken: string, channelId: string) => {
+  const fetchChannelStats = useCallback(async (accessToken: string, channelId: string) => {
     try {
       console.log('Fetching channel stats for channel:', channelId);
       
@@ -228,7 +225,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
       console.error('Error fetching channel stats:', error);
       throw error;
     }
-  };
+  }, []);
 
   const fetchChannel = useCallback(async () => {
     if (!session?.user?.id) {
@@ -249,141 +246,90 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
         .eq('user_id', session.user.id)
         .single();
 
-      if (channelError) {
-        console.error('Error fetching channel from database:', channelError);
-        throw new Error('Failed to fetch channel from database');
-      }
-
-      if (channelData) {
+      if (channelError || !channelData) {
+        if (channelError && channelError.code !== 'PGRST116') { // Ignore 'not found' errors
+          console.error('Error fetching channel from DB:', channelError)
+          throw new Error('Failed to fetch channel from database')
+        }
+        console.log('No channel found in DB, user needs to connect.')
+        setChannel(null)
+      } else {
         console.log('Found channel in database:', {
           id: channelData.id,
           title: channelData.title,
           hasAccessToken: !!channelData.access_token,
           hasRefreshToken: !!channelData.refresh_token,
           tokenExpiresAt: channelData.token_expires_at,
-          stats: {
-            subscribers: channelData.subscriber_count,
-            videos: channelData.video_count,
-            views: channelData.view_count,
-            likes: channelData.likes,
-            comments: channelData.comments
-          }
-        });
+          lastSynced: channelData.last_synced
+        })
 
-        // Check if we need to refresh the token
-        const tokenExpiry = new Date(channelData.token_expires_at);
-        const timeUntilExpiry = tokenExpiry.getTime() - Date.now();
+        let currentChannel = channelData as YouTubeChannel
+        const tokenExpiresAt = new Date(currentChannel.token_expires_at).getTime()
+        const now = Date.now()
         
-        // Refresh token if it's expired or will expire in the next 5 minutes
-        if (timeUntilExpiry <= 300000 && channelData.refresh_token) {
-          console.log('Token expired or expiring soon, refreshing...');
+        // Refresh token if it's expired or close to expiring
+        if (now >= tokenExpiresAt - 5 * 60 * 1000) {
+          console.log('Token has expired or is expiring soon, refreshing...');
           try {
-            const updatedChannel = await refreshToken(channelData);
-            // Fetch fresh statistics
-            const stats = await fetchChannelStats(updatedChannel.access_token, updatedChannel.id);
+            currentChannel = await refreshToken(currentChannel)
+          } catch (error) {
+            console.error('Failed to refresh token:', error)
+            setError('Failed to refresh token. Please try reconnecting your channel.')
+            setChannel(null)
+            setLoading(false)
+            return
+          }
+        }
+        
+        // Fetch fresh stats if not synced recently
+        const lastSynced = channelData.last_synced ? new Date(channelData.last_synced).getTime() : 0
+        if (now - lastSynced > 5 * 60 * 1000) { // 5 minutes
+          console.log('Channel not synced recently, fetching fresh stats...')
+          try {
+            const stats = await fetchChannelStats(currentChannel.access_token, currentChannel.id)
             
-            // Update channel with fresh statistics
+            const updatedChannel = {
+              ...currentChannel,
+              ...stats,
+              last_synced: new Date().toISOString()
+            }
+            
+            // Update database with new stats
             const { error: updateError } = await supabase
               .from('youtube_channels')
               .update({
-                ...stats,
-                last_synced: new Date().toISOString(),
+                subscriber_count: stats.subscriber_count,
+                video_count: stats.video_count,
+                view_count: stats.view_count,
+                likes: stats.likes,
+                comments: stats.comments,
+                last_synced: updatedChannel.last_synced
               })
-              .eq('id', updatedChannel.id)
-              .eq('user_id', session.user.id);
+              .eq('id', currentChannel.id)
 
             if (updateError) {
-              console.error('Error updating channel stats:', updateError);
+              console.error('Error updating channel stats in DB:', updateError)
+              // Don't throw, just log the error and continue with the stale data
             }
-
-            const updatedChannelWithStats = { ...updatedChannel, ...stats };
-            console.log('Updated channel with fresh stats:', updatedChannelWithStats);
-            setChannel(updatedChannelWithStats);
-            setError(null);
+            
+            setChannel(updatedChannel)
           } catch (error) {
-            console.error('Token refresh failed:', error);
-            const errorMessage = error instanceof Error 
-              ? error.message 
-              : 'Failed to refresh token. Please try reconnecting your channel.';
-            setError(errorMessage);
-            setChannel(channelData);
+            console.error('Error fetching fresh channel stats:', error)
+            setError('Could not update channel statistics.')
+            setChannel(currentChannel); // Fallback to DB data
           }
         } else {
-          console.log('Using existing channel data:', channelData);
-          setChannel(channelData);
-          setError(null);
+          console.log('Using existing channel data:', channelData)
+          setChannel(channelData as YouTubeChannel)
         }
-        
-        setLoading(false);
-        return;
       }
-
-      // If no channel found, check if we have an access token
-      const { data: { session: authSession } } = await supabase.auth.getSession()
-      if (!authSession?.provider_token) {
-        console.log('No provider token available')
-        setLoading(false)
-        return
-      }
-
-      // Fetch channel data from YouTube API
-      const response = await fetch('https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true', {
-        headers: {
-          Authorization: `Bearer ${authSession.provider_token}`,
-        },
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        console.error('YouTube API error:', error)
-        throw new Error('Failed to fetch channel from YouTube')
-      }
-
-      const data = await response.json()
-      console.log('YouTube API response:', data);
-
-      if (!data.items?.length) {
-        console.log('No channel found in YouTube API response')
-        setLoading(false)
-        return
-      }
-
-      const channelInfo = data.items[0]
-      const stats = await fetchChannelStats(authSession.provider_token, channelInfo.id);
-
-      const newChannel = {
-        id: channelInfo.id,
-        user_id: session.user.id,
-        title: channelInfo.snippet.title,
-        description: channelInfo.snippet.description,
-        thumbnail: channelInfo.snippet.thumbnails.default.url,
-        access_token: authSession.provider_token,
-        refresh_token: authSession.provider_refresh_token,
-        token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
-        last_synced: new Date().toISOString(),
-        ...stats
-      }
-
-      console.log('Creating new channel with stats:', newChannel);
-
-      // Save the channel to the database
-      const { error: insertError } = await supabase
-        .from('youtube_channels')
-        .insert(newChannel)
-
-      if (insertError) {
-        console.error('Error saving channel to database:', insertError)
-        throw new Error('Failed to save channel to database')
-      }
-
-      setChannel(newChannel)
-    } catch (err) {
-      console.error('Error in fetchChannel:', err)
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+    } catch (error: any) {
+      console.error('Error in fetchChannel:', error)
+      setError(error instanceof Error ? error.message : 'An unexpected error occurred')
     } finally {
       setLoading(false)
     }
-  }, [session?.user?.id, refreshToken])
+  }, [session?.user?.id, refreshToken, fetchChannelStats])
 
   useEffect(() => {
     console.log('YouTube channel context - Session state:', {

@@ -21,7 +21,9 @@ export async function POST(request: Request) {
     // Define your YouTube OAuth configuration
     const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
     const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-    const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000/connect-channel/callback'
+    const url = new URL(request.url)
+    const redirectUri = `${url.origin}/connect-channel/callback`
+    const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || redirectUri
 
     console.log("OAuth configuration:", {
       hasClientId: !!CLIENT_ID,

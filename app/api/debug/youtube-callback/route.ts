@@ -15,7 +15,8 @@ export async function POST(request: Request) {
     }
 
     // Construct the redirect URI that would be used
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/connect-channel/callback`
+    const url = new URL(request.url)
+    const redirectUri = `${url.origin}/connect-channel/callback`
 
     return NextResponse.json({
       timestamp: new Date().toISOString(),

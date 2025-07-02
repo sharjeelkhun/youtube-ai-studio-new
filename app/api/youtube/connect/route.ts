@@ -32,7 +32,9 @@ export async function GET(request: Request) {
     )
   }
 
-  const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || 'http://localhost:3000/connect-channel/callback'
+  const url = new URL(request.url)
+  const redirectUri = `${url.origin}/connect-channel/callback`
+  const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || redirectUri
 
   // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
@@ -54,6 +56,8 @@ export async function GET(request: Request) {
     "https://www.googleapis.com/auth/youtube.readonly",
     "https://www.googleapis.com/auth/youtube.force-ssl",
     "https://www.googleapis.com/auth/youtube",
+    "https://www.googleapis.com/auth/youtube.channel-memberships.creator",
+    "https://www.googleapis.com/auth/youtube.analytics.readonly"
   ]
 
   const state = uuidv4()

@@ -82,7 +82,7 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
       if (result.success) {
         // Refresh the videos list
         if (onVideoDeleted) {
-          onVideoDeleted()
+        onVideoDeleted()
         }
         toast.success(`Successfully synced ${result.videos.length} videos`)
       } else {

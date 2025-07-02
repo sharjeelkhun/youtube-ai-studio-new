@@ -249,89 +249,76 @@ export async function POST(request: Request) {
 
       if (!statsResponse.ok) {
         const error = await statsResponse.json()
-        console.error('Failed to fetch video statistics for batch:', {
-          batch: i/50 + 1,
+        console.error('YouTube API error (videos):', {
           status: statsResponse.status,
           statusText: statsResponse.statusText,
           error: error
         })
-        continue
+        return NextResponse.json({ error: 'Failed to fetch video statistics' }, { status: statsResponse.status })
       }
 
       const statsData = await statsResponse.json()
-      console.log(`Fetched stats for ${statsData.items?.length || 0} videos in batch ${i/50 + 1}`)
-      
-      // Match statistics with playlist items
-      for (const item of playlistItems.slice(i, i + 50)) {
-        const videoStats = statsData.items?.find(
-          (stat: any) => stat.id === item.snippet.resourceId.videoId
-        )
+      console.log(`Fetched stats for ${statsData.items?.length || 0} videos`)
 
-        if (!videoStats) {
-          console.log('No stats found for video:', item.snippet.resourceId.videoId)
-        continue
-      }
+      // Process each video
+      for (const video of statsData.items) {
+        const videoData = {
+          channel_id: channel.id,
+          video_id: video.id,
+          title: playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet.title || '',
+          description: playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet.description || '',
+          thumbnails: playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet.thumbnails || {},
+          published_at: playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet.publishedAt || '',
+          view_count: parseInt(video.statistics.viewCount || '0'),
+          like_count: parseInt(video.statistics.likeCount || '0'),
+          comment_count: parseInt(video.statistics.commentCount || '0'),
+          duration: video.contentDetails.duration || '',
+          status: video.status.privacyStatus || 'private',
+          last_synced_at: new Date().toISOString()
+        }
 
-      const video = {
-          id: item.snippet.resourceId.videoId,
-        channel_id: channel.id,
-        title: item.snippet.title,
-        description: item.snippet.description,
-        thumbnail_url: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
-        published_at: item.snippet.publishedAt,
-          view_count: parseInt(videoStats.statistics.viewCount || '0'),
-          like_count: parseInt(videoStats.statistics.likeCount || '0'),
-          comment_count: parseInt(videoStats.statistics.commentCount || '0'),
-          duration: videoStats.contentDetails.duration,
-          status: videoStats.status.privacyStatus,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-
-      // Upsert the video in the database
-      const { error: upsertError } = await supabase
+        // Upsert the video data
+        const { error: upsertError } = await supabase
           .from('youtube_videos')
-        .upsert(video, {
-          onConflict: 'id',
-          ignoreDuplicates: false
-        })
+          .upsert(videoData, {
+            onConflict: 'channel_id,video_id'
+          })
 
-      if (upsertError) {
-        console.error('Error upserting video:', {
-          error: upsertError,
+        if (upsertError) {
+          console.error('Error upserting video:', {
+            error: upsertError,
             videoId: video.id
-        })
-        continue
-      }
+          })
+          continue
+        }
 
-      videos.push(video)
+        videos.push(videoData)
       }
     }
 
-    console.log('Successfully processed videos:', {
-      total: videos.length,
-      channelId: channel.id
-    })
+    // Calculate total statistics from all videos
+    const totalViews = videos.reduce((sum, video) => sum + (video.view_count || 0), 0)
+    const totalLikes = videos.reduce((sum, video) => sum + (video.like_count || 0), 0)
+    const totalComments = videos.reduce((sum, video) => sum + (video.comment_count || 0), 0)
 
-    // Update the last_synced timestamp
+    // Update channel statistics
     const { error: updateError } = await supabase
       .from('youtube_channels')
       .update({
-        last_synced: new Date().toISOString()
+        view_count: totalViews,
+        video_count: videos.length,
+        last_synced_at: new Date().toISOString()
       })
       .eq('id', channel.id)
       .eq('user_id', session.user.id)
 
     if (updateError) {
-      console.error('Error updating last_synced timestamp:', {
-        error: updateError,
-        channelId: channel.id
-      })
+      console.error('Error updating channel statistics:', updateError)
     }
 
     return NextResponse.json({
       success: true,
-      videos,
+      videos: videos,
       message: `Successfully synced ${videos.length} videos`
     })
 

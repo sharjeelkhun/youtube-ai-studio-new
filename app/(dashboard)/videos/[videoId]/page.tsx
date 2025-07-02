@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
-import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus } from 'lucide-react'
+import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 
@@ -85,27 +85,26 @@ export default function VideoPage() {
           return
         }
 
-        // Then fetch the video details from YouTube API to get tags
+        // Fetch the video details from YouTube API to get live data
         const response = await fetch(`/api/youtube/videos/${params.videoId}`)
         if (!response.ok) {
           throw new Error('Failed to fetch video details from YouTube')
         }
 
         const youtubeData = await response.json()
-        const tags = youtubeData.tags || []
 
-        // Add mock analytics data for now
-        const videoWithAnalytics = {
+        // Combine database data with YouTube data
+        const fullVideoDetails = {
           ...video,
-          watch_time: Math.floor(Math.random() * 1000),
+          ...youtubeData,
+          watch_time: Math.floor(Math.random() * 1000), // These are still mock
           engagement_rate: Math.random() * 100,
           subscriber_gained: Math.floor(Math.random() * 100),
           retention_rate: Math.random() * 100,
-          tags: tags
         }
 
-        setVideo(videoWithAnalytics)
-        setEditedVideo(videoWithAnalytics)
+        setVideo(fullVideoDetails)
+        setEditedVideo(fullVideoDetails)
 
         // Fetch video history
         const { data: historyData } = await supabase
@@ -133,19 +132,25 @@ export default function VideoPage() {
     setIsSaving(true)
 
     try {
-      const supabase = createClientComponentClient()
-      const { error } = await supabase
-        .from('youtube_videos')
-        .update({
+      const response = await fetch(`/api/youtube/videos/${video?.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
           title: editedVideo.title,
           description: editedVideo.description,
           tags: editedVideo.tags
         })
-        .eq('id', video?.id)
+      })
 
-      if (error) throw error
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to update video on YouTube')
+      }
 
-      // Save to history
+      // Save to local history table
+      const supabase = createClientComponentClient()
       await supabase.from('video_history').insert({
         video_id: video?.id,
         title: editedVideo.title,
@@ -156,7 +161,7 @@ export default function VideoPage() {
       setVideo(editedVideo)
       toast({
         title: 'Success',
-        description: 'Video details updated successfully'
+        description: 'Video details updated successfully on YouTube and in your database.'
       })
     } catch (error) {
       console.error('Error saving video:', error)
@@ -290,6 +295,13 @@ export default function VideoPage() {
           Back
         </Button>
         <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => window.open(`https://studio.youtube.com/video/${video.id}/edit`, '_blank')}
+          >
+            <Youtube className="mr-2 h-4 w-4" />
+            Edit in Studio
+          </Button>
           <Button variant="outline" onClick={handleAIGenerate}>
             <Wand2 className="mr-2 h-4 w-4" />
             AI Generate

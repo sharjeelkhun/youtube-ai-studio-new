@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/contexts/auth-context'
 import { useSession } from '@/contexts/session-context'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+  const { pathname } = useRouter()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -30,12 +32,10 @@ export default function LoginPage() {
   })
 
   useEffect(() => {
-    if (session && !isLoading) {
-      console.log('Login page - Session detected, redirecting to:', redirectTo)
-      // Use window.location for a full page reload to ensure session is properly set
-      window.location.href = redirectTo
+    if (session && !isLoading && pathname !== redirectTo) {
+      router.push(redirectTo);
     }
-  }, [session, isLoading, redirectTo])
+  }, [session, isLoading, redirectTo, router, pathname])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,8 +47,7 @@ export default function LoginPage() {
       if (error) {
         setError(error.message)
       } else {
-        // Force a full page reload to ensure session is properly set
-        window.location.href = redirectTo
+        router.push(redirectTo)
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -102,8 +101,14 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
+            <div className="text-sm text-right">
+              <Link href="/forgot-password"
+                 className="font-medium text-primary hover:text-primary/90">
+                Forgot password?
+              </Link>
+            </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
@@ -114,6 +119,13 @@ export default function LoginPage() {
                 'Sign in'
               )}
             </Button>
+            <div className="text-sm text-center text-gray-500">
+              Don't have an account?{' '}
+              <Link href="/signup"
+                 className="font-medium text-primary hover:text-primary/90">
+                Sign up
+              </Link>
+            </div>
           </CardFooter>
         </form>
       </Card>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     // Collect environment information
     const envInfo = {
@@ -12,7 +12,8 @@ export async function GET() {
     }
 
     // Construct the redirect URI that would be used
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/connect-channel/callback`
+    const url = new URL(request.url)
+    const redirectUri = `${url.origin}/connect-channel/callback`
 
     return NextResponse.json({
       timestamp: new Date().toISOString(),
