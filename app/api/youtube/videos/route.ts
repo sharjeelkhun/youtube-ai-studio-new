@@ -49,7 +49,7 @@ async function refreshAccessToken(refreshToken: string) {
 }
 
 async function fetchAllVideos(accessToken: string, playlistId: string) {
-  let allVideos = []
+  let allVideos: any[] = []
   let nextPageToken = null
   let pageCount = 0
   const maxPages = 10 // Limit to prevent excessive API calls
