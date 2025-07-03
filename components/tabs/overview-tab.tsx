@@ -9,7 +9,7 @@ import { TopVideosChart } from "@/components/charts/top-videos-chart"
 import { RecentVideos } from "@/components/recent-videos"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types/supabase'
+import type { Database } from '@/lib/database.types'
 import { Loader2 } from "lucide-react"
 
 interface ChannelStats {

@@ -37,7 +37,7 @@ import { supabase } from "@/lib/supabase"
 import { VideoCard } from './video-card'
 import { Alert, AlertDescription } from './ui/alert'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types/supabase'
+import type { Database } from '@/lib/database.types'
 import { useSession } from '@/contexts/session-context'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
