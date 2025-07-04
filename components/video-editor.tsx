@@ -14,13 +14,13 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 interface Video {
   id: string
   title: string
-  description: string
+  description?: string | null
   status: string
-  thumbnail_url: string
-  published_at: string
-  view_count: number
-  like_count: number
-  comment_count: number
+  thumbnail_url?: string | null
+  published_at?: string | null
+  view_count?: number
+  like_count?: number
+  comment_count?: number
 }
 
 interface VideoEditorProps {
@@ -91,7 +91,7 @@ export function VideoEditor({ video, onSave }: VideoEditorProps) {
           <Label htmlFor="description">Description</Label>
           <Textarea
             id="description"
-                value={editedVideo.description}
+                value={editedVideo.description || ''}
                 onChange={(e) => setEditedVideo({ ...editedVideo, description: e.target.value })}
                 rows={5}
           />
@@ -126,7 +126,7 @@ export function VideoEditor({ video, onSave }: VideoEditorProps) {
               <Label htmlFor="thumbnail">Thumbnail URL</Label>
             <Input
                 id="thumbnail"
-                value={editedVideo.thumbnail_url}
+                value={editedVideo.thumbnail_url || ''}
                 onChange={(e) => setEditedVideo({ ...editedVideo, thumbnail_url: e.target.value })}
               />
           </div>
@@ -135,7 +135,7 @@ export function VideoEditor({ video, onSave }: VideoEditorProps) {
               <Input
                 id="publish-date"
                 type="datetime-local"
-                value={editedVideo.published_at}
+                value={editedVideo.published_at || ''}
                 onChange={(e) => setEditedVideo({ ...editedVideo, published_at: e.target.value })}
               />
           </div>
