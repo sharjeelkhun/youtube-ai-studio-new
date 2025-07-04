@@ -49,8 +49,8 @@ async function refreshAccessToken(refreshToken: string) {
 }
 
 async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string) {
-  let allVideos = []
-  let nextPageToken = null
+  let allVideos: any[] = []
+  let nextPageToken: string | null = null
   let pageCount = 0
   const maxPages = 10 // Limit to prevent excessive API calls
 
@@ -58,7 +58,7 @@ async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string) {
     pageCount++
     console.log(`Fetching videos page ${pageCount}...`)
     
-    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
+    const playlistUrl: string = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
     console.log('Fetching from URL:', playlistUrl)
     
     const response = await fetch(playlistUrl, {
