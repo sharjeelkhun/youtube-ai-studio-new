@@ -18,7 +18,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <DashboardContent
-        userId={session?.user?.id}
+        userId={session?.user?.id || undefined}
         email={session?.user?.email || ''}
         channelId={session?.user?.user_metadata?.channel_id}
       />

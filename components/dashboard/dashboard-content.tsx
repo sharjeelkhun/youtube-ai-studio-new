@@ -13,7 +13,7 @@ import { AnalyticsTab } from './analytics-tab';
 import { SettingsTab } from '@/components/dashboard/settings-tab';
 
 interface DashboardContentProps {
-  userId: string;
+  userId?: string;
   email: string;
   channelId?: string;
 }
@@ -36,6 +36,15 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
       refreshChannel();
     }
   }, [channelId, refreshChannel]);
+
+  // If no userId is provided, show loading or redirect
+  if (!userId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   if (loading) {
     return (
