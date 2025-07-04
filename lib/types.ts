@@ -1,13 +1,18 @@
 // Define types for our application data
 export interface Video {
   id: string
-  thumbnail: string
+  thumbnail_url?: string
+  thumbnail?: string
   title: string
   status: "Published" | "Draft" | "Scheduled"
-  views: number
-  likes: number
-  comments: number
-  publishedAt: string
+  view_count?: number
+  views?: number
+  like_count?: number
+  likes?: number
+  comment_count?: number
+  comments?: number
+  published_at?: string
+  publishedAt?: string
   description?: string
   tags?: string[]
   url?: string

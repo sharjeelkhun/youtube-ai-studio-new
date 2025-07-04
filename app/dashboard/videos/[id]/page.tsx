@@ -75,7 +75,7 @@ export default function VideoDetailPage() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <div className="aspect-video w-full overflow-hidden rounded-t-lg bg-muted">
-            <img src={video.thumbnail || "/placeholder.svg"} alt={video.title} className="h-full w-full object-cover" />
+            <img src={video.thumbnail || video.thumbnail_url || "/placeholder.svg"} alt={video.title} className="h-full w-full object-cover" />
           </div>
           <CardHeader>
             <div className="flex items-start justify-between">
@@ -84,7 +84,7 @@ export default function VideoDetailPage() {
                 <CardDescription className="mt-2 flex items-center gap-3">
                   <span className="flex items-center">
                     <Calendar className="mr-1 h-4 w-4 text-muted-foreground" />
-                    {video.publishedAt}
+                    {video.publishedAt || video.published_at}
                   </span>
                   <Badge variant={video.status === "Published" ? "default" : "secondary"}>{video.status}</Badge>
                 </CardDescription>
@@ -96,19 +96,19 @@ export default function VideoDetailPage() {
 
             <div className="mt-6 grid grid-cols-4 gap-4">
               <div className="rounded-lg border p-3 text-center">
-                <div className="text-2xl font-bold">{video.views.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{(video.views || video.view_count || 0).toLocaleString()}</div>
                 <div className="mt-1 flex items-center justify-center text-xs text-muted-foreground">
                   <Eye className="mr-1 h-3 w-3" /> Views
                 </div>
               </div>
               <div className="rounded-lg border p-3 text-center">
-                <div className="text-2xl font-bold">{video.likes.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{(video.likes || video.like_count || 0).toLocaleString()}</div>
                 <div className="mt-1 flex items-center justify-center text-xs text-muted-foreground">
                   <ThumbsUp className="mr-1 h-3 w-3" /> Likes
                 </div>
               </div>
               <div className="rounded-lg border p-3 text-center">
-                <div className="text-2xl font-bold">{video.comments.toLocaleString()}</div>
+                <div className="text-2xl font-bold">{(video.comments || video.comment_count || 0).toLocaleString()}</div>
                 <div className="mt-1 flex items-center justify-center text-xs text-muted-foreground">
                   <MessageSquare className="mr-1 h-3 w-3" /> Comments
                 </div>
