@@ -58,7 +58,7 @@ async function fetchAllVideos(accessToken: string, playlistId: string) {
     pageCount++
     console.log(`Fetching videos page ${pageCount}...`)
     
-    const playlistUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
+    const playlistUrl: string = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
     
     const response = await fetch(playlistUrl, {
       headers: {
