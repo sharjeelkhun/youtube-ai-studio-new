@@ -18,6 +18,8 @@ interface YouTubeChannel {
   refresh_token: string
   token_expires_at: string
   last_synced: string | null
+  created_at: string
+  updated_at: string
   watch_time?: number
   likes?: number
   comments?: number

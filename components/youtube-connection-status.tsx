@@ -17,10 +17,10 @@ interface Channel {
 }
 
 interface YoutubeConnectionStatusProps {
-  channel: Channel | null
+  channel?: Channel | null
 }
 
-export function YoutubeConnectionStatus({ channel }: YoutubeConnectionStatusProps) {
+export function YoutubeConnectionStatus({ channel = null }: YoutubeConnectionStatusProps) {
   const { toast } = useToast()
 
   if (!channel) {

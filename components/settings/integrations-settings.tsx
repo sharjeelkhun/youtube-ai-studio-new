@@ -83,16 +83,16 @@ export function IntegrationsSettings() {
                 <div>
                   <h3 className="text-lg font-semibold">{channelData.title}</h3>
                   <p className="text-sm text-muted-foreground">
-                    {channelData.subscribers.toLocaleString()} subscribers
+                    {(channelData.subscriber_count ?? 0).toLocaleString()} subscribers
                   </p>
-                  <p className="text-sm text-muted-foreground">{channelData.videos} videos</p>
+                  <p className="text-sm text-muted-foreground">{(channelData.video_count ?? 0).toLocaleString()} videos</p>
                 </div>
               </div>
 
               <div className="rounded-lg border bg-card/50 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Last synced:</span>
-                  <span className="text-sm">{new Date(channelData.last_updated).toLocaleString()}</span>
+                  <span className="text-sm">{new Date(channelData.updated_at).toLocaleString()}</span>
                 </div>
               </div>
 

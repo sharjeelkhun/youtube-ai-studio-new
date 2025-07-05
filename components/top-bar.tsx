@@ -4,6 +4,7 @@ import { Bell, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { UserMenu } from "@/components/user-menu"
 import { useAuth } from "@/contexts/auth-context"
+import { useSession } from "@/contexts/session-context"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
@@ -13,7 +14,7 @@ interface TopBarProps {
 }
 
 export function TopBar({ onMenuClick }: TopBarProps) {
-  const { user } = useAuth()
+  const { user, supabaseUser } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
@@ -63,7 +64,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
           <Bell className="h-5 w-5" />
           <span className="sr-only">Notifications</span>
         </Button>
-        <UserMenu user={user} profile={profile} />
+        <UserMenu user={supabaseUser} profile={profile} />
       </div>
     </div>
   )

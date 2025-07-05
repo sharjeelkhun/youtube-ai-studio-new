@@ -193,12 +193,12 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
                 id: video.id,
                 title: video.title,
                 description: video.description || '',
-                thumbnail_url: video.thumbnail_url,
-                published_at: video.published_at,
-                view_count: video.view_count,
-                like_count: video.like_count,
-                comment_count: video.comment_count,
-                duration: video.duration || '0:00',
+                thumbnail_url: video.thumbnail_url || '/placeholder.svg',
+                published_at: video.published_at || '',
+                view_count: video.view_count ?? 0,
+                like_count: video.like_count ?? 0,
+                comment_count: video.comment_count ?? 0,
+                duration: '0:00',
                 status: video.status
               }}
               onVideoUpdated={onVideoDeleted}

@@ -24,7 +24,7 @@ export default function SignupPage() {
     setError(null)
 
     try {
-      await signUp(email, password, fullName)
+      await signUp(email, password)
     } catch (err: any) {
       setError("Could not create account. Please try again.")
     }

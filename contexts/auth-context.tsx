@@ -5,10 +5,18 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useSession } from "./session-context"
 import type { Database } from "@/lib/database.types"
 import { supabase } from "@/lib/supabase"
-import type { User } from "@supabase/supabase-js"
+import type { User as SupabaseUser } from "@supabase/supabase-js"
+
+interface User {
+  id: string
+  email: string
+  name?: string
+  avatar_url?: string
+}
 
 interface AuthContextType {
   user: User | null
+  supabaseUser: SupabaseUser | null
   session: any | null
   isLoading: boolean
   isPreview: boolean
@@ -26,8 +34,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { session, loading: sessionLoading } = useSession()
+  const { session, isLoading: sessionLoading } = useSession()
   const [user, setUser] = useState<User | null>(null)
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
@@ -37,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (session?.user) {
+      setSupabaseUser(session.user)
       setUser({
         id: session.user.id,
         email: session.user.email!,
@@ -44,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         avatar_url: session.user.user_metadata?.avatar_url,
       })
     } else {
+      setSupabaseUser(null)
       setUser(null)
     }
     setIsLoading(false)
@@ -184,6 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     user,
+    supabaseUser,
     session,
     isLoading: isLoading || sessionLoading,
     isPreview: false,

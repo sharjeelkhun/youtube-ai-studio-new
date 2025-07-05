@@ -26,9 +26,9 @@ export default function ForgotPasswordPage() {
   // Validate email on change
   useEffect(() => {
     if (touched) {
-      const emailValidation = validateEmail(email)
-      if (!emailValidation.valid) {
-        setError(emailValidation.error || 'Invalid email')
+      const isValid = validateEmail(email)
+      if (!isValid) {
+        setError('Invalid email address')
       } else {
         setError(null)
       }
@@ -41,10 +41,10 @@ export default function ForgotPasswordPage() {
 
     // Validate email
     setTouched(true)
-    const emailValidation = validateEmail(email)
+    const isValid = validateEmail(email)
 
-    if (!emailValidation.valid) {
-      setError(emailValidation.error || 'Invalid email')
+    if (!isValid) {
+      setError('Invalid email address')
       return
     }
 
@@ -53,14 +53,9 @@ export default function ForgotPasswordPage() {
     setSuccess(null)
 
     try {
-      const result = await resetPassword(email)
-
-      if (result.success) {
-        setSuccess("Password reset email sent. Please check your inbox.")
-        setEmail("")
-      } else {
-        setError(result.error || 'Password reset failed')
-      }
+      await resetPassword(email)
+      setSuccess("Password reset email sent. Please check your inbox.")
+      setEmail("")
     } catch (error) {
       setError("An unexpected error occurred")
       console.error("Password reset error:", error)

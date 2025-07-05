@@ -50,9 +50,9 @@ export default function AuthDebugPage() {
                       ? {
                           id: user.id,
                           email: user.email,
-                          metadata: user.user_metadata,
                         }
                       : null,
+                    user_metadata: session?.user?.user_metadata || null,
                     session: session
                       ? {
                           expires_at: session.expires_at,

@@ -181,8 +181,8 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Last Updated</h3>
                 <p className="text-sm">
-                  {channelData?.last_updated
-                    ? new Date(channelData.last_updated).toLocaleDateString()
+                  {channelData?.updated_at
+                    ? new Date(channelData.updated_at).toLocaleDateString()
                     : "Not available"}
                 </p>
               </div>

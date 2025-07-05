@@ -123,7 +123,7 @@ export function DashboardContent() {
           <div className="flex flex-col">
             <span className="text-sm font-medium">{channelData.title}</span>
             <span className="text-xs text-muted-foreground">
-              {channelData.subscribers.toLocaleString()} subscribers • {channelData.videos} videos
+              {(channelData.subscriber_count ?? 0).toLocaleString()} subscribers • {(channelData.video_count ?? 0).toLocaleString()} videos
             </span>
           </div>
         </div>

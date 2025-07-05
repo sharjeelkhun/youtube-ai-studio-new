@@ -60,7 +60,7 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
         <Card className="w-full max-w-md">
           <CardHeader>
             <CardTitle>Error</CardTitle>
-            <CardDescription>{error.message}</CardDescription>
+            <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => refreshChannel()}>Retry</Button>
@@ -133,7 +133,7 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
         </TabsContent>
 
         <TabsContent value="videos">
-            <VideosTab channel={channel} />
+            <VideosTab channelData={channel} isLoading={loading} />
         </TabsContent>
 
         <TabsContent value="analytics">

@@ -204,7 +204,13 @@ export default function VideoDetailPage() {
           <VideoComments videoId={video.id} />
         </TabsContent>
         <TabsContent value="editor" className="mt-4">
-          <VideoEditor video={video} />
+          <VideoEditor 
+            video={video} 
+            onSave={(updatedVideo) => {
+              console.log('Video updated:', updatedVideo)
+              // You can add additional logic here like refreshing the video data
+            }}
+          />
         </TabsContent>
       </Tabs>
     </div>

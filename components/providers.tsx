@@ -1,17 +1,17 @@
 "use client"
 
 import { SessionProvider } from "@/contexts/session-context"
-import { AuthProvider } from "@/contexts/auth-context"
+import { AuthContextWrapper } from "@/components/auth-context-wrapper"
 import { YouTubeChannelProvider } from "@/contexts/youtube-channel-context"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
-      <AuthProvider>
+      <AuthContextWrapper>
         <YouTubeChannelProvider>
           {children}
         </YouTubeChannelProvider>
-      </AuthProvider>
+      </AuthContextWrapper>
     </SessionProvider>
   )
 }
