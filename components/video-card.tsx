@@ -136,7 +136,13 @@ export function VideoCard({ video, onVideoUpdated }: VideoCardProps) {
           </div>
         </div>
         <div className="text-sm text-muted-foreground">
-          {new Date(video.published_at).toLocaleDateString()}
+          {video.published_at ? 
+            (video.published_at === "Invalid Date" || video.published_at === "Unknown date" ? 
+              "Unknown date" : 
+              video.published_at
+            ) : 
+            "Unknown date"
+          }
         </div>
       </CardContent>
     </Card>

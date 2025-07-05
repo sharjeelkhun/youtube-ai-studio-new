@@ -44,7 +44,15 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer text-red-600"
-          onClick={() => signOut()}
+          onClick={async () => {
+            try {
+              await signOut()
+            } catch (error) {
+              console.error('Logout failed:', error)
+              // Force redirect to login even if logout fails
+              window.location.href = '/login'
+            }
+          }}
         >
           Log out
         </DropdownMenuItem>

@@ -7,7 +7,7 @@ import { fetchFromYouTubeAPI } from "@/utils/youtube-api"
 const mockVideos: Video[] = [
   {
     id: "1",
-    thumbnail: "/placeholder.svg",
+    thumbnail_url: "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
     title: "How to Use AI for Content Creation in 2025",
     status: "Published",
     views: 12500,
@@ -19,7 +19,7 @@ const mockVideos: Video[] = [
   },
   {
     id: "2",
-    thumbnail: "/placeholder.svg",
+    thumbnail_url: "https://i.ytimg.com/vi/9bZkp7q19f0/hqdefault.jpg",
     title: "10 Tips for Better YouTube SEO",
     status: "Published",
     views: 8300,
@@ -31,7 +31,7 @@ const mockVideos: Video[] = [
   },
   {
     id: "3",
-    thumbnail: "/placeholder.svg",
+    thumbnail_url: "https://i.ytimg.com/vi/3JZ_D3ELwOQ/hqdefault.jpg",
     title: "The Ultimate Guide to Video Editing",
     status: "Draft",
     views: 0,
@@ -43,7 +43,7 @@ const mockVideos: Video[] = [
   },
   {
     id: "4",
-    thumbnail: "/placeholder.svg",
+    thumbnail_url: "https://i.ytimg.com/vi/L_jWHffIx5E/hqdefault.jpg",
     title: "Why You Should Start a YouTube Channel in 2025",
     status: "Published",
     views: 5200,
@@ -55,7 +55,7 @@ const mockVideos: Video[] = [
   },
   {
     id: "5",
-    thumbnail: "/placeholder.svg",
+    thumbnail_url: "https://i.ytimg.com/vi/tVj0ZTS4WF4/hqdefault.jpg",
     title: "Advanced Lighting Techniques for YouTube",
     status: "Scheduled",
     views: 0,
@@ -67,7 +67,7 @@ const mockVideos: Video[] = [
   },
   {
     id: "6",
-    thumbnail: "/placeholder.svg",
+    thumbnail_url: "https://i.ytimg.com/vi/ZZ5LpwO-An4/hqdefault.jpg",
     title: "How I Gained 10K Subscribers in 30 Days",
     status: "Published",
     views: 15800,
@@ -253,6 +253,14 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 // Videos API
 // Update the getVideos function to fetch real data
 export async function getVideos(search?: string, filter?: string): Promise<Video[]> {
+  console.log("getVideos called with search:", search, "filter:", filter)
+  // Force mock data for demo purposes
+  const result = await getMockVideos(search, filter)
+  console.log("getVideos returning:", result)
+  return result
+  
+  // Original YouTube API logic (commented out for demo)
+  /*
   try {
     // Check if we have a YouTube connection
     const token = sessionStorage.getItem("youtube_access_token")
@@ -270,7 +278,7 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
     // Map the response to our Video type
     let videos = data.items.map((item: any) => ({
       id: item.id,
-      thumbnail: item.snippet.thumbnails.medium.url,
+      thumbnail_url: item.snippet.thumbnails.medium.url,
       title: item.snippet.title,
       status:
         item.status.privacyStatus === "public"
@@ -302,6 +310,7 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
     // Fall back to mock data on error
     return getMockVideos(search, filter)
   }
+  */
 }
 
 // Helper function to get mock videos (for fallback)
@@ -310,6 +319,8 @@ function getMockVideos(search?: string, filter?: string): Promise<Video[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
       let filteredVideos = [...mockVideos]
+      
+      console.log("Mock videos being returned:", filteredVideos)
 
       if (search) {
         filteredVideos = filteredVideos.filter((video) => video.title.toLowerCase().includes(search.toLowerCase()))
@@ -346,7 +357,7 @@ export async function getVideo(id: string): Promise<Video | null> {
     const item = data.items[0]
     return {
       id: item.id,
-      thumbnail: item.snippet.thumbnails.medium.url,
+      thumbnail_url: item.snippet.thumbnails.medium.url,
       title: item.snippet.title,
       status:
         item.status.privacyStatus === "public"

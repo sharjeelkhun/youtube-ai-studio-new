@@ -157,19 +157,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
     
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) {
-        console.error('Sign out error:', error)
-        throw error
+      // Clear local state immediately
+      setUser(null)
+      setSupabaseUser(null)
+      
+      // Try to sign out from Supabase
+      try {
+        const { error } = await supabase.auth.signOut()
+        if (error) {
+          console.error('Sign out error:', error)
+        } else {
+          console.log('Sign out successful')
+        }
+      } catch (signOutError) {
+        console.error('Supabase sign out error:', signOutError)
       }
-
-      console.log('Sign out successful')
-      // Let the middleware handle the redirect
-      router.refresh()
+      
+      // Clear all stored session data more thoroughly
+      if (typeof window !== 'undefined') {
+        // Clear localStorage
+        localStorage.clear()
+        
+        // Clear sessionStorage
+        sessionStorage.clear()
+        
+        // Clear all cookies related to Supabase
+        document.cookie.split(";").forEach(function(c) { 
+          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
+        });
+        
+        // Clear specific Supabase cookies
+        const cookiesToClear = [
+          'sb-access-token',
+          'sb-refresh-token',
+          'supabase.auth.token',
+          'supabase.auth.refreshToken'
+        ]
+        
+        cookiesToClear.forEach(cookieName => {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        })
+        
+        // Force clear any remaining Supabase session data
+        try {
+          await supabase.auth.signOut({ scope: 'global' })
+        } catch (e) {
+          console.log('Global sign out failed, continuing with local cleanup')
+        }
+      }
+      
+      // Force redirect to login with cache-busting
+      window.location.href = '/login?logout=' + Date.now()
     } catch (err) {
       console.error('Unexpected error during sign out:', err)
       setError(err instanceof Error ? err : new Error('Failed to sign out'))
-      throw err
+      // Force redirect even if there's an error
+      window.location.href = '/login?logout=' + Date.now()
     } finally {
       setLoading(false)
     }

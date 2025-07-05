@@ -76,7 +76,7 @@ export function VideosTab() {
       // For now, we'll just simulate it by adding to our local state
       const newVideo: Video = {
         id: Math.random().toString(36).substring(2, 9),
-        thumbnail: "/placeholder.svg",
+        thumbnail_url: "/placeholder.svg",
         title: newVideoTitle,
         description: newVideoDescription,
         status: "Draft",

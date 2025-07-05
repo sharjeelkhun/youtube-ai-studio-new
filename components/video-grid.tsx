@@ -36,7 +36,6 @@ import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { supabase } from "@/lib/supabase"
 import { VideoCard } from './video-card'
 import { Alert, AlertDescription } from './ui/alert'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from '@/lib/database.types'
 import { useSession } from '@/contexts/session-context'
 import { Input } from '@/components/ui/input'
@@ -56,7 +55,6 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [error, setError] = useState<string | null>(null)
-  const supabase = createClientComponentClient<Database>()
 
   const handleSync = async () => {
     console.log('Starting video sync...')
@@ -195,9 +193,9 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
                 description: video.description || '',
                 thumbnail_url: video.thumbnail_url || '/placeholder.svg',
                 published_at: video.published_at || '',
-                view_count: video.view_count ?? 0,
-                like_count: video.like_count ?? 0,
-                comment_count: video.comment_count ?? 0,
+                view_count: video.views ?? video.view_count ?? 0,
+                like_count: video.likes ?? video.like_count ?? 0,
+                comment_count: video.comments ?? video.comment_count ?? 0,
                 duration: '0:00',
                 status: video.status
               }}

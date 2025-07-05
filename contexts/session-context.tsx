@@ -62,7 +62,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           await new Promise(resolve => setTimeout(resolve, 100));
           router.replace('/dashboard');
         } else if (event === 'SIGNED_OUT') {
-          router.replace('/login');
+          // Don't redirect on sign out - let the logout function handle it
+          console.log('User signed out, clearing session');
         }
       }
     });
