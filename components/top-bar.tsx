@@ -6,7 +6,7 @@ import { UserMenu } from "@/components/user-menu"
 import { useAuth } from "@/contexts/auth-context"
 import { useSession } from "@/contexts/session-context"
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 import { useToast } from "@/components/ui/use-toast"
 
 interface TopBarProps {
@@ -18,6 +18,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const [profile, setProfile] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { toast } = useToast()
+  const supabase = createClient()
 
   useEffect(() => {
     const fetchProfile = async () => {
