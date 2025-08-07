@@ -5,10 +5,6 @@ import { useEffect, useState } from 'react'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import type { Database } from '@/lib/database.types'
 import { createClient } from '@/lib/supabase'
-import { VideoGrid } from '@/components/video-grid'
-import { useEffect, useState } from 'react'
-import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
-import type { Database } from '@/lib/database.types'
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
