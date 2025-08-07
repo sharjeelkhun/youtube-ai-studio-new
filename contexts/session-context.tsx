@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Session } from '@supabase/supabase-js';
 
 interface SessionContextType {
@@ -24,6 +24,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     let mounted = true;
@@ -57,7 +58,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       if (mounted) {
         setSession(session);
         
-        if (event === 'SIGNED_IN') {
+        if (event === 'SIGNED_IN' && !pathname.startsWith('/dashboard')) {
           // Wait a bit to ensure session is properly set
           await new Promise(resolve => setTimeout(resolve, 100));
           router.replace('/dashboard');
