@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
+import { useSession } from '@/contexts/session-context'
+import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -48,28 +50,25 @@ export default function VideoPage() {
   const [history, setHistory] = useState<VideoHistory[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [newTag, setNewTag] = useState('')
+  const { session, isLoading: isSessionLoading } = useSession()
+  const { channel, loading: isChannelLoading } = useYouTubeChannel()
 
   useEffect(() => {
+    if (isSessionLoading || isChannelLoading) return
+
     const fetchVideo = async () => {
       try {
-        const supabase = createClientComponentClient()
-        const { data: { session } } = await supabase.auth.getSession()
-
         if (!session) {
           router.push('/login')
           return
         }
 
-        const { data: channel } = await supabase
-          .from('youtube_channels')
-          .select('id')
-          .eq('user_id', session.user.id)
-          .single()
-
         if (!channel) {
           setError('No connected YouTube channel found')
           return
         }
+
+        const supabase = createClientComponentClient()
 
         // First get the video from our database
         const { data: video, error } = await supabase
@@ -262,7 +261,7 @@ export default function VideoPage() {
     }
   }
 
-  if (loading) {
+  if (loading || isSessionLoading || isChannelLoading) {
     return (
       <div className="space-y-6">
         <div className="h-8 w-1/3 animate-pulse rounded bg-muted" />
