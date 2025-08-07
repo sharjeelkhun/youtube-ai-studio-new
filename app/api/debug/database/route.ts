@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 
 export async function GET() {
+  const supabase = createClient()
   try {
     // Test database connection
     const { data, error } = await supabase.from("profiles").select("count").limit(1)

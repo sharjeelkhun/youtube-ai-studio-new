@@ -1,7 +1,7 @@
 "use client"
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
-import { supabase } from '@/lib/supabase'
+import { createClient } from '@/lib/supabase'
 import { useSession } from './session-context'
 import { Database } from '@/lib/database.types'
 
@@ -54,6 +54,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { session } = useSession()
+  const supabase = createClient()
 
   const refreshToken = useCallback(async (channelData: YouTubeChannel): Promise<YouTubeChannel> => {
     try {

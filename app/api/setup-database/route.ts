@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 
 export async function POST() {
+  const supabase = createClient()
   try {
     // Create profiles table if it doesn't exist
     const { error } = await supabase.rpc("execute_sql", {
