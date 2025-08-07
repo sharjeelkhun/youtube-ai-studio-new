@@ -10,6 +10,9 @@ export interface Database {
           avatar_url: string | null
           created_at: string
           updated_at: string
+          ai_provider: string | null
+          ai_api_key: string | null
+          ai_settings: Json | null
         }
         Insert: {
           id: string
@@ -17,6 +20,9 @@ export interface Database {
           avatar_url?: string | null
           created_at?: string
           updated_at?: string
+          ai_provider?: string | null
+          ai_api_key?: string | null
+          ai_settings?: Json | null
         }
         Update: {
           id?: string
@@ -24,6 +30,9 @@ export interface Database {
           avatar_url?: string | null
           created_at?: string
           updated_at?: string
+          ai_provider?: string | null
+          ai_api_key?: string | null
+          ai_settings?: Json | null
         }
       }
       youtube_channels: {

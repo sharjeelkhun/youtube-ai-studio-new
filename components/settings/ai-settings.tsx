@@ -1,8 +1,7 @@
 "use client"
 
 import { Badge } from "@/components/ui/badge"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -14,11 +13,14 @@ import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { useSession } from "@/contexts/session-context"
 
 export function AISettings() {
   const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("openai")
+  const { session } = useSession()
   const [apiKeys, setApiKeys] = useState({
     openai: "",
     gemini: "",
@@ -35,6 +37,27 @@ export function AISettings() {
     temperature: "balanced",
   })
 
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!session) return
+
+      const supabase = createClientComponentClient()
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("ai_provider, ai_api_key, ai_settings")
+        .eq("id", session.user.id)
+        .single()
+
+      if (data) {
+        setSelectedProvider(data.ai_provider || "openai")
+        setApiKeys(data.ai_api_key || { openai: "", gemini: "", anthropic: "", mistral: "" })
+        setAiSettings(data.ai_settings ? JSON.parse(data.ai_settings as string) : aiSettings)
+      }
+    }
+
+    fetchSettings()
+  }, [session])
+
   const handleApiKeyChange = (provider: string, value: string) => {
     setApiKeys((prev) => ({ ...prev, [provider]: value }))
   }
@@ -44,10 +67,29 @@ export function AISettings() {
   }
 
   const handleSaveSettings = async () => {
+    if (!session) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to save settings.",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const supabase = createClientComponentClient()
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          ai_provider: selectedProvider,
+          ai_api_key: JSON.stringify(apiKeys),
+          ai_settings: aiSettings,
+        })
+        .eq("id", session.user.id)
+
+      if (error) throw error
+
       toast({
         title: "AI settings saved",
         description: "Your AI provider settings have been updated successfully.",

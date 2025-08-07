@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { useSession } from '@/contexts/session-context'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
-import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube } from 'lucide-react'
+import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 
@@ -49,6 +49,7 @@ export default function VideoPage() {
   const [editedVideo, setEditedVideo] = useState<Video | null>(null)
   const [history, setHistory] = useState<VideoHistory[]>([])
   const [isSaving, setIsSaving] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const [newTag, setNewTag] = useState('')
   const { session, isLoading: isSessionLoading } = useSession()
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
@@ -218,11 +219,48 @@ export default function VideoPage() {
   }
 
   const handleAIGenerate = async () => {
-    // TODO: Implement AI generation for title, description, and tags
-    toast({
-      title: 'Coming Soon',
-      description: 'AI generation feature will be available soon!'
-    })
+    if (!editedVideo) return
+    setIsGenerating(true)
+
+    try {
+      const response = await fetch('/api/ai/optimize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editedVideo.title,
+          description: editedVideo.description,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate AI content')
+      }
+
+      const data = await response.json()
+
+      setEditedVideo((prev) => ({
+        ...prev!,
+        title: data.title,
+        description: data.description,
+        tags: [...(prev?.tags || []), ...data.tags],
+      }))
+
+      toast({
+        title: 'Success',
+        description: 'AI has optimized your video details.',
+      })
+    } catch (error) {
+      console.error('Error generating AI content:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to generate AI content. Please check your AI settings.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const handleAddTag = () => {
@@ -301,8 +339,12 @@ export default function VideoPage() {
             <Youtube className="mr-2 h-4 w-4" />
             Edit in Studio
           </Button>
-          <Button variant="outline" onClick={handleAIGenerate}>
-            <Wand2 className="mr-2 h-4 w-4" />
+          <Button variant="outline" onClick={handleAIGenerate} disabled={isGenerating}>
+            {isGenerating ? (
+              <Loader className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Wand2 className="mr-2 h-4 w-4" />
+            )}
             AI Generate
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
