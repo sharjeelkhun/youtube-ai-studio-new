@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ExclamationTriangleIcon, CheckCircledIcon } from "@radix-ui/react-icons"
 
@@ -10,6 +10,7 @@ export function SupabaseStatus() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
+    const supabase = createClient()
     const checkConnection = async () => {
       if (!supabase) {
         setStatus("error")
