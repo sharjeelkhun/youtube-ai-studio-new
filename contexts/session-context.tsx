@@ -1,23 +1,19 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
-import { Session } from '@supabase/supabase-js';
+import { Session, SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/database.types';
 
 interface SessionContextType {
   session: Session | null;
   isLoading: boolean;
   error: Error | null;
-  supabase: typeof supabase;
+  supabase: SupabaseClient<Database>;
 }
 
-const SessionContext = createContext<SessionContextType>({
-  session: null,
-  isLoading: true,
-  error: null,
-  supabase
-});
+const SessionContext = createContext<SessionContextType | undefined>(undefined);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -25,6 +21,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<Error | null>(null);
   const router = useRouter();
   const pathname = usePathname();
+  const supabase = createClient();
 
   useEffect(() => {
     let mounted = true;
@@ -73,7 +70,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [router]);
+  }, [router, supabase]);
 
   return (
     <SessionContext.Provider value={{ session, isLoading, error, supabase }}>

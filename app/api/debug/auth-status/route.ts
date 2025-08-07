@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 
 export async function GET() {
+  const supabase = createClient()
   try {
     // Check if we're in a preview environment
     const isPreview = !process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY

@@ -1,6 +1,8 @@
-import { supabase } from "./supabase"
+import { createClient } from "./supabase"
 import type { Database } from "./database.types"
 import { toast } from '@/components/ui/use-toast'
+
+const supabase = createClient()
 
 // Type for YouTube channel
 export type YouTubeChannel = Database["public"]["Tables"]["youtube_channels"]["Row"] & {

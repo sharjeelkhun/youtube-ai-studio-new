@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -100,6 +100,7 @@ export default function ResetPasswordContent() {
         return
       }
 
+      const supabase = createClient()
       // Update password
       const { error } = await supabase.auth.updateUser({
         password,
