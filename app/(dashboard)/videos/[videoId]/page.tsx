@@ -121,7 +121,7 @@ export default function VideoPage() {
         // Fetch profile data
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('ai_provider, ai_api_key')
+          .select('ai_provider, ai_settings')
           .eq('id', session.user.id)
           .single()
         setProfile(profileData)
@@ -230,7 +230,7 @@ export default function VideoPage() {
   const handleAIGenerate = async () => {
     if (!editedVideo) return
 
-    if (!profile?.ai_api_key) {
+    if (!profile?.ai_settings) {
       toast({
         title: 'AI Provider Not Configured',
         description: 'Please select an AI provider and add your API key in the settings.',
@@ -239,8 +239,9 @@ export default function VideoPage() {
       return
     }
 
-    const apiKeys = JSON.parse(profile.ai_api_key)
-    if (!apiKeys[profile.ai_provider]) {
+    const settings = JSON.parse(profile.ai_settings as string)
+    const apiKeys = settings.apiKeys
+    if (!apiKeys || !apiKeys[profile.ai_provider]) {
       toast({
         title: 'API Key Missing',
         description: `You have not added an API key for ${profile.ai_provider}. Please add it in the settings.`,
