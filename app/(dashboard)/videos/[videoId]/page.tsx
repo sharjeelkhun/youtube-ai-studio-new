@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,6 +54,7 @@ export default function VideoPage() {
   const { session, isLoading: isSessionLoading } = useSession()
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
   const [profile, setProfile] = useState<any>(null)
+  const supabase = createClient()
 
   useEffect(() => {
     if (isSessionLoading || isChannelLoading) return
@@ -69,8 +70,6 @@ export default function VideoPage() {
           setError('No connected YouTube channel found')
           return
         }
-
-        const supabase = createClientComponentClient()
 
         // First get the video from our database
         const { data: video, error } = await supabase
@@ -159,7 +158,6 @@ export default function VideoPage() {
       }
 
       // Save to local history table
-      const supabase = createClientComponentClient()
       await supabase.from('video_history').insert({
         video_id: video?.id,
         title: editedVideo.title,
@@ -188,7 +186,6 @@ export default function VideoPage() {
     if (!video) return
 
     try {
-      const supabase = createClientComponentClient()
       const { error } = await supabase
         .from('youtube_videos')
         .update({
