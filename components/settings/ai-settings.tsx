@@ -50,7 +50,9 @@ export function AISettings() {
 
       if (data) {
         setSelectedProvider(data.ai_provider || "openai")
-        setApiKeys(data.ai_api_key || { openai: "", gemini: "", anthropic: "", mistral: "" })
+        if (data.ai_api_key) {
+          setApiKeys(JSON.parse(data.ai_api_key))
+        }
         setAiSettings(data.ai_settings ? JSON.parse(data.ai_settings as string) : aiSettings)
       }
     }
@@ -84,7 +86,7 @@ export function AISettings() {
         .update({
           ai_provider: selectedProvider,
           ai_api_key: JSON.stringify(apiKeys),
-          ai_settings: aiSettings,
+          ai_settings: JSON.stringify(aiSettings),
         })
         .eq("id", session.user.id)
 
