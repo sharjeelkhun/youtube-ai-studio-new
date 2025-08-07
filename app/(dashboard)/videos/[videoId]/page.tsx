@@ -53,6 +53,7 @@ export default function VideoPage() {
   const [newTag, setNewTag] = useState('')
   const { session, isLoading: isSessionLoading } = useSession()
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
+  const [profile, setProfile] = useState<any>(null)
 
   useEffect(() => {
     if (isSessionLoading || isChannelLoading) return
@@ -116,6 +117,14 @@ export default function VideoPage() {
         if (historyData) {
           setHistory(historyData)
         }
+
+        // Fetch profile data
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('ai_provider, ai_api_key')
+          .eq('id', session.user.id)
+          .single()
+        setProfile(profileData)
       } catch (error) {
         console.error('Error fetching video:', error)
         setError('Failed to load video')
@@ -220,6 +229,26 @@ export default function VideoPage() {
 
   const handleAIGenerate = async () => {
     if (!editedVideo) return
+
+    if (!profile?.ai_api_key) {
+      toast({
+        title: 'AI Provider Not Configured',
+        description: 'Please select an AI provider and add your API key in the settings.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const apiKeys = JSON.parse(profile.ai_api_key)
+    if (!apiKeys[profile.ai_provider]) {
+      toast({
+        title: 'API Key Missing',
+        description: `You have not added an API key for ${profile.ai_provider}. Please add it in the settings.`,
+        variant: 'destructive',
+      })
+      return
+    }
+
     setIsGenerating(true)
 
     try {
