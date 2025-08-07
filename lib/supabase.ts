@@ -13,10 +13,3 @@ export const isPreview = process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true'
 export const isMockClient = () => {
   return process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true'
 }
-
-// Preview/Mock mode utilities
-export const isPreview = process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true'
-
-export const isMockClient = () => {
-  return process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true'
-}
