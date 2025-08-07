@@ -236,7 +236,7 @@ export default function VideoPage() {
       return
     }
 
-    const settings = JSON.parse(profile.ai_settings as string)
+    const settings = profile.ai_settings as any
     const apiKeys = settings.apiKeys
     if (!apiKeys || !apiKeys[profile.ai_provider]) {
       toast({
