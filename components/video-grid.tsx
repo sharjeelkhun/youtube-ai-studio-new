@@ -196,7 +196,7 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
                 view_count: video.views ?? video.view_count ?? 0,
                 like_count: video.likes ?? video.like_count ?? 0,
                 comment_count: video.comments ?? video.comment_count ?? 0,
-                duration: '0:00',
+                duration: video.duration || '0:00',
                 status: video.status
               }}
               onVideoUpdated={onVideoDeleted}

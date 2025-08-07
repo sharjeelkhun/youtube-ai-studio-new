@@ -16,6 +16,7 @@ export interface Video {
   description?: string
   tags?: string[]
   url?: string
+  duration?: string
 }
 
 export interface AnalyticsData {
