@@ -33,7 +33,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/auth-context"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
-import { supabase } from "@/lib/supabase"
 import { VideoCard } from './video-card'
 import { Alert, AlertDescription } from './ui/alert'
 import type { Database } from '@/lib/database.types'
