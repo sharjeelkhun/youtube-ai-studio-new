@@ -51,7 +51,7 @@ export function AISettings() {
       if (data) {
         setSelectedProvider(data.ai_provider || "openai")
         if (data.ai_settings) {
-          const settings = JSON.parse(data.ai_settings as string)
+          const settings = data.ai_settings as any
           setApiKeys(settings.apiKeys || { openai: "", gemini: "", anthropic: "", mistral: "" })
           setAiSettings(settings.features || aiSettings)
         }
