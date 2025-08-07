@@ -137,7 +137,8 @@ export default function VideosPage() {
         publishedAt: video.published_at || 'Unknown date',
         description: video.description || '',
         tags: video.tags || [],
-        url: undefined // or construct a URL if needed
+        url: undefined, // or construct a URL if needed
+        duration: video.duration || '0'
       }))} />
     </div>
   )
