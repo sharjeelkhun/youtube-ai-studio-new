@@ -44,16 +44,17 @@ export function AISettings() {
       const supabase = createClientComponentClient()
       const { data, error } = await supabase
         .from("profiles")
-        .select("ai_provider, ai_api_key, ai_settings")
+        .select("ai_provider, ai_settings")
         .eq("id", session.user.id)
         .single()
 
       if (data) {
         setSelectedProvider(data.ai_provider || "openai")
-        if (data.ai_api_key) {
-          setApiKeys(JSON.parse(data.ai_api_key))
+        if (data.ai_settings) {
+          const settings = JSON.parse(data.ai_settings as string)
+          setApiKeys(settings.apiKeys || { openai: "", gemini: "", anthropic: "", mistral: "" })
+          setAiSettings(settings.features || aiSettings)
         }
-        setAiSettings(data.ai_settings ? JSON.parse(data.ai_settings as string) : aiSettings)
       }
     }
 
@@ -85,8 +86,7 @@ export function AISettings() {
         .from("profiles")
         .update({
           ai_provider: selectedProvider,
-          ai_api_key: JSON.stringify(apiKeys),
-          ai_settings: JSON.stringify(aiSettings),
+          ai_settings: JSON.stringify({ apiKeys: apiKeys, features: aiSettings }),
         })
         .eq("id", session.user.id)
 

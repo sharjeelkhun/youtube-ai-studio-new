@@ -11,7 +11,6 @@ export interface Database {
           created_at: string
           updated_at: string
           ai_provider: string | null
-          ai_api_key: string | null
           ai_settings: Json | null
         }
         Insert: {
@@ -21,7 +20,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
           ai_provider?: string | null
-          ai_api_key?: string | null
           ai_settings?: Json | null
         }
         Update: {
@@ -31,7 +29,6 @@ export interface Database {
           created_at?: string
           updated_at?: string
           ai_provider?: string | null
-          ai_api_key?: string | null
           ai_settings?: Json | null
         }
       }
