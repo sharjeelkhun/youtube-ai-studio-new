@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useSession } from "./session-context"
 import type { Database } from "@/lib/database.types"
-import { createClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface User {
@@ -43,7 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const searchParams = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     if (session?.user) {
