@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase"
+import { supabase } from "@/lib/supabase"
 
 export async function GET() {
-  const supabase = createClient()
   try {
     // Check if tables exist
     const tables = ["profiles", "youtube_channels", "videos", "analytics_data"]
