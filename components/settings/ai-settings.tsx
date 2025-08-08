@@ -85,7 +85,7 @@ export function AISettings() {
         .from("profiles")
         .update({
           ai_provider: selectedProvider,
-          ai_settings: JSON.stringify({ apiKeys: apiKeys, features: aiSettings }),
+          ai_settings: { apiKeys: apiKeys, features: aiSettings } as any,
         })
         .eq("id", session.user.id)
 
