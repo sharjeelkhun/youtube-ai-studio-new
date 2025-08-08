@@ -52,8 +52,8 @@ export default function VideoPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [newTag, setNewTag] = useState('')
   const { session, isLoading: isSessionLoading } = useSession()
-  const { channel, loading: isChannelLoading } = useYouTubeChannel()
   const [profile, setProfile] = useState<any>(null)
+  const { channel, loading: isChannelLoading } = useYouTubeChannel()
 
   useEffect(() => {
     if (isSessionLoading || isChannelLoading) return

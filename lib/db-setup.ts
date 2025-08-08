@@ -1,6 +1,4 @@
-import { createClient } from "@/lib/supabase"
-
-const supabase = createClient()
+import { supabase } from "@/lib/supabase"
 
 // Create profiles table if it doesn't exist
 export async function setupDatabase() {
