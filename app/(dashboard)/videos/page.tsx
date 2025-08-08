@@ -4,13 +4,12 @@ import { VideoGrid } from '@/components/video-grid'
 import { useEffect, useState } from 'react'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import type { Database } from '@/lib/database.types'
-import { createClient } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { channel } = useYouTubeChannel()
-  const supabase = createClient()
 
   useEffect(() => {
     const fetchVideos = async () => {
