@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { createClient } from "@/lib/supabase"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { useSession } from "@/contexts/session-context"
 
 export function AISettings() {
@@ -21,7 +21,6 @@ export function AISettings() {
   const [isLoading, setIsLoading] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("openai")
   const { session } = useSession()
-  const supabase = createClient()
   const [apiKeys, setApiKeys] = useState({
     openai: "",
     gemini: "",
@@ -42,6 +41,7 @@ export function AISettings() {
     const fetchSettings = async () => {
       if (!session) return
 
+      const supabase = createClientComponentClient()
       const { data, error } = await supabase
         .from("profiles")
         .select("ai_provider, ai_settings")
@@ -59,7 +59,7 @@ export function AISettings() {
     }
 
     fetchSettings()
-  }, [session, supabase])
+  }, [session])
 
   const handleApiKeyChange = (provider: string, value: string) => {
     setApiKeys((prev) => ({ ...prev, [provider]: value }))
@@ -81,11 +81,12 @@ export function AISettings() {
 
     setIsLoading(true)
     try {
+      const supabase = createClientComponentClient()
       const { error } = await supabase
         .from("profiles")
         .update({
           ai_provider: selectedProvider,
-          ai_settings: { apiKeys: apiKeys, features: aiSettings },
+          ai_settings: { apiKeys: apiKeys, features: aiSettings } as any,
         })
         .eq("id", session.user.id)
 
