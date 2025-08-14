@@ -227,22 +227,6 @@ export interface Database {
           updated_at?: string
           tags?: string[]
         }
-      },
-      Functions: {
-        get_ai_settings: {
-          Args: Record<string, unknown>
-          Returns: {
-            provider: string
-            settings: Json
-          }[]
-        },
-        update_ai_settings: {
-          Args: {
-            new_provider: string
-            new_settings: Json
-          }
-          Returns: undefined
-        }
       }
     }
   }
