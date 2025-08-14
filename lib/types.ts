@@ -63,3 +63,24 @@ export interface VideoImprovement {
   videoTitle: string
   suggestions: string[]
 }
+
+export interface AiSettingsResponse {
+  provider: string | null
+  settings: {
+    apiKeys: {
+      openai: string
+      gemini: string
+      anthropic: string
+      mistral: string
+    }
+    features: {
+      enhanceVideoTitles: boolean
+      generateThumbnailIdeas: boolean
+      improveDescriptions: boolean
+      suggestTags: boolean
+      contentIdeas: boolean
+      defaultModel: string
+      temperature: string
+    }
+  } | null
+}
