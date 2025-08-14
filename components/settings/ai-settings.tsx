@@ -41,16 +41,25 @@ export function AISettings() {
     const fetchSettings = async () => {
       if (!session) return
 
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("ai_provider, ai_settings")
-        .eq("id", session.user.id)
-        .single()
+      // Call the new RPC function to get settings
+      const { data, error } = await supabase.rpc("get_ai_settings").single()
+
+      if (error) {
+        console.error("Error fetching AI settings via RPC:", error)
+        // Optionally, show a toast to the user
+        toast({
+          title: "Error",
+          description: "Could not load your saved AI settings.",
+          variant: "destructive",
+        })
+        return
+      }
 
       if (data) {
-        setSelectedProvider(data.ai_provider || "openai")
-        if (data.ai_settings) {
-          const settings = data.ai_settings as any
+        // Note: The RPC function returns columns named 'provider' and 'settings'
+        setSelectedProvider(data.provider || "openai")
+        if (data.settings) {
+          const settings = data.settings as any
           setApiKeys(settings.apiKeys || { openai: "", gemini: "", anthropic: "", mistral: "" })
           setAiSettings(settings.features || aiSettings)
         }
@@ -58,7 +67,7 @@ export function AISettings() {
     }
 
     fetchSettings()
-  }, [session])
+  }, [session, toast])
 
   const handleApiKeyChange = (provider: string, value: string) => {
     setApiKeys((prev) => ({ ...prev, [provider]: value }))
@@ -80,15 +89,16 @@ export function AISettings() {
 
     setIsLoading(true)
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          ai_provider: selectedProvider,
-          ai_settings: { apiKeys: apiKeys, features: aiSettings },
-        })
-        .eq("id", session.user.id)
+      // Call the new RPC function to update settings
+      const { error } = await supabase.rpc("update_ai_settings", {
+        new_provider: selectedProvider,
+        new_settings: { apiKeys: apiKeys, features: aiSettings },
+      })
 
-      if (error) throw error
+      if (error) {
+        console.error("Error saving AI settings via RPC:", error)
+        throw error
+      }
 
       toast({
         title: "AI settings saved",
