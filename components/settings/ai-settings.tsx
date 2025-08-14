@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { useSession } from "@/contexts/session-context"
 import { supabase } from "@/lib/supabase"
-import { AiSettingsResponse } from "@/lib/types"
 
 export function AISettings() {
   const { toast } = useToast()
@@ -43,7 +42,7 @@ export function AISettings() {
       if (!session) return
 
       // Call the new RPC function to get settings
-      const { data, error } = await supabase.rpc<AiSettingsResponse>("get_ai_settings").single()
+      const { data, error } = await supabase.rpc("get_ai_settings").single()
 
       if (error) {
         console.error("Error fetching AI settings via RPC:", error)
@@ -60,7 +59,7 @@ export function AISettings() {
         // Note: The RPC function returns columns named 'provider' and 'settings'
         setSelectedProvider(data.provider || "openai")
         if (data.settings) {
-          const settings = data.settings
+          const settings = data.settings as any
           setApiKeys(settings.apiKeys || { openai: "", gemini: "", anthropic: "", mistral: "" })
           setAiSettings(settings.features || aiSettings)
         }
