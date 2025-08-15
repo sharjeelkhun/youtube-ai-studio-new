@@ -15,7 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator"
 import { useSession } from "@/contexts/session-context"
 import { supabase } from "@/lib/supabase"
-import { AiSettingsResponse } from "@/lib/types"
 
 export function AISettings() {
   const { toast } = useToast()
@@ -42,28 +41,32 @@ export function AISettings() {
     const fetchSettings = async () => {
       if (!session) return
 
-      // Use a type assertion on the rpc call as a last resort to bypass a persistent build error.
-      const { data, error } = await (supabase.rpc as any)("get_ai_settings", {}).single()
+      // Calling the RPC function without .single() makes it robust to cases where no profile exists yet.
+      // It will return an empty array [] instead of an error, which is easier to handle.
+      const { data, error } = await supabase.rpc("get_ai_settings")
 
       if (error) {
         console.error("Error fetching AI settings via RPC:", error)
         toast({
-          title: "Error",
-          description: "Could not load your saved AI settings.",
+          title: "Error fetching settings",
+          description: "Could not load your saved AI settings. Please try again.",
           variant: "destructive",
         })
         return
       }
 
-      if (data) {
-        const typedData = data as AiSettingsResponse
-        setSelectedProvider(typedData.provider || "openai")
-        if (typedData.settings) {
-          const settings = typedData.settings
+      // If data is returned and the array has content, it means we found the user's settings.
+      if (data && data.length > 0) {
+        const userSettings = data[0]
+        setSelectedProvider(userSettings.provider || "openai")
+        if (userSettings.settings) {
+          const settings = userSettings.settings as any
           setApiKeys(settings.apiKeys || { openai: "", gemini: "", anthropic: "", mistral: "" })
           setAiSettings(settings.features || aiSettings)
         }
       }
+      // If no data is returned, we do nothing and the component will use the default state.
+      // This is the expected behavior for a new user with no saved settings.
     }
 
     fetchSettings()
