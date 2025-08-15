@@ -42,12 +42,11 @@ export function AISettings() {
     const fetchSettings = async () => {
       if (!session) return
 
-      // Call the new RPC function to get settings
-      const { data, error } = await supabase.rpc<AiSettingsResponse>("get_ai_settings", {}).single()
+      // Use a type assertion on the rpc call as a last resort to bypass a persistent build error.
+      const { data, error } = await (supabase.rpc as any)("get_ai_settings", {}).single()
 
       if (error) {
         console.error("Error fetching AI settings via RPC:", error)
-        // Optionally, show a toast to the user
         toast({
           title: "Error",
           description: "Could not load your saved AI settings.",
@@ -57,10 +56,10 @@ export function AISettings() {
       }
 
       if (data) {
-        // Note: The RPC function returns columns named 'provider' and 'settings'
-        setSelectedProvider(data.provider || "openai")
-        if (data.settings) {
-          const settings = data.settings
+        const typedData = data as AiSettingsResponse
+        setSelectedProvider(typedData.provider || "openai")
+        if (typedData.settings) {
+          const settings = typedData.settings
           setApiKeys(settings.apiKeys || { openai: "", gemini: "", anthropic: "", mistral: "" })
           setAiSettings(settings.features || aiSettings)
         }
