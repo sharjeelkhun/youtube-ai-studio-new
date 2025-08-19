@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/components/ui/use-toast'
 import { useSession } from '@/contexts/session-context'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
+import { useProfile } from '@/contexts/profile-context'
 import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -53,7 +54,7 @@ export default function VideoPage() {
   const [newTag, setNewTag] = useState('')
   const [hasChanges, setHasChanges] = useState(false)
   const { session, isLoading: isSessionLoading } = useSession()
-  const [profile, setProfile] = useState<any>(null)
+  const { profile, loading: isProfileLoading } = useProfile()
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
 
   useEffect(() => {
@@ -67,7 +68,7 @@ export default function VideoPage() {
   }, [editedVideo, video])
 
   useEffect(() => {
-    if (isSessionLoading || isChannelLoading) return
+    if (isSessionLoading || isChannelLoading || isProfileLoading) return
 
     const fetchVideo = async () => {
       try {
@@ -128,23 +129,6 @@ export default function VideoPage() {
         if (historyData) {
           setHistory(historyData)
         }
-
-        // Fetch profile data
-        const { data: rpcData, error: rpcError } = await supabase.rpc("get_ai_settings")
-
-        if (rpcError) {
-          console.error("Error fetching profile data via RPC:", rpcError)
-          // We don't need to throw, but we can't proceed with AI features
-        }
-
-        if (rpcData && rpcData.length > 0) {
-          setProfile({
-            ai_provider: rpcData[0].provider,
-            ai_settings: rpcData[0].settings,
-          })
-        } else {
-          setProfile(null)
-        }
       } catch (error) {
         console.error('Error fetching video:', error)
         setError('Failed to load video')
@@ -154,7 +138,7 @@ export default function VideoPage() {
     }
 
     fetchVideo()
-  }, [params.videoId, router])
+  }, [params.videoId, router, session, channel, isSessionLoading, isChannelLoading, isProfileLoading])
 
   const handleSave = async () => {
     if (!editedVideo) return
@@ -353,7 +337,7 @@ export default function VideoPage() {
     }
   }
 
-  if (loading || isSessionLoading || isChannelLoading) {
+  if (loading || isSessionLoading || isChannelLoading || isProfileLoading) {
     return (
       <div className="space-y-6">
         <div className="h-8 w-1/3 animate-pulse rounded bg-muted" />
