@@ -277,7 +277,10 @@ export default function VideoPage() {
       })
 
       if (!response.ok) {
-        throw new Error('Failed to generate AI content')
+        // Try to get the specific error message from the API response body
+        const errorBody = await response.json().catch(() => null)
+        const errorMessage = errorBody?.error || 'An unknown error occurred.'
+        throw new Error(errorMessage)
       }
 
       const data = await response.json()
@@ -290,14 +293,14 @@ export default function VideoPage() {
       }))
 
       toast({
-        title: 'Success',
+        title: 'Success!',
         description: 'AI has optimized your video details.',
       })
     } catch (error) {
       console.error('Error generating AI content:', error)
       toast({
-        title: 'Error',
-        description: 'Failed to generate AI content. Please check your AI settings.',
+        title: 'AI Generation Failed',
+        description: error instanceof Error ? error.message : 'An unknown error occurred. Please check the console for details.',
         variant: 'destructive',
       })
     } finally {
