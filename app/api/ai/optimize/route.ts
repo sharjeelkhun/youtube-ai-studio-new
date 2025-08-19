@@ -66,14 +66,21 @@ export async function POST(req: Request) {
     const response = await result.response
     const text = response.text()
 
-    // Clean the response text to ensure it's valid JSON
-    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim()
-
-    const optimizedData = JSON.parse(jsonString)
-
-    return NextResponse.json(optimizedData)
+    try {
+      // Clean the response text to ensure it's valid JSON
+      const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim()
+      const optimizedData = JSON.parse(jsonString)
+      return NextResponse.json(optimizedData)
+    } catch (parseError) {
+      console.error('[AI_OPTIMIZE_ERROR] Failed to parse JSON response from AI:', text)
+      return NextResponse.json({ error: 'The AI returned a response in an invalid format. Please try again.' }, { status: 500 })
+    }
   } catch (error) {
     console.error('[AI_OPTIMIZE_ERROR]', error)
-    return new NextResponse('Internal Error', { status: 500 })
+    // Check for specific API key errors from Google
+    if (error.message?.includes('API key not valid')) {
+      return NextResponse.json({ error: 'Your Google Gemini API key is not valid. Please check it in the settings.' }, { status: 400 })
+    }
+    return NextResponse.json({ error: 'An unexpected error occurred while communicating with the AI provider.' }, { status: 500 })
   }
 }
