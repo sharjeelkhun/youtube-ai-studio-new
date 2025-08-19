@@ -77,9 +77,9 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error('[AI_OPTIMIZE_ERROR]', error)
-    // Type guard to check if error is an instance of Error
-    if (error instanceof Error && error.message.includes('API key not valid')) {
-      return NextResponse.json({ error: 'Your Google Gemini API key is not valid. Please check it in the settings.' }, { status: 400 })
+    // Use a case-insensitive regex to broadly catch API key-related errors.
+    if (error instanceof Error && /API key/i.test(error.message)) {
+      return NextResponse.json({ error: 'Your Google Gemini API key seems to be invalid. Please check it in the settings.' }, { status: 400 })
     }
     return NextResponse.json({ error: 'An unexpected error occurred while communicating with the AI provider.' }, { status: 500 })
   }
