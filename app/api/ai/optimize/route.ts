@@ -13,7 +13,7 @@ export async function POST(req: Request) {
     } = await supabase.auth.getSession()
 
     if (!session) {
-      return new NextResponse('Unauthorized', { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { data: profile } = await supabase
@@ -23,14 +23,14 @@ export async function POST(req: Request) {
       .single()
 
     if (!profile || !profile.ai_provider || !profile.ai_settings) {
-      return new NextResponse('AI provider not configured', { status: 400 })
+      return NextResponse.json({ error: 'AI provider not configured. Please configure it in the settings.' }, { status: 400 })
     }
 
     const settings = profile.ai_settings as any
     const apiKey = settings.apiKeys?.[profile.ai_provider]
 
     if (!apiKey) {
-      return new NextResponse('API key not found for the selected provider', { status: 400 })
+      return NextResponse.json({ error: `API key for ${profile.ai_provider} not found. Please add it in the settings.` }, { status: 400 })
     }
 
     const body = await req.json()
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     }
 
     if (profile.ai_provider !== 'gemini') {
-      return new NextResponse('Only Google Gemini is currently supported for this feature.', { status: 400 })
+      return NextResponse.json({ error: 'Only Google Gemini is currently supported for this feature.' }, { status: 400 })
     }
 
     const genAI = new GoogleGenerativeAI(apiKey)
