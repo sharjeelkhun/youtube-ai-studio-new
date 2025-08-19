@@ -130,12 +130,21 @@ export default function VideoPage() {
         }
 
         // Fetch profile data
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('ai_provider, ai_settings')
-          .eq('id', session.user.id)
-          .single()
-        setProfile(profileData)
+        const { data: rpcData, error: rpcError } = await supabase.rpc("get_ai_settings")
+
+        if (rpcError) {
+          console.error("Error fetching profile data via RPC:", rpcError)
+          // We don't need to throw, but we can't proceed with AI features
+        }
+
+        if (rpcData && rpcData.length > 0) {
+          setProfile({
+            ai_provider: rpcData[0].provider,
+            ai_settings: rpcData[0].settings,
+          })
+        } else {
+          setProfile(null)
+        }
       } catch (error) {
         console.error('Error fetching video:', error)
         setError('Failed to load video')
