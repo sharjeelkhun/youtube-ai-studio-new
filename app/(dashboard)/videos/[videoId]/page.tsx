@@ -51,9 +51,20 @@ export default function VideoPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
   const [newTag, setNewTag] = useState('')
+  const [hasChanges, setHasChanges] = useState(false)
   const { session, isLoading: isSessionLoading } = useSession()
   const [profile, setProfile] = useState<any>(null)
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
+
+  useEffect(() => {
+    if (editedVideo && video) {
+      const changes =
+        editedVideo.title !== video.title ||
+        editedVideo.description !== video.description ||
+        JSON.stringify(editedVideo.tags?.sort()) !== JSON.stringify(video.tags?.sort())
+      setHasChanges(changes)
+    }
+  }, [editedVideo, video])
 
   useEffect(() => {
     if (isSessionLoading || isChannelLoading) return
@@ -168,6 +179,7 @@ export default function VideoPage() {
       })
 
       setVideo(editedVideo)
+      setHasChanges(false)
       toast({
         title: 'Success',
         description: 'Video details updated successfully on YouTube and in your database.'
@@ -274,7 +286,7 @@ export default function VideoPage() {
         ...prev!,
         title: data.title,
         description: data.description,
-        tags: [...(prev?.tags || []), ...data.tags],
+        tags: data.tags,
       }))
 
       toast({
@@ -377,7 +389,7 @@ export default function VideoPage() {
             )}
             AI Generate
           </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
         </div>
