@@ -13,14 +13,14 @@ import { useToast } from "@/hooks/use-toast"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
-import { useSession } from "@/contexts/session-context"
-import { supabase } from "@/lib/supabase"
+import { useProfile } from "@/contexts/profile-context"
 
 export function AISettings() {
   const { toast } = useToast()
+  const { profile, updateProfile, loading: profileLoading } = useProfile()
+
   const [isLoading, setIsLoading] = useState(false)
   const [selectedProvider, setSelectedProvider] = useState("openai")
-  const { session } = useSession()
   const [apiKeys, setApiKeys] = useState({
     openai: "",
     gemini: "",
@@ -38,39 +38,15 @@ export function AISettings() {
   })
 
   useEffect(() => {
-    const fetchSettings = async () => {
-      if (!session) return
-
-      // Calling the RPC function without .single() makes it robust to cases where no profile exists yet.
-      // It will return an empty array [] instead of an error, which is easier to handle.
-      const { data, error } = await supabase.rpc("get_ai_settings")
-
-      if (error) {
-        console.error("Error fetching AI settings via RPC:", error)
-        toast({
-          title: "Error fetching settings",
-          description: "Could not load your saved AI settings. Please try again.",
-          variant: "destructive",
-        })
-        return
+    if (profile) {
+      setSelectedProvider(profile.ai_provider || "openai")
+      if (profile.ai_settings) {
+        const settings = profile.ai_settings
+        setApiKeys(settings.apiKeys || { openai: "", gemini: "", anthropic: "", mistral: "" })
+        setAiSettings(settings.features || aiSettings)
       }
-
-      // If data is returned and the array has content, it means we found the user's settings.
-      if (data && data.length > 0) {
-        const userSettings = data[0]
-        setSelectedProvider(userSettings.provider || "openai")
-        if (userSettings.settings) {
-          const settings = userSettings.settings as any
-          setApiKeys(settings.apiKeys || { openai: "", gemini: "", anthropic: "", mistral: "" })
-          setAiSettings(settings.features || aiSettings)
-        }
-      }
-      // If no data is returned, we do nothing and the component will use the default state.
-      // This is the expected behavior for a new user with no saved settings.
     }
-
-    fetchSettings()
-  }, [session, toast])
+  }, [profile])
 
   const handleApiKeyChange = (provider: string, value: string) => {
     setApiKeys((prev) => ({ ...prev, [provider]: value }))
@@ -81,36 +57,21 @@ export function AISettings() {
   }
 
   const handleSaveSettings = async () => {
-    if (!session) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to save settings.",
-        variant: "destructive",
-      })
-      return
-    }
-
     setIsLoading(true)
     try {
-      // Call the new RPC function to update settings
-      const { error } = await supabase.rpc("update_ai_settings", {
-        new_provider: selectedProvider,
-        new_settings: { apiKeys: apiKeys, features: aiSettings },
+      await updateProfile({
+        ai_provider: selectedProvider,
+        ai_settings: { apiKeys, features: aiSettings },
       })
 
-      if (error) {
-        console.error("Error saving AI settings via RPC:", error)
-        throw error
-      }
-
       toast({
-        title: "AI settings saved",
-        description: "Your AI provider settings have been updated successfully.",
+        title: "Success!",
+        description: "Your AI settings have been saved.",
       })
     } catch (error) {
       toast({
-        title: "Error",
-        description: "Failed to save AI settings. Please try again.",
+        title: "Error Saving Settings",
+        description: "Could not save your AI settings. Please try again.",
         variant: "destructive",
       })
     } finally {
