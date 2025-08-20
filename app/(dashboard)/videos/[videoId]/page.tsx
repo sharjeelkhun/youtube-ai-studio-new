@@ -68,6 +68,10 @@ export default function VideoPage() {
   }, [editedVideo, video])
 
   useEffect(() => {
+    console.log('[VideoPage] Profile from context changed:', profile)
+  }, [profile])
+
+  useEffect(() => {
     if (isSessionLoading || isChannelLoading || isProfileLoading) return
 
     const fetchVideo = async () => {
