@@ -56,15 +56,20 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const updateProfile = async (newProfileData: Partial<Profile>) => {
     if (!session) throw new Error("No active session")
 
-    const currentProfile = { ...profile, ...newProfileData }
+    const updatedProfile = {
+      ai_provider: null,
+      ai_settings: null,
+      ...profile,
+      ...newProfileData,
+    }
 
     // Optimistically update the local state
-    setProfile(currentProfile)
+    setProfile(updatedProfile)
 
     try {
       const { error } = await supabase.rpc('update_ai_settings', {
-        new_provider: currentProfile.ai_provider,
-        new_settings: currentProfile.ai_settings,
+        new_provider: updatedProfile.ai_provider,
+        new_settings: updatedProfile.ai_settings,
       })
 
       if (error) {
