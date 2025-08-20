@@ -235,7 +235,7 @@ export default function VideoPage() {
   const handleAIGenerate = async () => {
     if (!editedVideo) return
 
-    if (!profile?.ai_settings) {
+    if (!profile?.ai_provider || !profile.ai_settings) {
       toast({
         title: 'AI Provider Not Configured',
         description: 'Please select an AI provider and add your API key in the settings.',
