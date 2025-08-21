@@ -23,12 +23,8 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = useCallback(async () => {
-    if (!session) {
-      console.log('[ProfileContext] No session, skipping fetch.')
-      return
-    }
+    if (!session) return
 
-    console.log('[ProfileContext] Fetching profile...')
     setLoading(true)
     try {
       const { data, error } = await supabase.rpc('get_ai_settings')
@@ -38,14 +34,11 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data && data.length > 0) {
-        const fetchedProfile = {
+        setProfile({
           ai_provider: data[0].provider,
           ai_settings: data[0].settings,
-        }
-        console.log('[ProfileContext] Profile fetched successfully:', fetchedProfile)
-        setProfile(fetchedProfile)
+        })
       } else {
-        console.log('[ProfileContext] No profile found in database.')
         setProfile(null)
       }
     } catch (error) {
@@ -70,25 +63,24 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       ...newProfileData,
     }
 
-    console.log('[ProfileContext] Optimistically updating profile state:', updatedProfile)
+    // Optimistically update the local state
     setProfile(updatedProfile)
 
     try {
-      console.log('[ProfileContext] Calling RPC to update profile in DB:', updatedProfile)
       const { error } = await supabase.rpc('update_ai_settings', {
         new_provider: updatedProfile.ai_provider,
         new_settings: updatedProfile.ai_settings,
       })
 
       if (error) {
-        console.error('[ProfileContext] Error updating profile in DB, reverting state.', error)
-        fetchProfile() // Revert optimistic update on error
+        // Revert optimistic update on error
+        fetchProfile()
         throw error
       }
-      console.log('[ProfileContext] Profile updated successfully in DB.')
     } catch (error) {
-        console.error("[ProfileContext] Unexpected error in updateProfile:", error)
-        fetchProfile() // Revert optimistic update
+        console.error("Error updating profile:", error)
+        // Revert optimistic update
+        fetchProfile()
         throw error
     }
   }
