@@ -4,6 +4,11 @@ import { cookies } from 'next/headers'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import OpenAI from 'openai'
 
+interface AiSettingsRpcResponse {
+  provider: string | null
+  settings: any | null
+}
+
 // Helper function to handle JSON parsing
 const parseJsonResponse = (text: string) => {
   try {
@@ -71,10 +76,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: profile } = await supabase.rpc('get_ai_settings')
-      .single()
+    const { data, error } = await supabase.rpc('get_ai_settings').single()
 
-    if (!profile || !profile.provider || !profile.settings) {
+    if (error || !data) {
+      return NextResponse.json({ error: 'AI provider not configured. Please configure it in the settings.' }, { status: 400 })
+    }
+
+    const profile = data as AiSettingsRpcResponse
+
+    if (!profile.provider || !profile.settings) {
       return NextResponse.json({ error: 'AI provider not configured. Please configure it in the settings.' }, { status: 400 })
     }
 
