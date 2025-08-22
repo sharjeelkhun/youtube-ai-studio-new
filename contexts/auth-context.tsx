@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useSession } from "./session-context"
 import type { Database } from "@/lib/database.types"
-import { supabase } from "@/lib/supabase"
+import supabase from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface User {
@@ -152,80 +152,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const signOut = async () => {
-    console.log('Starting sign out process...')
-    setLoading(true)
-    setError(null)
-    
-    try {
-      // Clear local state immediately
-      setUser(null)
-      setSupabaseUser(null)
-      
-      // Try to sign out from Supabase
-      try {
-        const { error } = await supabase.auth.signOut()
-        if (error) {
-          console.error('Sign out error:', error)
-        } else {
-          console.log('Sign out successful')
-        }
-      } catch (signOutError) {
-        console.error('Supabase sign out error:', signOutError)
-      }
-      
-      // Clear all stored session data more thoroughly
-      if (typeof window !== 'undefined') {
-        // Clear localStorage
-        localStorage.clear()
-        
-        // Clear sessionStorage
-        sessionStorage.clear()
-        
-        // Clear all cookies related to Supabase
-        document.cookie.split(";").forEach(function(c) { 
-          document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/"); 
-        });
-        
-        // Clear specific Supabase cookies
-        const cookiesToClear = [
-          'sb-access-token',
-          'sb-refresh-token',
-          'supabase.auth.token',
-          'supabase.auth.refreshToken'
-        ]
-        
-        cookiesToClear.forEach(cookieName => {
-          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-        })
-        
-        // Force clear any remaining Supabase session data
-        try {
-          await supabase.auth.signOut({ scope: 'global' })
-        } catch (e) {
-          console.log('Global sign out failed, continuing with local cleanup')
-        }
-      }
-      
-      // Force redirect to login with cache-busting
-      window.location.href = '/login?logout=' + Date.now()
-    } catch (err) {
-      console.error('Unexpected error during sign out:', err)
-      setError(err instanceof Error ? err : new Error('Failed to sign out'))
-      // Force redirect even if there's an error
-      window.location.href = '/login?logout=' + Date.now()
-    } finally {
-      setLoading(false)
-    }
+    await supabase.auth.signOut();
+    router.push('/login');
+    router.refresh();
   }
 
   const resetPassword = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email)
-      if (error) throw error
-    } catch (error) {
-      console.error('Reset password error:', error)
-      throw error
-    }
+    await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
   }
 
   const validateEmail = (email: string) => {
