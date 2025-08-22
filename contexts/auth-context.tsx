@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useSession } from "./session-context"
 import type { Database } from "@/lib/database.types"
-import supabase from "@/lib/supabase/client"
+import { supabase } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface User {
