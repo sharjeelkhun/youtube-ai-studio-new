@@ -1,6 +1,7 @@
 'use client'
 
 import { useSession } from '@/contexts/session-context'
+import { useAuth } from '@/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -15,12 +16,12 @@ import {
 import { LogOut, User } from 'lucide-react'
 
 export function Header() {
-  const { session, isLoading, supabase } = useSession()
+  const { session, isLoading } = useSession()
+  const { signOut } = useAuth()
   const router = useRouter()
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut()
-    router.push('/login')
+    await signOut()
   }
 
   return (
