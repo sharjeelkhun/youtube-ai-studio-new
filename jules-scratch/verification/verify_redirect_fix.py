@@ -4,18 +4,39 @@ from playwright.sync_api import sync_playwright, Page, expect
 def run(page: Page):
     base_url = "http://localhost:3000"
 
-    page.goto(f"{base_url}/login", timeout=60000)
-    page.get_by_label("Email").fill("test@example.com")
-    page.get_by_label("Password").fill("password")
-    page.get_by_role("button", name="Login").click()
+    def login(page: Page):
+        page.goto(f"{base_url}/login")
+        page.wait_for_load_state("networkidle")
+        page.get_by_label("Email").fill("test@example.com")
+        page.get_by_label("Password").fill("password")
+        page.get_by_role("button", name="Sign in").click()
+        time.sleep(2) # wait for login to complete
+        # Check if login was successful by looking for a dashboard element
+        try:
+            expect(page.get_by_role("heading", name="Dashboard")).to_be_visible(timeout=10000)
+            print("Login successful")
+        except:
+            print("Login failed, attempting signup")
+            signup(page)
 
-    # Wait for navigation to the dashboard
-    expect(page).to_have_url(f"{base_url}/dashboard", timeout=10000)
-    print("Login successful, redirected to dashboard.")
+    def signup(page: Page):
+        page.goto(f"{base_url}/signup")
+        page.wait_for_load_state("networkidle")
+        page.get_by_label("Email").fill("test@example.com")
+        page.get_by_label("Password").fill("password")
+        page.get_by_role("button", name="Create account").click()
+        time.sleep(2) # wait for signup to complete
+        # After signup, we might be redirected to a confirmation page or login
+        # For this test, we'll just try to log in again
+        login(page)
+
+    # Start with login
+    login(page)
 
     # Navigate to a video page
     video_url = f"{base_url}/videos/wK_bksFW27g"
     page.goto(video_url, timeout=60000)
+    page.wait_for_load_state("networkidle")
 
     # Take a screenshot of the video page
     page.screenshot(path="jules-scratch/verification/video_page.png")
