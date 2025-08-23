@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { BarChart as LucideBarChart, LineChart, PieChart } from 'lucide-react'
 
 const viewsData = [
@@ -58,7 +58,6 @@ interface VideoAnalyticsProps {
 }
 
 export function VideoAnalytics({ videoId }: VideoAnalyticsProps) {
-  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(true)
   const [dateRange, setDateRange] = useState("7d")
 
@@ -70,10 +69,8 @@ export function VideoAnalytics({ videoId }: VideoAnalyticsProps) {
         // In a real app, this would be an API call
         await new Promise((resolve) => setTimeout(resolve, 1500))
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load analytics data. Please try again.",
-          variant: "destructive",
         })
       } finally {
         setIsLoading(false)
@@ -81,7 +78,7 @@ export function VideoAnalytics({ videoId }: VideoAnalyticsProps) {
     }
 
     loadData()
-  }, [videoId, dateRange, toast])
+  }, [videoId, dateRange])
 
   if (isLoading) {
     return (

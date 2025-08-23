@@ -9,14 +9,13 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
 import { Sparkles, Save, Loader2, Check, Info } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { useProfile } from "@/contexts/profile-context"
 
 export function AISettings() {
-  const { toast } = useToast()
   const { profile, updateProfile, loading: profileLoading } = useProfile()
 
   const [isLoading, setIsLoading] = useState(false)
@@ -64,15 +63,12 @@ export function AISettings() {
         ai_settings: { apiKeys, features: aiSettings },
       })
 
-      toast({
-        title: "Success!",
+      toast.success("Success!", {
         description: "Your AI settings have been saved.",
       })
     } catch (error) {
-      toast({
-        title: "Error Saving Settings",
+      toast.error("Error Saving Settings", {
         description: "Could not save your AI settings. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)

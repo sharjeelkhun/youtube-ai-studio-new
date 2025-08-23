@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/contexts/auth-context"
 import { LogOut, Settings, User as UserIcon } from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 import type { User } from "@supabase/supabase-js"
 import type { Profile } from "@/lib/db"
 
@@ -28,7 +28,6 @@ interface UserMenuProps {
 export function UserMenu({ user, profile }: UserMenuProps) {
   const { signOut } = useAuth()
   const router = useRouter()
-  const { toast } = useToast()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleSignOut = async () => {
@@ -37,10 +36,8 @@ export function UserMenu({ user, profile }: UserMenuProps) {
       await signOut()
     } catch (error) {
       console.error("Error signing out:", error)
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to sign out. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsLoggingOut(false)

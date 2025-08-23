@@ -10,10 +10,9 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { getSeoScores, analyzeSeo } from "@/lib/api"
 import type { SeoScore } from "@/lib/types"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 export function SeoTab() {
-  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
   const [seoScores, setSeoScores] = useState<SeoScore[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -26,10 +25,8 @@ export function SeoTab() {
         const scores = await getSeoScores()
         setSeoScores(scores)
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load SEO scores. Please try again.",
-          variant: "destructive",
         })
       } finally {
         setIsLoading(false)
@@ -37,14 +34,12 @@ export function SeoTab() {
     }
 
     fetchSeoScores()
-  }, [toast])
+  }, [])
 
   const handleAnalyze = async () => {
     if (!searchQuery.trim()) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Please enter a video URL or title to analyze",
-        variant: "destructive",
       })
       return
     }
@@ -55,17 +50,14 @@ export function SeoTab() {
       if (result) {
         // Add the new score to the top of the list
         setSeoScores((prev) => [result, ...prev])
-        toast({
-          title: "Analysis Complete",
+        toast.success("Analysis Complete", {
           description: `SEO score for "${result.title}" is ${result.score}/100`,
         })
         setSearchQuery("")
       }
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to analyze SEO. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsAnalyzing(false)

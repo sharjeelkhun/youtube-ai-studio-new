@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 import { Sidebar } from "@/components/sidebar"
 import { TopBar } from "@/components/dashboard/top-bar"
+import { Toaster } from "@/components/ui/sonner"
 import { createServerClient } from "@/lib/supabase-server"
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <div className="container mx-auto py-6">{children}</div>
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }

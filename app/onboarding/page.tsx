@@ -7,12 +7,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Sparkles, Youtube, ArrowRight, Loader2, Check } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { Progress } from "@/components/ui/progress"
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { toast } = useToast()
   const [step, setStep] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [channelUrl, setChannelUrl] = useState("")
@@ -38,10 +37,8 @@ export default function OnboardingPage() {
 
   const handleConnectYouTube = async () => {
     if (!channelUrl.includes("youtube.com")) {
-      toast({
-        title: "Invalid URL",
+      toast.error("Invalid URL", {
         description: "Please enter a valid YouTube channel URL",
-        variant: "destructive",
       })
       return
     }
@@ -54,8 +51,7 @@ export default function OnboardingPage() {
 
       setIsConnected(true)
 
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: "Your YouTube channel has been connected successfully",
       })
 
@@ -64,10 +60,8 @@ export default function OnboardingPage() {
         handleNext()
       }, 1000)
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to connect your YouTube channel. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsConnecting(false)
@@ -81,18 +75,15 @@ export default function OnboardingPage() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      toast({
-        title: "Welcome to YouTube AI Studio!",
+      toast.success("Welcome to YouTube AI Studio!", {
         description: "Your account is now set up and ready to use.",
       })
 
       // Redirect to dashboard
       router.push("/dashboard")
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Something went wrong. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)

@@ -10,10 +10,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { SuggestionCard } from "@/components/suggestion-card"
 import { getContentSuggestions, getTrendingTopics, getVideoImprovements, generateAiContent } from "@/lib/api"
 import type { ContentSuggestion, TrendingTopic, VideoImprovement } from "@/lib/types"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 export function SuggestionsTab() {
-  const { toast } = useToast()
   const [prompt, setPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedContent, setGeneratedContent] = useState("")
@@ -33,10 +32,8 @@ export function SuggestionsTab() {
         const suggestions = await getContentSuggestions()
         setContentSuggestions(suggestions)
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load content suggestions.",
-          variant: "destructive",
         })
       } finally {
         setIsLoadingContent(false)
@@ -47,10 +44,8 @@ export function SuggestionsTab() {
         const trends = await getTrendingTopics()
         setTrendingTopics(trends)
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load trending topics.",
-          variant: "destructive",
         })
       } finally {
         setIsLoadingTrends(false)
@@ -61,10 +56,8 @@ export function SuggestionsTab() {
         const improvements = await getVideoImprovements()
         setVideoImprovements(improvements)
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load video improvements.",
-          variant: "destructive",
         })
       } finally {
         setIsLoadingImprovements(false)
@@ -72,14 +65,12 @@ export function SuggestionsTab() {
     }
 
     fetchData()
-  }, [toast])
+  }, [])
 
   const handleGenerateContent = async () => {
     if (!prompt.trim()) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Please enter a prompt for the AI.",
-        variant: "destructive",
       })
       return
     }
@@ -90,15 +81,12 @@ export function SuggestionsTab() {
     try {
       const content = await generateAiContent(prompt)
       setGeneratedContent(content)
-      toast({
-        title: "Content Generated",
+      toast.success("Content Generated", {
         description: "AI has generated content based on your prompt.",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to generate content. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsGenerating(false)
