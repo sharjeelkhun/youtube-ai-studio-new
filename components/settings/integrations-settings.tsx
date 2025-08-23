@@ -87,7 +87,9 @@ export function IntegrationsSettings() {
               <div className="rounded-lg border bg-card/50 p-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Last synced:</span>
-                  <span className="text-sm">{new Date(channelData.updated_at).toLocaleString()}</span>
+                  <span className="text-sm">
+                    {channelData.last_synced ? new Date(channelData.last_synced).toLocaleString() : "Never"}
+                  </span>
                 </div>
               </div>
 
