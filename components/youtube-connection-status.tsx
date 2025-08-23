@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Users, Video, AlertCircle } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
 
 interface Channel {
   id: string
@@ -21,8 +20,6 @@ interface YoutubeConnectionStatusProps {
 }
 
 export function YoutubeConnectionStatus({ channel = null }: YoutubeConnectionStatusProps) {
-  const { toast } = useToast()
-
   if (!channel) {
     return (
       <Card className="p-6">

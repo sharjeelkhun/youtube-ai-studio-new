@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useSession } from "@/contexts/session-context"
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
-import { useToast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 
 interface TopBarProps {
   onMenuClick: () => void
@@ -17,7 +17,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const { user, supabaseUser } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const { toast } = useToast()
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -46,8 +45,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   }, [user])
 
   const handleNotificationClick = () => {
-    toast({
-      title: "Notifications",
+    toast.info("Notifications", {
       description: "You have no new notifications",
     })
   }

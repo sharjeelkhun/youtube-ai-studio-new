@@ -11,10 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AnalyticsChart } from "@/components/charts/analytics-chart"
 import { getAnalyticsData } from "@/lib/api"
 import type { AnalyticsData } from "@/lib/types"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 export function AnalyticsTab() {
-  const { toast } = useToast()
   const [dateRange, setDateRange] = useState("30d")
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -27,10 +26,8 @@ export function AnalyticsTab() {
         const data = await getAnalyticsData(dateRange)
         setAnalyticsData(data)
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load analytics data. Please try again.",
-          variant: "destructive",
         })
       } finally {
         setIsLoading(false)
@@ -38,18 +35,16 @@ export function AnalyticsTab() {
     }
 
     fetchData()
-  }, [dateRange, toast])
+  }, [dateRange])
 
   const handleExportData = () => {
-    toast({
-      title: "Export Started",
+    toast.info("Export Started", {
       description: "Your analytics data is being prepared for download.",
     })
 
     // In a real app, this would trigger a download of the analytics data
     setTimeout(() => {
-      toast({
-        title: "Export Complete",
+      toast.success("Export Complete", {
         description: "Your analytics data has been downloaded.",
       })
     }, 2000)

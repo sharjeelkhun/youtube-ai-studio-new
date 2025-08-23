@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import type { Video } from "@/lib/types"
 import { deleteVideo } from "@/lib/api"
-import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,

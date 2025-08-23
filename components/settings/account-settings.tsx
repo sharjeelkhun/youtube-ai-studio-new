@@ -9,10 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2, Upload, Save } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 export function AccountSettings() {
-  const { toast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
     name: "User Name",
@@ -30,15 +29,12 @@ export function AccountSettings() {
     try {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500))
-      toast({
-        title: "Profile updated",
+      toast.success("Profile updated", {
         description: "Your profile information has been updated successfully.",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to update profile. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)

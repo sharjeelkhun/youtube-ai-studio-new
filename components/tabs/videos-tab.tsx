@@ -9,7 +9,7 @@ import { VideoGrid } from "@/components/video-grid"
 import { EmptyState } from "@/components/empty-state"
 import { getVideos } from "@/lib/api"
 import type { Video } from "@/lib/types"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,6 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
 export function VideosTab() {
-  const { toast } = useToast()
   const [searchQuery, setSearchQuery] = useState("")
   const [filter, setFilter] = useState("all")
   const [videos, setVideos] = useState<Video[]>([])
@@ -41,10 +40,8 @@ export function VideosTab() {
       const data = await getVideos(searchQuery, filter)
       setVideos(data)
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to load videos. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)
@@ -62,10 +59,8 @@ export function VideosTab() {
 
   const handleCreateVideo = async () => {
     if (!newVideoTitle.trim()) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Please enter a video title",
-        variant: "destructive",
       })
       return
     }
@@ -88,8 +83,7 @@ export function VideosTab() {
 
       setVideos((prev) => [newVideo, ...prev])
 
-      toast({
-        title: "Success",
+      toast.success("Success", {
         description: "New video draft created successfully",
       })
 
@@ -98,10 +92,8 @@ export function VideosTab() {
       setNewVideoDescription("")
       setIsDialogOpen(false)
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to create video. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsSubmitting(false)

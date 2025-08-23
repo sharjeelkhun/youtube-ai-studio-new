@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { useSession } from '@/contexts/session-context'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import { useProfile } from '@/contexts/profile-context'
@@ -43,7 +43,6 @@ interface VideoHistory {
 export default function VideoPage() {
   const params = useParams()
   const router = useRouter()
-  const { toast } = useToast()
   const [video, setVideo] = useState<Video | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -173,16 +172,13 @@ export default function VideoPage() {
 
       setVideo(editedVideo)
       setHasChanges(false)
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Video details updated successfully on YouTube and in your database.'
       })
     } catch (error) {
       console.error('Error saving video:', error)
-      toast({
-        title: 'Error',
+      toast.error('Error', {
         description: 'Failed to update video details',
-        variant: 'destructive'
       })
     } finally {
       setIsSaving(false)
@@ -218,16 +214,13 @@ export default function VideoPage() {
         tags: historyItem.tags
       })
 
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Video reverted to previous version'
       })
     } catch (error) {
       console.error('Error reverting video:', error)
-      toast({
-        title: 'Error',
+      toast.error('Error', {
         description: 'Failed to revert video',
-        variant: 'destructive'
       })
     }
   }
@@ -236,10 +229,8 @@ export default function VideoPage() {
     if (!editedVideo) return
 
     if (!profile?.ai_provider || !profile.ai_settings) {
-      toast({
-        title: 'AI Provider Not Configured',
+      toast.error('AI Provider Not Configured', {
         description: 'Please select an AI provider and add your API key in the settings.',
-        variant: 'destructive',
       })
       return
     }
@@ -247,10 +238,8 @@ export default function VideoPage() {
     const settings = profile.ai_settings as any
     const apiKeys = settings.apiKeys
     if (!apiKeys || !apiKeys[profile.ai_provider]) {
-      toast({
-        title: 'API Key Missing',
+      toast.error('API Key Missing', {
         description: `You have not added an API key for ${profile.ai_provider}. Please add it in the settings.`,
-        variant: 'destructive',
       })
       return
     }
@@ -285,16 +274,13 @@ export default function VideoPage() {
         tags: data.tags,
       }))
 
-      toast({
-        title: 'Success!',
+      toast.success('Success!', {
         description: 'AI has optimized your video details.',
       })
     } catch (error) {
       console.error('Error generating AI content:', error)
-      toast({
-        title: 'AI Generation Failed',
+      toast.error('AI Generation Failed', {
         description: error instanceof Error ? error.message : 'An unknown error occurred. Please check the console for details.',
-        variant: 'destructive',
       })
     } finally {
       setIsGenerating(false)
@@ -306,10 +292,8 @@ export default function VideoPage() {
 
     const tag = newTag.trim()
     if (editedVideo.tags?.includes(tag)) {
-      toast({
-        title: 'Error',
+      toast.error('Error', {
         description: 'Tag already exists',
-        variant: 'destructive'
       })
       return
     }

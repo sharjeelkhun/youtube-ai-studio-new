@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useToast } from '@/components/ui/use-toast'
+import { toast } from 'sonner'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
 interface Video {
@@ -29,7 +29,6 @@ interface VideoEditorProps {
 }
 
 export function VideoEditor({ video, onSave }: VideoEditorProps) {
-  const { toast } = useToast()
   const [editedVideo, setEditedVideo] = useState<Video>(video)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -49,16 +48,13 @@ export function VideoEditor({ video, onSave }: VideoEditorProps) {
       if (error) throw error
 
       onSave(editedVideo)
-      toast({
-        title: 'Success',
+      toast.success('Success', {
         description: 'Video details updated successfully'
       })
     } catch (error) {
       console.error('Error saving video:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to update video details',
-        variant: 'destructive'
+      toast.error('Error', {
+        description: 'Failed to update video details'
       })
     } finally {
       setIsSaving(false)

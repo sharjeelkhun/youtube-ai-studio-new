@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Check, XCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { isPreviewEnvironment } from "@/lib/db"
 import { youtubeService } from "@/lib/youtube-service"
 
@@ -16,7 +16,6 @@ export default function YouTubeCallbackContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, isLoading } = useAuth()
-  const { toast } = useToast()
   const isPreview = isPreviewEnvironment()
 
   useEffect(() => {
@@ -73,8 +72,7 @@ export default function YouTubeCallbackContent() {
         }
 
         setStatus("success")
-        toast({
-          title: "Channel connected!",
+        toast.success("Channel connected!", {
           description: "Your YouTube channel has been connected successfully.",
         })
 
@@ -92,14 +90,13 @@ export default function YouTubeCallbackContent() {
     if (user && !isPreview && !isPreviewCallback) {
       handleCallback()
     }
-  }, [searchParams, router, user, isLoading, toast, isPreview])
+  }, [searchParams, router, user, isLoading, isPreview])
 
   // Simulate callback steps for preview mode
   async function simulateCallbackSteps() {
     await new Promise(resolve => setTimeout(resolve, 1500))
     setStatus("success")
-    toast({
-      title: "Preview Mode",
+    toast.info("Preview Mode", {
       description: "YouTube channel connection simulated successfully.",
     })
     setTimeout(() => {

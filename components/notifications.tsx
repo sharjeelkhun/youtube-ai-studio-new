@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 interface Notification {
   id: string
@@ -28,7 +28,6 @@ interface Notification {
 }
 
 export function NotificationsMenu() {
-  const { toast } = useToast()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
@@ -96,10 +95,8 @@ export function NotificationsMenu() {
         setNotifications(mockNotifications)
         setUnreadCount(mockNotifications.filter((n) => !n.read).length)
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load notifications",
-          variant: "destructive",
         })
       } finally {
         setIsLoading(false)
@@ -107,14 +104,13 @@ export function NotificationsMenu() {
     }
 
     fetchNotifications()
-  }, [toast])
+  }, [])
 
   const handleMarkAllAsRead = () => {
     setNotifications(notifications.map((n) => ({ ...n, read: true })))
     setUnreadCount(0)
 
-    toast({
-      title: "Success",
+    toast.success("Success", {
       description: "All notifications marked as read",
     })
   }

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { ThumbsUp, MessageSquare, Flag, MoreHorizontal, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 interface Comment {
   id: string
@@ -27,7 +27,6 @@ interface VideoCommentsProps {
 }
 
 export function VideoComments({ videoId }: VideoCommentsProps) {
-  const { toast } = useToast()
   const [comments, setComments] = useState<Comment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [newComment, setNewComment] = useState("")
@@ -84,10 +83,8 @@ export function VideoComments({ videoId }: VideoCommentsProps) {
           },
         ])
       } catch (error) {
-        toast({
-          title: "Error",
+        toast.error("Error", {
           description: "Failed to load comments. Please try again.",
-          variant: "destructive",
         })
       } finally {
         setIsLoading(false)
@@ -95,7 +92,7 @@ export function VideoComments({ videoId }: VideoCommentsProps) {
     }
 
     fetchComments()
-  }, [videoId, toast])
+  }, [videoId])
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return
@@ -123,15 +120,12 @@ export function VideoComments({ videoId }: VideoCommentsProps) {
       setComments([newCommentObj, ...comments])
       setNewComment("")
 
-      toast({
-        title: "Comment added",
+      toast.success("Comment added", {
         description: "Your comment has been added successfully.",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to add comment. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsSubmitting(false)

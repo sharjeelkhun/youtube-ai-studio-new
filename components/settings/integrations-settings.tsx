@@ -3,13 +3,12 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Youtube, AlertCircle, Check, ExternalLink, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 
 export function IntegrationsSettings() {
-  const { toast } = useToast()
   const router = useRouter()
   const { channelData, isLoading, isConnected, refreshChannel } = useYouTubeChannel()
 
@@ -20,8 +19,7 @@ export function IntegrationsSettings() {
   const handleDisconnectYouTube = async () => {
     try {
       // TODO: Implement disconnect functionality
-      toast({
-        title: "Disconnect feature",
+      toast.info("Disconnect feature", {
         description: "Disconnect functionality will be implemented soon.",
       })
     } catch (error) {
@@ -32,16 +30,13 @@ export function IntegrationsSettings() {
   const handleSyncChannel = async () => {
     try {
       await refreshChannel()
-      toast({
-        title: "Channel synced",
+      toast.success("Channel synced", {
         description: "Your channel data has been refreshed.",
       })
     } catch (error) {
       console.error("Error syncing channel:", error)
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to sync channel data.",
-        variant: "destructive",
       })
     }
   }

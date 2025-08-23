@@ -7,13 +7,12 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Switch } from "@/components/ui/switch"
 import { Save, Loader2, Moon, Sun, Monitor } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 import { useTheme } from "next-themes"
 import { Separator } from "@/components/ui/separator"
 import { Slider } from "@/components/ui/slider"
 
 export function AppearanceSettings() {
-  const { toast } = useToast()
   const { theme, setTheme } = useTheme()
   const [isLoading, setIsLoading] = useState(false)
   const [appearanceSettings, setAppearanceSettings] = useState({
@@ -32,15 +31,12 @@ export function AppearanceSettings() {
     try {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500))
-      toast({
-        title: "Appearance settings saved",
+      toast.success("Appearance settings saved", {
         description: "Your appearance preferences have been updated successfully.",
       })
     } catch (error) {
-      toast({
-        title: "Error",
+      toast.error("Error", {
         description: "Failed to save appearance settings. Please try again.",
-        variant: "destructive",
       })
     } finally {
       setIsLoading(false)
