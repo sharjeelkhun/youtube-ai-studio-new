@@ -19,7 +19,7 @@ export function IntegrationsSettings() {
   const handleDisconnectYouTube = async () => {
     try {
       // TODO: Implement disconnect functionality
-      toast.info("Disconnect feature", {
+      toast.warning("Disconnect feature", {
         description: "Disconnect functionality will be implemented soon.",
       })
     } catch (error) {
