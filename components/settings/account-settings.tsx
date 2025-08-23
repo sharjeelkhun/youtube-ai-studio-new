@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,14 +10,35 @@ import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2, Upload, Save } from "lucide-react"
 import { toast } from "sonner"
+import { useSession } from "@/contexts/session-context"
+import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 
 export function AccountSettings() {
   const [isLoading, setIsLoading] = useState(false)
+  const { session } = useSession()
+  const { channelData } = useYouTubeChannel()
+
   const [formData, setFormData] = useState({
-    name: "User Name",
-    email: "user@example.com",
-    username: "username",
+    name: "",
+    email: "",
+    username: "",
   })
+
+  useEffect(() => {
+    if (session) {
+      setFormData((prev) => ({
+        ...prev,
+        email: session.user.email || "",
+        username: session.user.user_metadata.user_name || "",
+      }))
+    }
+    if (channelData) {
+      setFormData((prev) => ({
+        ...prev,
+        name: channelData.title || "",
+      }))
+    }
+  }, [session, channelData])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -41,6 +62,14 @@ export function AccountSettings() {
     }
   }
 
+  const avatarSrc = channelData?.thumbnail || "/placeholder-user.jpg"
+  const avatarFallback = channelData?.title
+    ? channelData.title
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+    : "AV"
+
   return (
     <div className="space-y-6">
       <Card>
@@ -52,8 +81,8 @@ export function AccountSettings() {
           <div className="flex flex-col gap-6 sm:flex-row">
             <div className="flex flex-col items-center gap-4">
               <Avatar className="h-24 w-24">
-                <AvatarImage src="/placeholder.svg" alt="Profile" />
-                <AvatarFallback>UN</AvatarFallback>
+                <AvatarImage src={avatarSrc} alt="Profile" />
+                <AvatarFallback>{avatarFallback}</AvatarFallback>
               </Avatar>
               <Button variant="outline" size="sm">
                 <Upload className="mr-2 h-4 w-4" />
@@ -92,6 +121,7 @@ export function AccountSettings() {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="Your email address"
+                  disabled
                 />
               </div>
             </div>
