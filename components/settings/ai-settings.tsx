@@ -189,22 +189,6 @@ export function AISettings() {
           </Button>
         </CardFooter>
       </Card>
-        <CardFooter className="flex justify-end">
-          <Button onClick={handleSaveSettings} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save API Settings
-              </>
-            )}
-          </Button>
-        </CardFooter>
-      </Card>
 
       <Card>
         <CardHeader>
