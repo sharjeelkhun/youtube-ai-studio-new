@@ -1,5 +1,4 @@
 import { createElement } from "react"
-import { svg } from "lit"
 
 const OpenAILogo = () =>
   createElement(
