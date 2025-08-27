@@ -107,7 +107,9 @@ export function AISettings() {
                   htmlFor={provider.id}
                   className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-transparent p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary"
                 >
-                  <div className="mb-3">{provider.logo({})}</div>
+                  <div className="mb-3">
+                    <provider.logo />
+                  </div>
                   <div className="font-semibold">{provider.name}</div>
                   <div className="text-xs text-muted-foreground text-center mt-1">{provider.description}</div>
                   {isApiKeySet(provider.id) && (
