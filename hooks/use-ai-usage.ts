@@ -30,11 +30,11 @@ export function useAIUsage() {
         // In a real application, this data would come from your backend
         const data: AIUsageData = {
           apiCalls: {
-            used: 245,
+            used: Math.floor(Math.random() * 1000),
             limit: 1000,
           },
           contentGeneration: {
-            used: 18,
+            used: Math.floor(Math.random() * 50),
             limit: 50,
           },
           billingCycle: {

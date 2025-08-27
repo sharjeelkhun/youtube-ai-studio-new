@@ -43,7 +43,17 @@ export function AISettings() {
         setAiSettings(settings.features || aiSettings)
       }
     }
-  }, [profile, aiSettings])
+  }, [profile])
+
+  useEffect(() => {
+    const providerConfig = aiProviders.find((p) => p.id === selectedProvider)
+    if (providerConfig && providerConfig.models) {
+      const currentModelIsValid = providerConfig.models.some((m) => m.id === aiSettings.defaultModel)
+      if (!currentModelIsValid) {
+        handleSettingChange("defaultModel", providerConfig.models[0].id)
+      }
+    }
+  }, [selectedProvider, aiSettings.defaultModel])
 
   const handleApiKeyChange = (provider: string, value: string) => {
     setApiKeys((prev) => ({ ...prev, [provider]: value }))
@@ -53,21 +63,30 @@ export function AISettings() {
     setAiSettings((prev) => ({ ...prev, [setting]: value }))
   }
 
-  const handleSaveSettings = async () => {
+  const handleSaveApiSettings = async () => {
     setIsLoading(true)
     try {
       await updateProfile({
         ai_provider: selectedProvider,
-        ai_settings: { apiKeys, features: aiSettings },
+        ai_settings: { ...profile?.ai_settings, apiKeys },
       })
-
-      toast.success("Success!", {
-        description: "Your AI settings have been saved.",
-      })
+      toast.success("API settings saved successfully!")
     } catch (error) {
-      toast.error("Error Saving Settings", {
-        description: "Could not save your AI settings. Please try again.",
+      toast.error("Failed to save API settings.")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleSaveFeatureSettings = async () => {
+    setIsLoading(true)
+    try {
+      await updateProfile({
+        ai_settings: { ...profile?.ai_settings, features: aiSettings },
       })
+      toast.success("Feature settings saved successfully!")
+    } catch (error) {
+      toast.error("Failed to save feature settings.")
     } finally {
       setIsLoading(false)
     }
@@ -176,7 +195,7 @@ export function AISettings() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <Button onClick={handleSaveSettings} disabled={isLoading || profileLoading}>
+          <Button onClick={handleSaveApiSettings} disabled={isLoading || profileLoading}>
             {isLoading || profileLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -321,7 +340,7 @@ export function AISettings() {
           </div>
         </CardContent>
         <CardFooter className="flex justify-end">
-          <Button onClick={handleSaveSettings} disabled={isLoading}>
+          <Button onClick={handleSaveFeatureSettings} disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
