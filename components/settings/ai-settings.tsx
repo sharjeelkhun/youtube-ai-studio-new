@@ -65,6 +65,38 @@ export function AISettings() {
     setAiSettings((prev) => ({ ...prev, [setting]: value }))
   }
 
+  const handleProviderChange = async (providerId: string) => {
+    setSelectedProvider(providerId)
+    setBillingErrorProvider(null)
+
+    const apiKey = apiKeys[providerId]
+    if (!apiKey) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/ai/check-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: providerId,
+          apiKey: apiKey,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null)
+        if (errorBody?.errorCode === 'billing_error') {
+          setBillingErrorProvider(providerId)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking AI provider status:', error)
+    }
+  }
+
   const handleSaveApiSettings = async () => {
     setIsLoading(true)
     try {
@@ -113,7 +145,7 @@ export function AISettings() {
         <CardContent className="space-y-6">
           <RadioGroup
             value={selectedProvider}
-            onValueChange={setSelectedProvider}
+            onValueChange={handleProviderChange}
             className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4"
           >
             {aiProviders.map((provider) => (
