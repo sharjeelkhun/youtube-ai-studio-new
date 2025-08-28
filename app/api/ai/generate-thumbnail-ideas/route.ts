@@ -5,6 +5,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { Mistral } from '@mistralai/mistralai'
+import { aiProviders } from '@/lib/ai-providers'
 
 interface AiSettings {
   defaultModel: string
@@ -170,7 +171,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Title and description are required' }, { status: 400 })
     }
 
-    const aiSettings = profile.settings.features
+    const aiSettings = { ...profile.settings.features }
+
+    const providerConfig = aiProviders.find(p => p.id === profile.provider)
+    if (providerConfig) {
+      const isValidModel = providerConfig.models.some(m => m.id === aiSettings.defaultModel)
+      if (!isValidModel) {
+        aiSettings.defaultModel = providerConfig.models[0].id
+      }
+    }
 
     let thumbnailIdeas
     if (profile.provider === 'gemini') {
