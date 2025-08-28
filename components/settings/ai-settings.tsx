@@ -414,14 +414,25 @@ export function AISettings() {
                 </p>
               </div>
 
-              <Alert>
-                <Sparkles className="h-4 w-4" />
-                <AlertTitle>Upgrade for more AI features</AlertTitle>
-                <AlertDescription>
-                  Your current plan includes limited AI usage. Upgrade to Pro for unlimited AI-powered content
-                  suggestions and analytics.
-                </AlertDescription>
-              </Alert>
+              {usageData.limitReached ? (
+                <Alert variant="destructive">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>API Limit Reached</AlertTitle>
+                  <AlertDescription>
+                    You have exceeded your API quota for the current billing cycle. Please upgrade your plan to
+                    continue using AI features.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert>
+                  <Sparkles className="h-4 w-4" />
+                  <AlertTitle>Upgrade for more AI features</AlertTitle>
+                  <AlertDescription>
+                    Your current plan includes limited AI usage. Upgrade to Pro for unlimited AI-powered content
+                    suggestions and analytics.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           ) : null}
         </CardContent>
