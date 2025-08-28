@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { Button } from "@/components/ui/button"
 import { ChannelIndicator } from "@/components/channel-indicator"
@@ -9,11 +10,16 @@ import { useSidebar, SidebarTrigger } from "@/components/ui/sidebar"
 export function TopBar() {
   const { channel, loading, isConnected } = useYouTubeChannel()
   const { isMobile } = useSidebar()
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   return (
     <div className="border-b">
       <div className="flex h-16 items-center px-4">
-        {isMobile && <SidebarTrigger />}
+        {isClient && isMobile && <SidebarTrigger />}
         <div className="flex-1">
           {loading ? (
             <div className="w-[200px] h-5 bg-gray-200 animate-pulse rounded" />
