@@ -12,9 +12,10 @@ import { useSession } from '@/contexts/session-context'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useAI } from '@/contexts/ai-context'
-import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader } from 'lucide-react'
+import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader, Image as ImageIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import NextImage from 'next/image'
 
 interface Video {
   id: string
@@ -53,12 +54,16 @@ export default function VideoPage() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isGettingThumbnailIdeas, setIsGettingThumbnailIdeas] = useState(false)
   const [thumbnailIdeas, setThumbnailIdeas] = useState<string[]>([])
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null)
   const [newTag, setNewTag] = useState('')
   const [hasChanges, setHasChanges] = useState(false)
   const { session, isLoading: isSessionLoading } = useSession()
   const { profile, loading: isProfileLoading } = useProfile()
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
   const { billingErrorProvider, setBillingErrorProvider } = useAI()
+
+  const canGenerateImages = profile?.ai_provider === 'openai' || profile?.ai_provider === 'gemini'
 
   useEffect(() => {
     if (editedVideo && video) {
@@ -367,6 +372,46 @@ export default function VideoPage() {
     }
   }
 
+  const handleGenerateImage = async (prompt: string) => {
+    if (!profile) return
+    setIsGeneratingImage(true)
+    setGeneratedImage(null)
+
+    try {
+      const response = await fetch('/api/ai/generate-thumbnail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prompt }),
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null)
+        if (errorBody?.errorCode === 'billing_error') {
+          setBillingErrorProvider(profile.ai_provider)
+          router.push('/settings')
+        }
+        const errorMessage = errorBody?.error || 'An unknown error occurred.'
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+      setGeneratedImage(data.imageData)
+
+      toast.success('Success!', {
+        description: 'AI has generated a thumbnail image.',
+      })
+    } catch (error) {
+      console.error('Error generating thumbnail image:', error)
+      toast.error('Thumbnail Image Generation Failed', {
+        description: error instanceof Error ? error.message : 'An unknown error occurred. Please check the console for details.',
+      })
+    } finally {
+      setIsGeneratingImage(false)
+    }
+  }
+
   const handleAddTag = () => {
     if (!newTag.trim() || !editedVideo) return
 
@@ -449,11 +494,11 @@ export default function VideoPage() {
             )}
             AI Generate
           </Button>
-          <Button variant="outline" onClick={handleGetThumbnailIdeas} disabled={isGettingThumbnailIdeas}>
+          <Button variant="outline" onClick={handleGetThumbnailIdeas} disabled={isGettingThumbnailIdeas || !canGenerateImages}>
             {isGettingThumbnailIdeas ? (
               <Loader className="mr-2 h-4 w-4 animate-spin" />
             ) : (
-              <Wand2 className="mr-2 h-4 w-4" />
+              <ImageIcon className="mr-2 h-4 w-4" />
             )}
             Get Thumbnail Ideas
           </Button>
@@ -471,11 +516,15 @@ export default function VideoPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                <img
-                  src={video.thumbnail_url}
-                  alt={video.title}
-                  className="h-full w-full object-cover"
-                />
+                {generatedImage ? (
+                  <NextImage src={`data:image/png;base64,${generatedImage}`} alt="Generated thumbnail" width={1280} height={720} className="h-full w-full object-cover" />
+                ) : (
+                  <img
+                    src={video.thumbnail_url}
+                    alt={video.title}
+                    className="h-full w-full object-cover"
+                  />
+                )}
               </div>
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -545,7 +594,9 @@ export default function VideoPage() {
               ) : thumbnailIdeas.length > 0 ? (
                 <ul className="space-y-2">
                   {thumbnailIdeas.map((idea, index) => (
-                    <li key={index} className="text-sm">{idea}</li>
+                    <li key={index} className="text-sm cursor-pointer hover:underline" onClick={() => handleGenerateImage(idea)}>
+                      {idea}
+                    </li>
                   ))}
                 </ul>
               ) : (
