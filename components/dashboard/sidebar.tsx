@@ -25,7 +25,7 @@ export function Sidebar() {
       <SidebarHeader>
         <Link href="/dashboard" className="flex items-center gap-2">
           <img
-            src="https://upload.wikimedia.org/wikipedia/commons/2/20/YouTube_2024.svg"
+            src="https://www.youtube.com/s/desktop/377f632f/img/logos/favicon_144x144.png"
             alt="Logo"
             className="h-8 w-8"
           />
