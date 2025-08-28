@@ -126,6 +126,21 @@ export function AISettings() {
     }
   }
 
+  const getBillingMessage = (providerId: string) => {
+    switch (providerId) {
+      case 'gemini':
+        return 'Google Gemini offers a generous free tier for its API.'
+      case 'mistral':
+        return 'Mistral AI offers a free tier for its API.'
+      case 'openai':
+        return 'OpenAI API is a paid service. Please check your billing details on the OpenAI website.'
+      case 'anthropic':
+        return 'Anthropic API is a paid service. Please check your billing details on the Anthropic website.'
+      default:
+        return ''
+    }
+  }
+
   const isApiKeySet = (provider: string) => {
     return apiKeys[provider]?.length > 0
   }
@@ -308,8 +323,7 @@ export function AISettings() {
                   </div>
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Usage resets on the 1st of each month. Current billing cycle: {usageData.billingCycle.start} -{" "}
-                  {usageData.billingCycle.end}
+                  {getBillingMessage(selectedProvider)}
                 </p>
               </div>
 
