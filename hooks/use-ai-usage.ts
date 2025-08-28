@@ -13,6 +13,7 @@ export interface AIUsageData {
     start: string;
     end: string;
   };
+  limitReached: boolean;
 }
 
 const dummyUsageData: { [key: string]: AIUsageData } = {
@@ -20,21 +21,25 @@ const dummyUsageData: { [key: string]: AIUsageData } = {
     apiCalls: { used: 750, limit: 1000 },
     contentGeneration: { used: 42, limit: 50 },
     billingCycle: { start: 'Apr 1, 2025', end: 'Apr 30, 2025' },
+    limitReached: false,
   },
   gemini: {
-    apiCalls: { used: 320, limit: 1000 },
-    contentGeneration: { used: 15, limit: 50 },
+    apiCalls: { used: 1000, limit: 1000 },
+    contentGeneration: { used: 50, limit: 50 },
     billingCycle: { start: 'Apr 1, 2025', end: 'Apr 30, 2025' },
+    limitReached: true,
   },
   anthropic: {
     apiCalls: { used: 980, limit: 1000 },
     contentGeneration: { used: 49, limit: 50 },
     billingCycle: { start: 'Apr 1, 2025', end: 'Apr 30, 2025' },
+    limitReached: false,
   },
   mistral: {
     apiCalls: { used: 120, limit: 1000 },
     contentGeneration: { used: 5, limit: 50 },
     billingCycle: { start: 'Apr 1, 2025', end: 'Apr 30, 2025' },
+    limitReached: false,
   },
 };
 
