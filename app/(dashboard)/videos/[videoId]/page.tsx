@@ -51,7 +51,7 @@ export default function VideoPage() {
   const [history, setHistory] = useState<VideoHistory[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false)
+  const [isGettingThumbnailIdeas, setIsGettingThumbnailIdeas] = useState(false)
   const [thumbnailIdeas, setThumbnailIdeas] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [hasChanges, setHasChanges] = useState(false)
@@ -301,7 +301,7 @@ export default function VideoPage() {
     }
   }
 
-  const handleGenerateThumbnailIdeas = async () => {
+  const handleGetThumbnailIdeas = async () => {
     if (!editedVideo || !profile) return
 
     if (billingErrorProvider && billingErrorProvider === profile.ai_provider) {
@@ -327,7 +327,7 @@ export default function VideoPage() {
       return
     }
 
-    setIsGeneratingThumbnails(true)
+    setIsGettingThumbnailIdeas(true)
 
     try {
       const response = await fetch('/api/ai/generate-thumbnail-ideas', {
@@ -363,7 +363,7 @@ export default function VideoPage() {
         description: error instanceof Error ? error.message : 'An unknown error occurred. Please check the console for details.',
       })
     } finally {
-      setIsGeneratingThumbnails(false)
+      setIsGettingThumbnailIdeas(false)
     }
   }
 
@@ -449,13 +449,13 @@ export default function VideoPage() {
             )}
             AI Generate
           </Button>
-          <Button variant="outline" onClick={handleGenerateThumbnailIdeas} disabled={isGeneratingThumbnails}>
-            {isGeneratingThumbnails ? (
+          <Button variant="outline" onClick={handleGetThumbnailIdeas} disabled={isGettingThumbnailIdeas}>
+            {isGettingThumbnailIdeas ? (
               <Loader className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <Wand2 className="mr-2 h-4 w-4" />
             )}
-            Thumbnail Ideas
+            Get Thumbnail Ideas
           </Button>
           <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
             {isSaving ? 'Saving...' : 'Save Changes'}
@@ -538,7 +538,7 @@ export default function VideoPage() {
               <CardTitle>Thumbnail Ideas</CardTitle>
             </CardHeader>
             <CardContent>
-              {isGeneratingThumbnails ? (
+              {isGettingThumbnailIdeas ? (
                 <div className="flex justify-center items-center h-24">
                   <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
