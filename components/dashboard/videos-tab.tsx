@@ -15,12 +15,9 @@ import { getVideos } from "@/lib/api"
 import { type Video } from "@/lib/types"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 
-interface VideosTabProps {
-  channelData: YouTubeChannel | null
-  isLoading: boolean
-}
+interface VideosTabProps {}
 
-export function VideosTab({ channelData, isLoading }: VideosTabProps) {
+export function VideosTab({}: VideosTabProps) {
   const [videos, setVideos] = useState<Video[]>([])
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([])
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
@@ -28,7 +25,7 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
   const [statusFilter, setStatusFilter] = useState("all")
   const router = useRouter()
   const [error, setError] = useState<Error | null>(null)
-  const { channel } = useYouTubeChannel()
+  const { channel, isLoading } = useYouTubeChannel()
 
   const fetchVideos = async () => {
     if (!channel) return
@@ -64,7 +61,9 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
   }
 
   useEffect(() => {
-    fetchVideos()
+    if (channel) {
+      fetchVideos()
+    }
   }, [channel, searchQuery, statusFilter])
 
   // Apply filters when search query or status filter changes
