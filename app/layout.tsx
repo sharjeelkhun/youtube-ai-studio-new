@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'YouTube AI Studio',
   description: 'AI-powered YouTube video management and analytics',
   icons: {
-    icon: '/favicon.ico',
+    icon: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/YouTube_full-color_icon_(2024).svg/32px-YouTube_full-color_icon_(2024).svg.png',
   },
 };
 
