@@ -25,6 +25,16 @@ const temperatureMap = {
   creative: 1.0,
 }
 
+const getPrompt = (title: string, description: string) => `
+  You are an expert YouTube content strategist. Your task is to generate 3-5 creative and engaging thumbnail ideas for a video. The ideas should be descriptive and visually compelling.
+  Original Title: "${title}"
+  Original Description: "${description}"
+  Your response must be a valid JSON object with the following structure:
+  {
+    "thumbnail_ideas": ["idea 1", "idea 2", "idea 3"]
+  }
+`
+
 // Helper function to handle JSON parsing
 const parseJsonResponse = (text: string) => {
   try {
@@ -40,18 +50,7 @@ const parseJsonResponse = (text: string) => {
 const handleGemini = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
   const genAI = new GoogleGenerativeAI(apiKey)
   const model = genAI.getGenerativeModel({ model: settings.defaultModel })
-  const prompt = `
-    You are an expert YouTube content strategist. Your task is to optimize the metadata for a video.
-    Based on the following title and description, generate a new, more engaging title, a more detailed and SEO-friendly description, and a list of 10-15 relevant tags.
-    Original Title: "${title}"
-    Original Description: "${description}"
-    Your response must be a valid JSON object with the following structure:
-    {
-      "title": "A new, catchy, and optimized title",
-      "description": "A new, well-structured, and SEO-optimized description that is at least 3 paragraphs long. Use markdown for formatting like bolding and bullet points.",
-      "tags": ["tag1", "tag2", "tag3", ...]
-    }
-  `
+  const prompt = getPrompt(title, description)
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
@@ -72,11 +71,11 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
     messages: [
       {
         role: 'system',
-        content: `You are an expert YouTube content strategist. Your task is to optimize the metadata for a video. Your response must be a valid JSON object with the following structure: { "title": "string", "description": "string", "tags": ["string", ...] }`
+        content: `You are an expert YouTube content strategist. Your response must be a valid JSON object with the following structure: { "thumbnail_ideas": ["string", ...] }`
       },
       {
         role: 'user',
-        content: `Based on the following title and description, generate a new, more engaging title, a more detailed and SEO-friendly description, and a list of 10-15 relevant tags.\nOriginal Title: "${title}"\nOriginal Description: "${description}"`
+        content: `Based on the following title and description, generate 3-5 creative and engaging thumbnail ideas.\nOriginal Title: "${title}"\nOriginal Description: "${description}"`
       }
     ],
     response_format: { type: 'json_object' }
@@ -98,16 +97,7 @@ const handleAnthropic = async (apiKey: string, title: string, description: strin
     messages: [
       {
         role: 'user',
-        content: `You are an expert YouTube content strategist. Your task is to optimize the metadata for a video.
-        Based on the following title and description, generate a new, more engaging title, a more detailed and SEO-friendly description, and a list of 10-15 relevant tags.
-        Original Title: "${title}"
-        Original Description: "${description}"
-        Your response must be a valid JSON object with the following structure:
-        {
-          "title": "A new, catchy, and optimized title",
-          "description": "A new, well-structured, and SEO-optimized description that is at least 3 paragraphs long. Use markdown for formatting like bolding and bullet points.",
-          "tags": ["tag1", "tag2", "tag3", ...]
-        }`
+        content: getPrompt(title, description)
       }
     ]
   })
@@ -128,11 +118,11 @@ const handleMistral = async (apiKey: string, title: string, description: string,
     messages: [
       {
         role: 'system',
-        content: `You are an expert YouTube content strategist. Your task is to optimize the metadata for a video. Your response must be a valid JSON object with the following structure: { "title": "string", "description": "string", "tags": ["string", ...] }`
+        content: `You are an expert YouTube content strategist. Your response must be a valid JSON object with the following structure: { "thumbnail_ideas": ["string", ...] }`
       },
       {
         role: 'user',
-        content: `Based on the following title and description, generate a new, more engaging title, a more detailed and SEO-friendly description, and a list of 10-15 relevant tags.\nOriginal Title: "${title}"\nOriginal Description: "${description}"`
+        content: `Based on the following title and description, generate 3-5 creative and engaging thumbnail ideas.\nOriginal Title: "${title}"\nOriginal Description: "${description}"`
       }
     ],
     responseFormat: { type: 'json_object' }
@@ -182,28 +172,27 @@ export async function POST(req: Request) {
 
     const aiSettings = profile.settings.features
 
-    let optimizedData
+    let thumbnailIdeas
     if (profile.provider === 'gemini') {
-      optimizedData = await handleGemini(apiKey, title, description, aiSettings)
+      thumbnailIdeas = await handleGemini(apiKey, title, description, aiSettings)
     } else if (profile.provider === 'openai') {
-      optimizedData = await handleOpenAI(apiKey, title, description, aiSettings)
+      thumbnailIdeas = await handleOpenAI(apiKey, title, description, aiSettings)
     } else if (profile.provider === 'anthropic') {
-      optimizedData = await handleAnthropic(apiKey, title, description, aiSettings)
+      thumbnailIdeas = await handleAnthropic(apiKey, title, description, aiSettings)
     } else if (profile.provider === 'mistral') {
-      optimizedData = await handleMistral(apiKey, title, description, aiSettings)
+      thumbnailIdeas = await handleMistral(apiKey, title, description, aiSettings)
     } else {
       return NextResponse.json({ error: `Provider "${profile.provider}" is not supported.` }, { status: 400 })
     }
 
-    return NextResponse.json(optimizedData)
+    return NextResponse.json(thumbnailIdeas)
 
   } catch (error) {
-    console.error('[AI_OPTIMIZE_ERROR]', error)
+    console.error('[AI_GENERATE_THUMBNAIL_IDEAS_ERROR]', error)
 
     if (error instanceof Error) {
       const errorMessage = error.message;
 
-      // Check for billing-related errors
       if (/credit|quota|limit|billing/i.test(errorMessage)) {
         return NextResponse.json({
           error: 'A billing-related error occurred with the AI provider. Please check your plan and billing details with the provider.',
@@ -211,12 +200,10 @@ export async function POST(req: Request) {
         }, { status: 400 });
       }
 
-      // Broadly check for API key errors for any provider
       if (/api key/i.test(errorMessage) || /authentication/i.test(errorMessage)) {
         return NextResponse.json({ error: 'The provided API key is invalid or has been rejected by the provider.' }, { status: 400 })
       }
 
-      // Handle other specific errors by passing their message
       return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 
