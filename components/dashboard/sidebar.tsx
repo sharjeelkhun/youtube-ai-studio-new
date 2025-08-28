@@ -59,9 +59,9 @@ export function Sidebar() {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/videos" legacyBehavior passHref>
+              <Link href="/dashboard/videos" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith("/videos")}
+                  isActive={pathname.startsWith("/dashboard/videos")}
                   className="w-full justify-start"
                 >
                   <svg
@@ -82,9 +82,33 @@ export function Sidebar() {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/analytics" legacyBehavior passHref>
+              <Link href="/dashboard/comments" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname === "/analytics"}
+                  isActive={pathname.startsWith("/dashboard/comments")}
+                  className="w-full justify-start"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="mr-2 h-4 w-4"
+                  >
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  Comments
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/dashboard/analytics" legacyBehavior passHref>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith("/dashboard/analytics")}
                   className="w-full justify-start"
                 >
                   <svg
@@ -104,15 +128,67 @@ export function Sidebar() {
                 </SidebarMenuButton>
               </Link>
             </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/dashboard/seo" legacyBehavior passHref>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith("/dashboard/seo")}
+                  className="w-full justify-start"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    className="mr-2 h-4 w-4"
+                  >
+                    <path d="M2.5 21L12 11.5 21.5 21" />
+                    <path d="M12 3v10" />
+                    <path d="M9.5 5.5L12 3 14.5 5.5" />
+                  </svg>
+                  SEO
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <Link href="/dashboard/suggestions" legacyBehavior passHref>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith("/dashboard/suggestions")}
+                  className="w-full justify-start"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    className="mr-2 h-4 w-4"
+                  >
+                    <path d="M8 21h8" />
+                    <path d="M12 17v4" />
+                    <path d="M12 3a7 7 0 0 0-7 7c0 3 2 5 2 7h10c0-2 2-4 2-7a7 7 0 0 0-7-7Z" />
+                  </svg>
+                  Suggestions
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
         <SidebarGroup>
           <SidebarGroupLabel>Settings</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/settings" legacyBehavior passHref>
+              <Link href="/dashboard/settings" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname === "/settings"}
+                  isActive={pathname.startsWith("/dashboard/settings")}
                   className="w-full justify-start"
                 >
                   <svg
