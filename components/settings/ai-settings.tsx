@@ -16,11 +16,13 @@ import { Separator } from "@/components/ui/separator"
 import { useProfile } from "@/contexts/profile-context"
 import { aiProviders } from "@/lib/ai-providers"
 import { useAIUsage } from "@/hooks/use-ai-usage"
+import { useAI } from "@/contexts/ai-context"
 
 export function AISettings() {
   const { profile, updateProfile, loading: profileLoading } = useProfile()
   const [selectedProvider, setSelectedProvider] = useState("openai")
   const { usageData, isLoading: usageLoading, error: usageError } = useAIUsage(selectedProvider)
+  const { hasBillingError, setHasBillingError } = useAI()
 
   const [isLoading, setIsLoading] = useState(false)
   const [apiKeys, setApiKeys] = useState<{ [key: string]: string }>({})
@@ -362,6 +364,16 @@ export function AISettings() {
           <CardDescription>View your AI usage and set limits</CardDescription>
         </CardHeader>
         <CardContent>
+          {hasBillingError && (
+            <Alert variant="destructive" className="mb-4">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Billing Issue Detected</AlertTitle>
+              <AlertDescription>
+                We encountered a billing-related error with your AI provider. Please check your plan and billing details with the provider to ensure uninterrupted service.
+              </AlertDescription>
+              <Button variant="link" className="p-0 h-auto mt-2" onClick={() => setHasBillingError(false)}>Dismiss</Button>
+            </Alert>
+          )}
           {usageLoading ? (
             <div className="flex justify-center items-center h-24">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />

@@ -177,12 +177,23 @@ export async function POST(req: Request) {
     console.error('[AI_OPTIMIZE_ERROR]', error)
 
     if (error instanceof Error) {
+      const errorMessage = error.message;
+
+      // Check for billing-related errors
+      if (/credit|quota|limit|billing/i.test(errorMessage)) {
+        return NextResponse.json({
+          error: 'A billing-related error occurred with the AI provider. Please check your plan and billing details with the provider.',
+          errorCode: 'billing_error'
+        }, { status: 400 });
+      }
+
       // Broadly check for API key errors for any provider
-      if (/API key/i.test(error.message) || /authentication/i.test(error.message)) {
+      if (/api key/i.test(errorMessage) || /authentication/i.test(errorMessage)) {
         return NextResponse.json({ error: 'The provided API key is invalid or has been rejected by the provider.' }, { status: 400 })
       }
+
       // Handle other specific errors by passing their message
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ error: errorMessage }, { status: 500 })
     }
 
     return NextResponse.json({ error: 'An unexpected error occurred.' }, { status: 500 })

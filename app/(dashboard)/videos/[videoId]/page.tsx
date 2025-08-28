@@ -11,6 +11,7 @@ import { toast } from 'sonner'
 import { useSession } from '@/contexts/session-context'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import { useProfile } from '@/contexts/profile-context'
+import { useAI } from '@/contexts/ai-context'
 import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -55,6 +56,7 @@ export default function VideoPage() {
   const { session, isLoading: isSessionLoading } = useSession()
   const { profile, loading: isProfileLoading } = useProfile()
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
+  const { setHasBillingError } = useAI()
 
   useEffect(() => {
     if (editedVideo && video) {
@@ -259,8 +261,11 @@ export default function VideoPage() {
       })
 
       if (!response.ok) {
-        // Try to get the specific error message from the API response body
         const errorBody = await response.json().catch(() => null)
+        if (errorBody?.errorCode === 'billing_error') {
+          setHasBillingError(true)
+          router.push('/settings')
+        }
         const errorMessage = errorBody?.error || 'An unknown error occurred.'
         throw new Error(errorMessage)
       }
