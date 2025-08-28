@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Eye, ThumbsUp, MessageSquare, Loader2, Search, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
@@ -123,8 +124,36 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-1/4" />
+            <Skeleton className="mt-2 h-4 w-2/3" />
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6 flex flex-col gap-4 sm:flex-row">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-full sm:w-[180px]" />
+            </div>
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-16" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="hidden h-4 w-12 md:block" />
+                  <Skeleton className="hidden h-4 w-12 md:block" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -178,8 +207,22 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
           </div>
 
           {isLoadingVideos ? (
-            <div className="flex h-[200px] items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin" />
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-16" />
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="hidden h-4 w-12 md:block" />
+                  <Skeleton className="hidden h-4 w-12 md:block" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              ))}
             </div>
           ) : filteredVideos.length === 0 ? (
             <div className="flex h-[200px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
