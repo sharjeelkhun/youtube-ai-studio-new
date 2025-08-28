@@ -1,8 +1,13 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { redirect } from "next/navigation"
-import { Sidebar } from "@/components/sidebar"
+import { DashboardProvider } from "@/components/dashboard-provider"
+import { Sidebar } from "@/components/dashboard/sidebar"
 import { TopBar } from "@/components/dashboard/top-bar"
+import {
+  Sidebar as AppSidebar,
+  SidebarInset,
+} from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { createServerClient } from "@/lib/supabase-server"
 
@@ -11,24 +16,37 @@ export const metadata: Metadata = {
   description: "YouTube AI Studio Dashboard",
 }
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default async function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const supabase = createServerClient()
-  const { data: { session }, error } = await supabase.auth.getSession()
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession()
 
   if (error || !session) {
     redirect("/login")
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <TopBar />
-      <div className="flex flex-1">
-        <Sidebar className="h-full" />
-        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
-          <div className="container mx-auto py-6">{children}</div>
-        </main>
+    <DashboardProvider>
+      <div className="flex min-h-screen">
+        <AppSidebar>
+          <Sidebar />
+        </AppSidebar>
+        <SidebarInset>
+          <div className="flex flex-1 flex-col">
+            <TopBar />
+            <main className="flex-1 overflow-y-auto bg-gray-50 p-4 dark:bg-gray-900 md:p-6 lg:p-8">
+              {children}
+            </main>
+          </div>
+          <Toaster />
+        </SidebarInset>
       </div>
-      <Toaster />
-    </div>
+    </DashboardProvider>
   )
 }
