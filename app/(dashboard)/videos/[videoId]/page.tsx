@@ -51,6 +51,8 @@ export default function VideoPage() {
   const [history, setHistory] = useState<VideoHistory[]>([])
   const [isSaving, setIsSaving] = useState(false)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isGeneratingThumbnails, setIsGeneratingThumbnails] = useState(false)
+  const [thumbnailIdeas, setThumbnailIdeas] = useState<string[]>([])
   const [newTag, setNewTag] = useState('')
   const [hasChanges, setHasChanges] = useState(false)
   const { session, isLoading: isSessionLoading } = useSession()
@@ -299,6 +301,72 @@ export default function VideoPage() {
     }
   }
 
+  const handleGenerateThumbnailIdeas = async () => {
+    if (!editedVideo || !profile) return
+
+    if (billingErrorProvider && billingErrorProvider === profile.ai_provider) {
+      const proceed = confirm(`You have previously encountered a billing issue with ${profile.ai_provider}. Are you sure you want to proceed?`)
+      if (!proceed) {
+        return
+      }
+    }
+
+    if (!profile?.ai_provider || !profile.ai_settings) {
+      toast.error('AI Provider Not Configured', {
+        description: 'Please select an AI provider and add your API key in the settings.',
+      })
+      return
+    }
+
+    const settings = profile.ai_settings as any
+    const apiKeys = settings.apiKeys
+    if (!apiKeys || !apiKeys[profile.ai_provider]) {
+      toast.error('API Key Missing', {
+        description: `You have not added an API key for ${profile.ai_provider}. Please add it in the settings.`,
+      })
+      return
+    }
+
+    setIsGeneratingThumbnails(true)
+
+    try {
+      const response = await fetch('/api/ai/generate-thumbnail-ideas', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: editedVideo.title,
+          description: editedVideo.description,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null)
+        if (errorBody?.errorCode === 'billing_error') {
+          setBillingErrorProvider(profile.ai_provider)
+          router.push('/settings')
+        }
+        const errorMessage = errorBody?.error || 'An unknown error occurred.'
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+      setThumbnailIdeas(data.thumbnail_ideas)
+
+      toast.success('Success!', {
+        description: 'AI has generated thumbnail ideas.',
+      })
+    } catch (error) {
+      console.error('Error generating thumbnail ideas:', error)
+      toast.error('Thumbnail Idea Generation Failed', {
+        description: error instanceof Error ? error.message : 'An unknown error occurred. Please check the console for details.',
+      })
+    } finally {
+      setIsGeneratingThumbnails(false)
+    }
+  }
+
   const handleAddTag = () => {
     if (!newTag.trim() || !editedVideo) return
 
@@ -381,6 +449,14 @@ export default function VideoPage() {
             )}
             AI Generate
           </Button>
+          <Button variant="outline" onClick={handleGenerateThumbnailIdeas} disabled={isGeneratingThumbnails}>
+            {isGeneratingThumbnails ? (
+              <Loader className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Wand2 className="mr-2 h-4 w-4" />
+            )}
+            Thumbnail Ideas
+          </Button>
           <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
@@ -454,6 +530,27 @@ export default function VideoPage() {
                   </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Thumbnail Ideas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isGeneratingThumbnails ? (
+                <div className="flex justify-center items-center h-24">
+                  <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : thumbnailIdeas.length > 0 ? (
+                <ul className="space-y-2">
+                  {thumbnailIdeas.map((idea, index) => (
+                    <li key={index} className="text-sm">{idea}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-center text-muted-foreground">No thumbnail ideas generated yet.</p>
+              )}
             </CardContent>
           </Card>
 
