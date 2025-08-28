@@ -78,7 +78,7 @@ export const aiProviders = [
     description: "Mistral Large and Medium models",
     logo: MistralLogo,
     models: [
-      { id: "mistral-large", name: "Mistral Large (Recommended)" },
+      { id: "mistral-large-latest", name: "Mistral Large (Recommended)" },
       { id: "mistral-medium", name: "Mistral Medium" },
     ],
     apiKeyPlaceholder: "...",
