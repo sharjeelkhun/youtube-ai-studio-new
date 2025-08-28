@@ -3,6 +3,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
+import { Mistral } from '@mistralai/mistralai'
 
 interface AiSettingsRpcResponse {
   provider: string | null
@@ -66,6 +68,63 @@ const handleOpenAI = async (apiKey: string, title: string, description: string) 
   return parseJsonResponse(text)
 }
 
+// Helper function for Anthropic
+const handleAnthropic = async (apiKey: string, title: string, description: string) => {
+  const anthropic = new Anthropic({ apiKey })
+  const msg = await anthropic.messages.create({
+    model: 'claude-3-opus-20240229',
+    max_tokens: 1024,
+    messages: [
+      {
+        role: 'user',
+        content: `You are an expert YouTube content strategist. Your task is to optimize the metadata for a video.
+        Based on the following title and description, generate a new, more engaging title, a more detailed and SEO-friendly description, and a list of 10-15 relevant tags.
+        Original Title: "${title}"
+        Original Description: "${description}"
+        Your response must be a valid JSON object with the following structure:
+        {
+          "title": "A new, catchy, and optimized title",
+          "description": "A new, well-structured, and SEO-optimized description that is at least 3 paragraphs long. Use markdown for formatting like bolding and bullet points.",
+          "tags": ["tag1", "tag2", "tag3", ...]
+        }`
+      }
+    ]
+  })
+
+  if (!msg.content || !msg.content[0] || !('text' in msg.content[0])) {
+    throw new Error('Anthropic returned an empty or invalid response.')
+  }
+
+  return parseJsonResponse(msg.content[0].text)
+}
+
+// Helper function for Mistral
+const handleMistral = async (apiKey: string, title: string, description: string) => {
+  const mistral = new Mistral({ apiKey })
+  const response = await mistral.chat.complete({
+    model: 'mistral-large-latest',
+    messages: [
+      {
+        role: 'system',
+        content: `You are an expert YouTube content strategist. Your task is to optimize the metadata for a video. Your response must be a valid JSON object with the following structure: { "title": "string", "description": "string", "tags": ["string", ...] }`
+      },
+      {
+        role: 'user',
+        content: `Based on the following title and description, generate a new, more engaging title, a more detailed and SEO-friendly description, and a list of 10-15 relevant tags.\nOriginal Title: "${title}"\nOriginal Description: "${description}"`
+      }
+    ],
+    responseFormat: { type: 'json_object' }
+  })
+
+  const content = response.choices[0].message.content;
+
+  if (typeof content === 'string') {
+    return parseJsonResponse(content);
+  } else {
+    throw new Error('Mistral AI returned a response in an unexpected format.');
+  }
+}
+
 export async function POST(req: Request) {
   const cookieStore = cookies()
   const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
@@ -104,6 +163,10 @@ export async function POST(req: Request) {
       optimizedData = await handleGemini(apiKey, title, description)
     } else if (profile.provider === 'openai') {
       optimizedData = await handleOpenAI(apiKey, title, description)
+    } else if (profile.provider === 'anthropic') {
+      optimizedData = await handleAnthropic(apiKey, title, description)
+    } else if (profile.provider === 'mistral') {
+      optimizedData = await handleMistral(apiKey, title, description)
     } else {
       return NextResponse.json({ error: `Provider "${profile.provider}" is not supported.` }, { status: 400 })
     }
