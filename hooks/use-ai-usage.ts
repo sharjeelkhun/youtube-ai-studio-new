@@ -15,7 +15,30 @@ export interface AIUsageData {
   };
 }
 
-export function useAIUsage() {
+const dummyUsageData: { [key: string]: AIUsageData } = {
+  openai: {
+    apiCalls: { used: 750, limit: 1000 },
+    contentGeneration: { used: 42, limit: 50 },
+    billingCycle: { start: 'Apr 1, 2025', end: 'Apr 30, 2025' },
+  },
+  gemini: {
+    apiCalls: { used: 320, limit: 1000 },
+    contentGeneration: { used: 15, limit: 50 },
+    billingCycle: { start: 'Apr 1, 2025', end: 'Apr 30, 2025' },
+  },
+  anthropic: {
+    apiCalls: { used: 980, limit: 1000 },
+    contentGeneration: { used: 49, limit: 50 },
+    billingCycle: { start: 'Apr 1, 2025', end: 'Apr 30, 2025' },
+  },
+  mistral: {
+    apiCalls: { used: 120, limit: 1000 },
+    contentGeneration: { used: 5, limit: 50 },
+    billingCycle: { start: 'Apr 1, 2025', end: 'Apr 30, 2025' },
+  },
+};
+
+export function useAIUsage(providerId: string) {
   const [usageData, setUsageData] = useState<AIUsageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -25,23 +48,13 @@ export function useAIUsage() {
       setIsLoading(true);
       try {
         // Simulate an API call to fetch usage data
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // In a real application, this data would come from your backend
-        const data: AIUsageData = {
-          apiCalls: {
-            used: Math.floor(Math.random() * 1000),
-            limit: 1000,
-          },
-          contentGeneration: {
-            used: Math.floor(Math.random() * 50),
-            limit: 50,
-          },
-          billingCycle: {
-            start: 'Apr 1, 2025',
-            end: 'Apr 30, 2025',
-          },
-        };
+        const data = dummyUsageData[providerId];
+        if (!data) {
+          throw new Error(`Usage data not found for provider: ${providerId}`);
+        }
 
         setUsageData(data);
       } catch (err) {
@@ -51,8 +64,10 @@ export function useAIUsage() {
       }
     };
 
-    fetchUsageData();
-  }, []);
+    if (providerId) {
+      fetchUsageData();
+    }
+  }, [providerId]);
 
   return { usageData, isLoading, error };
 }

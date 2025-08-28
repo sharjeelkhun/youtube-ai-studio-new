@@ -19,10 +19,10 @@ import { useAIUsage } from "@/hooks/use-ai-usage"
 
 export function AISettings() {
   const { profile, updateProfile, loading: profileLoading } = useProfile()
-  const { usageData, isLoading: usageLoading, error: usageError } = useAIUsage()
+  const [selectedProvider, setSelectedProvider] = useState("openai")
+  const { usageData, isLoading: usageLoading, error: usageError } = useAIUsage(selectedProvider)
 
   const [isLoading, setIsLoading] = useState(false)
-  const [selectedProvider, setSelectedProvider] = useState("openai")
   const [apiKeys, setApiKeys] = useState<{ [key: string]: string }>({})
   const [aiSettings, setAiSettings] = useState({
     enhanceVideoTitles: true,
