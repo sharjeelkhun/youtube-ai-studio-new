@@ -16,9 +16,10 @@ import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { YoutubeConnectionStatus } from "@/components/youtube-connection-status"
 import { Separator } from "@/components/ui/separator"
 
+import { Skeleton } from "@/components/ui/skeleton"
 export function Sidebar() {
   const pathname = usePathname()
-  const { isConnected } = useYouTubeChannel()
+  const { isConnected, isLoading } = useYouTubeChannel()
 
   return (
     <>
@@ -215,11 +216,18 @@ export function Sidebar() {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      {!isConnected && (
+      {isLoading ? (
+        <SidebarFooter>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-5 rounded-full" />
+            <Skeleton className="h-4 w-24" />
+          </div>
+        </SidebarFooter>
+      ) : !isConnected ? (
         <SidebarFooter>
           <YoutubeConnectionStatus />
         </SidebarFooter>
-      )}
+      ) : null}
     </>
   )
 } 
