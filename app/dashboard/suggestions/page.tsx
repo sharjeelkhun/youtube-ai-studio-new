@@ -8,9 +8,11 @@ export const metadata: Metadata = {
 
 export default function SuggestionsPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold tracking-tight">AI Suggestions</h1>
-      <SuggestionsTab />
+    <div className="container mx-auto">
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold tracking-tight">Suggestions</h1>
+        <SuggestionsTab />
+      </div>
     </div>
   )
 }
