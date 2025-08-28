@@ -3,17 +3,17 @@
 import { createContext, useContext, useState, ReactNode } from 'react'
 
 interface AIContextType {
-  hasBillingError: boolean
-  setHasBillingError: (hasError: boolean) => void
+  billingErrorProvider: string | null
+  setBillingErrorProvider: (providerId: string | null) => void
 }
 
 const AIContext = createContext<AIContextType | undefined>(undefined)
 
 export function AIProvider({ children }: { children: ReactNode }) {
-  const [hasBillingError, setHasBillingError] = useState(false)
+  const [billingErrorProvider, setBillingErrorProvider] = useState<string | null>(null)
 
   return (
-    <AIContext.Provider value={{ hasBillingError, setHasBillingError }}>
+    <AIContext.Provider value={{ billingErrorProvider, setBillingErrorProvider }}>
       {children}
     </AIContext.Provider>
   )
