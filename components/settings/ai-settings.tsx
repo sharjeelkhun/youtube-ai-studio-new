@@ -313,7 +313,7 @@ export function AISettings() {
                 </p>
               </div>
 
-              {usageData.limitReached ? (
+              {usageData.limitReached && (
                 <Alert variant="destructive">
                   <Info className="h-4 w-4" />
                   <AlertTitle>API Limit Reached</AlertTitle>
@@ -322,22 +322,10 @@ export function AISettings() {
                     continue using AI features.
                   </AlertDescription>
                 </Alert>
-              ) : (
-                <Alert>
-                  <Sparkles className="h-4 w-4" />
-                  <AlertTitle>Upgrade for more AI features</AlertTitle>
-                  <AlertDescription>
-                    Your current plan includes limited AI usage. Upgrade to Pro for unlimited AI-powered content
-                    suggestions and analytics.
-                  </AlertDescription>
-                </Alert>
               )}
             </div>
           ) : null}
         </CardContent>
-        <CardFooter className="flex justify-end">
-          <Button variant="outline">View Upgrade Options</Button>
-        </CardFooter>
       </Card>
 
       <Card>
