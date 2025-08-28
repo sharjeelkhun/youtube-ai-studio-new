@@ -121,7 +121,7 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="flex-wrap">
+        <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="videos">Videos</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>

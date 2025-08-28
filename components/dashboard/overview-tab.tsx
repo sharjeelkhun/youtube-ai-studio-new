@@ -158,7 +158,7 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
         </CardContent>
       </Card>
 
-      <Card className="md:col-span-2 lg:col-span-3">
+      <Card className="col-span-1 md:col-span-2 lg:col-span-3">
         <CardHeader>
           <CardTitle>Channel Information</CardTitle>
           <CardDescription>Details about your YouTube channel</CardDescription>

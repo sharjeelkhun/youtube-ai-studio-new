@@ -16,6 +16,8 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Loader2 } from "lucide-react"
 
+import { DashboardTabs } from "@/components/dashboard/dashboard-tabs"
+
 export default function DashboardLayout({
   children,
 }: {
@@ -55,7 +57,8 @@ export default function DashboardLayout({
           <div className="flex flex-1 flex-col">
             <TopBar />
             <main className="flex-1 overflow-y-auto bg-gray-50 p-4 dark:bg-gray-900 md:p-6 lg:p-8">
-              {children}
+              <DashboardTabs />
+              <div className="mt-4">{children}</div>
             </main>
           </div>
           <Toaster />
