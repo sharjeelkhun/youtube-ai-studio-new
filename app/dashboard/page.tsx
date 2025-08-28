@@ -1,23 +1,27 @@
-"use client"
+'use client';
 
-import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
-import { OverviewTab } from "@/components/dashboard/overview-tab"
-import { Loader2 } from "lucide-react"
+import { useSession } from '@/contexts/session-context';
+import DashboardContent from '@/components/dashboard/dashboard-content';
+import { Loader2 } from 'lucide-react';
 
 export default function DashboardPage() {
-  const { channel, loading } = useYouTubeChannel()
+  const { session, isLoading } = useSession();
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
       </div>
-    )
+    );
   }
 
   return (
-    <div className="container mx-auto">
-      <OverviewTab channelData={channel} isLoading={loading} />
+    <div className="min-h-screen bg-gray-50">
+      <DashboardContent
+        userId={session?.user?.id || undefined}
+        email={session?.user?.email || ''}
+        channelId={session?.user?.user_metadata?.channel_id}
+      />
     </div>
-  )
+  );
 }
