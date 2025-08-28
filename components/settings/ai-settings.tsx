@@ -22,7 +22,7 @@ export function AISettings() {
   const { profile, updateProfile, loading: profileLoading } = useProfile()
   const [selectedProvider, setSelectedProvider] = useState("openai")
   const { usageData, isLoading: usageLoading, error: usageError } = useAIUsage(selectedProvider)
-  const { hasBillingError, setHasBillingError } = useAI()
+  const { billingErrorProvider, setBillingErrorProvider } = useAI()
 
   const [isLoading, setIsLoading] = useState(false)
   const [apiKeys, setApiKeys] = useState<{ [key: string]: string }>({})
@@ -215,6 +215,101 @@ export function AISettings() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Usage & Limits</CardTitle>
+          <CardDescription>View your AI usage and set limits</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {billingErrorProvider && (
+            <Alert variant="destructive" className="mb-4">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Billing Issue Detected</AlertTitle>
+              <AlertDescription>
+                We encountered a billing-related error with the AI provider: <strong>{billingErrorProvider}</strong>. Please check your plan and billing details with the provider to ensure uninterrupted service.
+              </AlertDescription>
+              <Button variant="link" className="p-0 h-auto mt-2" onClick={() => setBillingErrorProvider(null)}>Dismiss</Button>
+            </Alert>
+          )}
+          {usageLoading ? (
+            <div className="flex justify-center items-center h-24">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : usageError ? (
+            <Alert variant="destructive">
+              <Info className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>Could not load usage data. Please try again later.</AlertDescription>
+            </Alert>
+          ) : usageData ? (
+            <div className="space-y-4">
+              <div className="rounded-lg border p-4">
+                <h3 className="font-medium">Current Usage</h3>
+                <div className="mt-2 space-y-2">
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span>API Calls</span>
+                      <span className="font-medium">
+                        {usageData.apiCalls.used} / {usageData.apiCalls.limit}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted">
+                      <div
+                        className="h-2 rounded-full bg-primary"
+                        style={{ width: `${(usageData.apiCalls.used / usageData.apiCalls.limit) * 100}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span>Content Generation</span>
+                      <span className="font-medium">
+                        {usageData.contentGeneration.used} / {usageData.contentGeneration.limit}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-muted">
+                      <div
+                        className="h-2 rounded-full bg-primary"
+                        style={{
+                          width: `${(usageData.contentGeneration.used / usageData.contentGeneration.limit) * 100}%`,
+                        }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Usage resets on the 1st of each month. Current billing cycle: {usageData.billingCycle.start} -{" "}
+                  {usageData.billingCycle.end}
+                </p>
+              </div>
+
+              {usageData.limitReached ? (
+                <Alert variant="destructive">
+                  <Info className="h-4 w-4" />
+                  <AlertTitle>API Limit Reached</AlertTitle>
+                  <AlertDescription>
+                    You have exceeded your API quota for the current billing cycle. Please upgrade your plan to
+                    continue using AI features.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <Alert>
+                  <Sparkles className="h-4 w-4" />
+                  <AlertTitle>Upgrade for more AI features</AlertTitle>
+                  <AlertDescription>
+                    Your current plan includes limited AI usage. Upgrade to Pro for unlimited AI-powered content
+                    suggestions and analytics.
+                  </AlertDescription>
+                </Alert>
+              )}
+            </div>
+          ) : null}
+        </CardContent>
+        <CardFooter className="flex justify-end">
+          <Button variant="outline">View Upgrade Options</Button>
+        </CardFooter>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>AI Features</CardTitle>
           <CardDescription>Configure how AI is used throughout the application</CardDescription>
         </CardHeader>
@@ -355,101 +450,6 @@ export function AISettings() {
               </>
             )}
           </Button>
-        </CardFooter>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Usage & Limits</CardTitle>
-          <CardDescription>View your AI usage and set limits</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {hasBillingError && (
-            <Alert variant="destructive" className="mb-4">
-              <Info className="h-4 w-4" />
-              <AlertTitle>Billing Issue Detected</AlertTitle>
-              <AlertDescription>
-                We encountered a billing-related error with your AI provider. Please check your plan and billing details with the provider to ensure uninterrupted service.
-              </AlertDescription>
-              <Button variant="link" className="p-0 h-auto mt-2" onClick={() => setHasBillingError(false)}>Dismiss</Button>
-            </Alert>
-          )}
-          {usageLoading ? (
-            <div className="flex justify-center items-center h-24">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : usageError ? (
-            <Alert variant="destructive">
-              <Info className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>Could not load usage data. Please try again later.</AlertDescription>
-            </Alert>
-          ) : usageData ? (
-            <div className="space-y-4">
-              <div className="rounded-lg border p-4">
-                <h3 className="font-medium">Current Usage</h3>
-                <div className="mt-2 space-y-2">
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span>API Calls</span>
-                      <span className="font-medium">
-                        {usageData.apiCalls.used} / {usageData.apiCalls.limit}
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted">
-                      <div
-                        className="h-2 rounded-full bg-primary"
-                        style={{ width: `${(usageData.apiCalls.used / usageData.apiCalls.limit) * 100}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span>Content Generation</span>
-                      <span className="font-medium">
-                        {usageData.contentGeneration.used} / {usageData.contentGeneration.limit}
-                      </span>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted">
-                      <div
-                        className="h-2 rounded-full bg-primary"
-                        style={{
-                          width: `${(usageData.contentGeneration.used / usageData.contentGeneration.limit) * 100}%`,
-                        }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Usage resets on the 1st of each month. Current billing cycle: {usageData.billingCycle.start} -{" "}
-                  {usageData.billingCycle.end}
-                </p>
-              </div>
-
-              {usageData.limitReached ? (
-                <Alert variant="destructive">
-                  <Info className="h-4 w-4" />
-                  <AlertTitle>API Limit Reached</AlertTitle>
-                  <AlertDescription>
-                    You have exceeded your API quota for the current billing cycle. Please upgrade your plan to
-                    continue using AI features.
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <Alert>
-                  <Sparkles className="h-4 w-4" />
-                  <AlertTitle>Upgrade for more AI features</AlertTitle>
-                  <AlertDescription>
-                    Your current plan includes limited AI usage. Upgrade to Pro for unlimited AI-powered content
-                    suggestions and analytics.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          ) : null}
-        </CardContent>
-        <CardFooter className="flex justify-end">
-          <Button variant="outline">View Upgrade Options</Button>
         </CardFooter>
       </Card>
     </div>

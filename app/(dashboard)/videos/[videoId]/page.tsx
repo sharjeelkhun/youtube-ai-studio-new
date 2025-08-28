@@ -56,7 +56,7 @@ export default function VideoPage() {
   const { session, isLoading: isSessionLoading } = useSession()
   const { profile, loading: isProfileLoading } = useProfile()
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
-  const { setHasBillingError } = useAI()
+  const { billingErrorProvider, setBillingErrorProvider } = useAI()
 
   useEffect(() => {
     if (editedVideo && video) {
@@ -228,7 +228,14 @@ export default function VideoPage() {
   }
 
   const handleAIGenerate = async () => {
-    if (!editedVideo) return
+    if (!editedVideo || !profile) return
+
+    if (billingErrorProvider && billingErrorProvider === profile.ai_provider) {
+      const proceed = confirm(`You have previously encountered a billing issue with ${profile.ai_provider}. Are you sure you want to proceed?`)
+      if (!proceed) {
+        return
+      }
+    }
 
     if (!profile?.ai_provider || !profile.ai_settings) {
       toast.error('AI Provider Not Configured', {
@@ -263,7 +270,7 @@ export default function VideoPage() {
       if (!response.ok) {
         const errorBody = await response.json().catch(() => null)
         if (errorBody?.errorCode === 'billing_error') {
-          setHasBillingError(true)
+          setBillingErrorProvider(profile.ai_provider)
           router.push('/settings')
         }
         const errorMessage = errorBody?.error || 'An unknown error occurred.'
