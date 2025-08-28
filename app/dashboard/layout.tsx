@@ -42,7 +42,7 @@ export default function DashboardLayout({
 
   return (
     <DashboardProvider>
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen w-full">
         <AppSidebar>
           <Sidebar />
         </AppSidebar>

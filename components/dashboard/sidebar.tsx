@@ -24,7 +24,11 @@ export function Sidebar() {
     <>
       <SidebarHeader>
         <Link href="/dashboard" className="flex items-center gap-2">
-          <img src="/placeholder-logo.svg" alt="Logo" className="h-8 w-8" />
+          <img
+            src="https://upload.wikimedia.org/wikipedia/commons/2/20/YouTube_2024.svg"
+            alt="Logo"
+            className="h-8 w-8"
+          />
           <span className="text-lg font-semibold">AI Studio</span>
         </Link>
       </SidebarHeader>
