@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { ArrowUpRight, Users, Video, Eye, ThumbsUp, MessageSquare, Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import type { YouTubeChannel } from "@/lib/db"
 
 interface OverviewTabProps {
@@ -66,8 +67,47 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
 
   if (isLoading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {[...Array(6)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-6 w-1/2" />
+              <Skeleton className="mt-2 h-3 w-1/3" />
+            </CardContent>
+          </Card>
+        ))}
+        <Card className="md:col-span-2 lg:col-span-3">
+          <CardHeader>
+            <Skeleton className="h-6 w-1/3" />
+            <Skeleton className="mt-2 h-4 w-2/3" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="mt-2 h-4 w-3/4" />
+                </div>
+                <div>
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="mt-2 h-4 w-3/4" />
+                </div>
+                <div>
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="mt-2 h-4 w-3/4" />
+                </div>
+                <div>
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="mt-2 h-4 w-3/4" />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
