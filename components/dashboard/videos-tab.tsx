@@ -10,7 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Video, YouTubeChannel } from "@/lib/db"
+import type { YouTubeChannel } from "@/lib/db"
+import { getVideos } from "@/lib/api"
+import { type Video } from "@/lib/types"
+import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 
 interface VideosTabProps {
   channelData: YouTubeChannel | null
@@ -24,64 +27,45 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const router = useRouter()
-  const supabase = createClientComponentClient()
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  const { channel } = useYouTubeChannel()
 
   const fetchVideos = async () => {
-    console.log('Fetching videos for channel:', channelData?.id)
+    if (!channel) return
     setIsLoadingVideos(true)
     setError(null)
-
     try {
-      if (channelData?.id) {
-        const { data: videosData, error: videosError } = await supabase
-          .from('videos')
-          .select('*')
-          .eq('channel_id', channelData.id)
-          .order('published_at', { ascending: false })
-
-        if (videosError) {
-          throw videosError
-        }
-
-        setVideos(videosData || [])
-        setFilteredVideos(videosData || [])
-      }
+      const videosData = await getVideos(
+        channel.access_token,
+        searchQuery,
+        statusFilter
+      )
+      setVideos(videosData)
+      setFilteredVideos(videosData)
     } catch (err) {
-      console.error('Unexpected error fetching videos:', err)
-      setError(err instanceof Error ? err : new Error('Failed to fetch videos'))
+      console.error("Error fetching videos:", err)
+      setError(err instanceof Error ? err : new Error("Failed to fetch videos"))
     } finally {
       setIsLoadingVideos(false)
     }
   }
 
   const handleSync = async () => {
-    setLoading(true)
+    setIsLoadingVideos(true)
     try {
-      const response = await fetch('/api/youtube/videos/sync', {
-        method: 'POST',
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to sync videos')
-      }
-
+      await fetch("/api/youtube/videos/sync", { method: "POST" })
       await fetchVideos()
     } catch (err) {
-      console.error('Error syncing videos:', err)
-      setError(err instanceof Error ? err : new Error('Failed to sync videos'))
+      console.error("Error syncing videos:", err)
+      setError(err instanceof Error ? err : new Error("Failed to sync videos"))
     } finally {
-      setLoading(false)
+      setIsLoadingVideos(false)
     }
   }
 
   useEffect(() => {
-    if (channelData?.id) {
     fetchVideos()
-    }
-  }, [channelData?.id])
+  }, [channel, searchQuery, statusFilter])
 
   // Apply filters when search query or status filter changes
   useEffect(() => {
@@ -242,8 +226,8 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
                   <p className="text-xs text-muted-foreground mb-4">
                     Click "Sync Videos" to fetch your videos from YouTube
                 </p>
-                  <Button onClick={handleSync} disabled={loading}>
-                    {loading ? (
+                  <Button onClick={handleSync} disabled={isLoadingVideos}>
+                    {isLoadingVideos ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Syncing...
@@ -293,14 +277,14 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
                     <TableCell className="hidden md:table-cell">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          video.status === "public"
+                          video.status === "Published"
                             ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                            : video.status === "private"
+                            : video.status === "Draft"
                               ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
                               : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
                         }`}
                       >
-                        {video.status === "public" ? "Published" : video.status === "private" ? "Draft" : "Unlisted"}
+                        {video.status}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">{formatNumber(video.view_count)}</TableCell>

@@ -252,11 +252,14 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Videos API
 // Update the getVideos function to fetch real data
-export async function getVideos(search?: string, filter?: string): Promise<Video[]> {
+export async function getVideos(
+  token: string | null,
+  search?: string,
+  filter?: string
+): Promise<Video[]> {
   console.log("getVideos called with search:", search, "filter:", filter)
   try {
     // Check if we have a YouTube connection
-    const token = sessionStorage.getItem("youtube_access_token")
     if (!token) {
       // Fall back to mock data if no connection
       return getMockVideos(search, filter)
