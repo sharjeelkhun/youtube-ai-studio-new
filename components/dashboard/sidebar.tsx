@@ -59,9 +59,9 @@ export function Sidebar() {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/dashboard/videos" legacyBehavior passHref>
+              <Link href="/videos" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith("/dashboard/videos")}
+                  isActive={pathname.startsWith("/videos")}
                   className="w-full justify-start"
                 >
                   <svg
@@ -82,9 +82,9 @@ export function Sidebar() {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/dashboard/comments" legacyBehavior passHref>
+              <Link href="/comments" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith("/dashboard/comments")}
+                  isActive={pathname.startsWith("/comments")}
                   className="w-full justify-start"
                 >
                   <svg
@@ -106,9 +106,9 @@ export function Sidebar() {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/dashboard/analytics" legacyBehavior passHref>
+              <Link href="/analytics" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith("/dashboard/analytics")}
+                  isActive={pathname.startsWith("/analytics")}
                   className="w-full justify-start"
                 >
                   <svg
@@ -129,9 +129,9 @@ export function Sidebar() {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/dashboard/seo" legacyBehavior passHref>
+              <Link href="/seo" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith("/dashboard/seo")}
+                  isActive={pathname.startsWith("/seo")}
                   className="w-full justify-start"
                 >
                   <svg
@@ -155,9 +155,9 @@ export function Sidebar() {
               </Link>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <Link href="/dashboard/suggestions" legacyBehavior passHref>
+              <Link href="/suggestions" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith("/dashboard/suggestions")}
+                  isActive={pathname.startsWith("/suggestions")}
                   className="w-full justify-start"
                 >
                   <svg
@@ -186,9 +186,9 @@ export function Sidebar() {
           <SidebarGroupLabel>Settings</SidebarGroupLabel>
           <SidebarMenu>
             <SidebarMenuItem>
-              <Link href="/dashboard/settings" legacyBehavior passHref>
+              <Link href="/settings" legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith("/dashboard/settings")}
+                  isActive={pathname.startsWith("/settings")}
                   className="w-full justify-start"
                 >
                   <svg

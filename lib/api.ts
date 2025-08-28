@@ -254,13 +254,6 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 // Update the getVideos function to fetch real data
 export async function getVideos(search?: string, filter?: string): Promise<Video[]> {
   console.log("getVideos called with search:", search, "filter:", filter)
-  // Force mock data for demo purposes
-  const result = await getMockVideos(search, filter)
-  console.log("getVideos returning:", result)
-  return result
-  
-  // Original YouTube API logic (commented out for demo)
-  /*
   try {
     // Check if we have a YouTube connection
     const token = sessionStorage.getItem("youtube_access_token")
@@ -284,8 +277,8 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
         item.status.privacyStatus === "public"
           ? "Published"
           : item.status.privacyStatus === "private"
-            ? "Draft"
-            : "Scheduled",
+          ? "Draft"
+          : "Scheduled",
       views: Number.parseInt(item.statistics.viewCount, 10),
       likes: Number.parseInt(item.statistics.likeCount, 10),
       comments: Number.parseInt(item.statistics.commentCount, 10),
@@ -296,12 +289,16 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
 
     // Apply search filter if provided
     if (search) {
-      videos = videos.filter((video: Video) => video.title.toLowerCase().includes(search.toLowerCase()))
+      videos = videos.filter((video: Video) =>
+        video.title.toLowerCase().includes(search.toLowerCase())
+      )
     }
 
     // Apply status filter if provided
     if (filter && filter !== "all") {
-      videos = videos.filter((video: Video) => video.status.toLowerCase() === filter.toLowerCase())
+      videos = videos.filter(
+        (video: Video) => video.status.toLowerCase() === filter.toLowerCase()
+      )
     }
 
     return videos
@@ -310,7 +307,6 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
     // Fall back to mock data on error
     return getMockVideos(search, filter)
   }
-  */
 }
 
 // Helper function to get mock videos (for fallback)
