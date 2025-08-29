@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { PlusCircle, Search, SlidersHorizontal, Loader2 } from "lucide-react"
+import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -28,6 +29,7 @@ export function VideosTab() {
   const [videos, setVideos] = useState<Video[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const { channel } = useYouTubeChannel()
 
   // Form state for new video
   const [newVideoTitle, setNewVideoTitle] = useState("")
@@ -37,7 +39,7 @@ export function VideosTab() {
   const fetchVideos = async () => {
     setIsLoading(true)
     try {
-      const data = await getVideos(searchQuery, filter)
+      const data = await getVideos(channel?.access_token ?? null, searchQuery, filter)
       setVideos(data)
     } catch (error) {
       toast.error("Error", {
@@ -55,7 +57,7 @@ export function VideosTab() {
     }, 300)
 
     return () => clearTimeout(handler)
-  }, [searchQuery, filter])
+  }, [searchQuery, filter, channel])
 
   const handleCreateVideo = async () => {
     if (!newVideoTitle.trim()) {
