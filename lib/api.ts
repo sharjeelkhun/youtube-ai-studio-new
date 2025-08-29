@@ -316,30 +316,25 @@ let videos = (data.items || []).map((item: any) => ({
 }
 
 // Helper function to get mock videos (for fallback)
-async function getMockVideos(search?: string, filter?: string): Promise<Video[]> {
-  await delay(500) // Simulate network delay
+function getMockVideos(search?: string, filter?: string): Promise<Video[]> {
+  // Use the existing mock data logic
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      let filteredVideos = [...mockVideos]
 
-  console.log("getMockVideos called with search:", search, "filter:", filter)
+      console.log("Mock videos being returned:", filteredVideos)
 
-  let videos = [...mockVideos]
+      if (search) {
+        filteredVideos = filteredVideos.filter((video) => video.title.toLowerCase().includes(search.toLowerCase()))
+      }
 
-  // Apply search filter if provided
-  if (search) {
-    videos = videos.filter((video) =>
-      video.title.toLowerCase().includes(search.toLowerCase())
-    )
-  }
+      if (filter && filter !== "all") {
+        filteredVideos = filteredVideos.filter((video) => video.status.toLowerCase() === filter.toLowerCase())
+      }
 
-  // Apply status filter if provided
-  if (filter && filter !== "all") {
-    videos = videos.filter(
-      (video) => video.status.toLowerCase() === filter.toLowerCase()
-    )
-  }
-
-  console.log("Returning mock videos:", videos)
-
-  return videos
+      resolve(filteredVideos)
+    }, 800)
+  })
 }
 
 export async function getVideo(id: string): Promise<Video | null> {
