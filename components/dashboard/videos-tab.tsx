@@ -1,70 +1,91 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Eye, ThumbsUp, MessageSquare, Loader2, Search, Filter } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
+ponents/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
+/components/ui/table"
+import { Eye, ThumbsUp, MessageSquare, Loader2, Search, Filter } from "lucide-re
+act"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
+/components/ui/select"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { YouTubeChannel } from "@/lib/db"
-import { getVideos } from "@/lib/api"
-import { type Video } from "@/lib/types"
-import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
+import type { Video, YouTubeChannel } from "@/lib/db"
 
-interface VideosTabProps {}
+interface VideosTabProps {
+  channelData: YouTubeChannel | null
+  isLoading: boolean
+}
 
-export function VideosTab({}: VideosTabProps) {
+export function VideosTab({ channelData, isLoading }: VideosTabProps) {
   const [videos, setVideos] = useState<Video[]>([])
   const [filteredVideos, setFilteredVideos] = useState<Video[]>([])
   const [isLoadingVideos, setIsLoadingVideos] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const router = useRouter()
+  const supabase = createClientComponentClient()
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
-  const { channel, isLoading } = useYouTubeChannel()
 
   const fetchVideos = async () => {
-    if (!channel) return
+    console.log('Fetching videos for channel:', channelData?.id)
     setIsLoadingVideos(true)
     setError(null)
+
     try {
-      const videosData = await getVideos(
-        channel.access_token,
-        searchQuery,
-        statusFilter
-      )
-      setVideos(videosData)
-      setFilteredVideos(videosData)
+      if (channelData?.id) {
+        const { data: videosData, error: videosError } = await supabase
+          .from('videos')
+          .select('*')
+          .eq('channel_id', channelData.id)
+          .order('published_at', { ascending: false })
+
+        if (videosError) {
+          throw videosError
+        }
+
+        setVideos(videosData || [])
+        setFilteredVideos(videosData || [])
+      }
     } catch (err) {
-      console.error("Error fetching videos:", err)
-      setError(err instanceof Error ? err : new Error("Failed to fetch videos"))
+      console.error('Unexpected error fetching videos:', err)
+      setError(err instanceof Error ? err : new Error('Failed to fetch videos'))
     } finally {
       setIsLoadingVideos(false)
     }
   }
 
   const handleSync = async () => {
-    setIsLoadingVideos(true)
+    setLoading(true)
     try {
-      await fetch("/api/youtube/videos/sync", { method: "POST" })
+      const response = await fetch('/api/youtube/videos/sync', {
+        method: 'POST',
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to sync videos')
+      }
+
       await fetchVideos()
     } catch (err) {
-      console.error("Error syncing videos:", err)
-      setError(err instanceof Error ? err : new Error("Failed to sync videos"))
+      console.error('Error syncing videos:', err)
+      setError(err instanceof Error ? err : new Error('Failed to sync videos'))
     } finally {
-      setIsLoadingVideos(false)
+      setLoading(false)
     }
   }
 
   useEffect(() => {
-    if (channel) {
-      fetchVideos()
+    if (channelData?.id) {
+    fetchVideos()
     }
-  }, [channel, searchQuery, statusFilter])
+  }, [channelData?.id])
 
   // Apply filters when search query or status filter changes
   useEffect(() => {
@@ -160,12 +181,14 @@ export function VideosTab({}: VideosTabProps) {
       <Card>
         <CardHeader>
           <CardTitle>Your Videos</CardTitle>
-          <CardDescription>Manage and analyze your YouTube videos</CardDescription>
+          <CardDescription>Manage and analyze your YouTube videos</CardDescripti
+on>
         </CardHeader>
         <CardContent>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-fo
+reground" />
               <Input
                 placeholder="Search videos..."
                 className="pl-8"
@@ -208,7 +231,8 @@ export function VideosTab({}: VideosTabProps) {
               ))}
             </div>
           ) : filteredVideos.length === 0 ? (
-            <div className="flex h-[200px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
+            <div className="flex h-[200px] flex-col items-center justify-center
+rounded-md border border-dashed p-8 text-center">
               <p className="text-sm text-muted-foreground">No videos found</p>
               {searchQuery || statusFilter !== "all" ? (
                 <Button
@@ -225,8 +249,8 @@ export function VideosTab({}: VideosTabProps) {
                   <p className="text-xs text-muted-foreground mb-4">
                     Click "Sync Videos" to fetch your videos from YouTube
                 </p>
-                  <Button onClick={handleSync} disabled={isLoadingVideos}>
-                    {isLoadingVideos ? (
+                  <Button onClick={handleSync} disabled={loading}>
+                    {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Syncing...
@@ -275,21 +299,30 @@ export function VideosTab({}: VideosTabProps) {
                     <TableCell className="font-medium">{video.title}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          video.status === "Published"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-                            : video.status === "Draft"
-                              ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
-                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
+                        className={`inline-flex items-center rounded-full px-2.5
+ py-0.5 text-xs font-medium ${
+                          video.status === "public"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30
+dark:text-green-400"
+                            : video.status === "private"
+                              ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark
+:text-gray-400"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-90
+0/30 dark:text-yellow-400"
                         }`}
                       >
-                        {video.status}
+                        {video.status === "public" ? "Published" : video.status
+=== "private" ? "Draft" : "Unlisted"}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">{formatNumber(video.view_count)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right">{formatNumber(video.like_count)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right">{formatNumber(video.comment_count)}</TableCell>
-                    <TableCell className="text-right">{formatDate(video.published_at)}</TableCell>
+                    <TableCell className="text-right">{formatNumber(video.view_c
+ount)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right">{form
+atNumber(video.like_count)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right">{form
+atNumber(video.comment_count)}</TableCell>
+                    <TableCell className="text-right">{formatDate(video.publishe
+d_at)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

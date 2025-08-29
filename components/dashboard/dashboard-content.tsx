@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Loader2, Youtube, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Skeleton } from '@/components/ui/skeleton';
 import { OverviewTab } from './overview-tab';
 import { VideosTab } from './videos-tab';
 import { AnalyticsTab } from './analytics-tab';
@@ -49,25 +48,10 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-8 w-48" />
-        <Card className="border-2 border-dashed border-muted-foreground/25">
-          <CardHeader>
-            <Skeleton className="h-6 w-1/2" />
-            <Skeleton className="mt-2 h-4 w-3/4" />
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <Skeleton className="mb-6 h-24 w-24 rounded-full" />
-            <Skeleton className="mb-2 h-6 w-1/2" />
-            <Skeleton className="mb-6 h-4 w-3/4" />
-            <Skeleton className="h-10 w-48" />
-          </CardContent>
-          <CardFooter className="justify-center border-t bg-muted/20 py-4">
-            <Skeleton className="h-4 w-1/2" />
-          </CardFooter>
-        </Card>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -149,7 +133,7 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
         </TabsContent>
 
         <TabsContent value="videos">
-            <VideosTab />
+            <VideosTab channelData={channel} isLoading={loading} />
         </TabsContent>
 
         <TabsContent value="analytics">

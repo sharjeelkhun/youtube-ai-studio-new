@@ -7,7 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, MessageCircle, ThumbsUp, Loader2, Search } from "lucide-react"
 import { db } from "@/lib/db"
-import { Skeleton } from "@/components/ui/skeleton"
 import { Input } from "@/components/ui/input"
 
 export function CommentsTab({ channelData, isLoading }: { channelData: any; isLoading: boolean }) {
@@ -54,34 +53,11 @@ export function CommentsTab({ channelData, isLoading }: { channelData: any; isLo
 
   if (isLoading || isLoadingComments) {
     return (
-      <div className="space-y-4">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-6 w-1/4" />
-            <Skeleton className="mt-2 h-4 w-2/3" />
-          </CardHeader>
-          <CardContent>
-            <div className="mb-6">
-              <Skeleton className="h-10 w-full" />
-            </div>
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Skeleton className="h-8 w-8 rounded-full" />
-                    <div className="space-y-1">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="hidden h-4 w-24 md:block" />
-                  <Skeleton className="h-8 w-24" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="flex h-[400px] items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading comments...</p>
+        </div>
       </div>
     )
   }

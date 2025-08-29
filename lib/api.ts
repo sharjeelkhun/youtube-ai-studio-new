@@ -252,14 +252,18 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Videos API
 // Update the getVideos function to fetch real data
-export async function getVideos(
-  token: string | null,
-  search?: string,
-  filter?: string
-): Promise<Video[]> {
+export async function getVideos(search?: string, filter?: string): Promise<Video[]> {
   console.log("getVideos called with search:", search, "filter:", filter)
+  // Force mock data for demo purposes
+  const result = await getMockVideos(search, filter)
+  console.log("getVideos returning:", result)
+  return result
+
+  // Original YouTube API logic (commented out for demo)
+  /*
   try {
     // Check if we have a YouTube connection
+    const token = sessionStorage.getItem("youtube_access_token")
     if (!token) {
       // Fall back to mock data if no connection
       return getMockVideos(search, filter)
@@ -271,39 +275,35 @@ export async function getVideos(
     // Fetch videos from YouTube API
     const data = await fetchFromYouTubeAPI(query, token)
 
-    // Map the response to our Video type
-    let videos = (data.items || []).map((item: any) => ({
-      id: item.id,
-      thumbnail_url: item.snippet?.thumbnails?.medium?.url || "/placeholder.svg",
-      title: item.snippet?.title || "Untitled Video",
-      status:
-        item.status?.privacyStatus === "public"
-          ? "Published"
-          : item.status?.privacyStatus === "private"
-          ? "Draft"
-          : "Scheduled",
-      views: Number.parseInt(item.statistics?.viewCount || "0", 10),
-      likes: Number.parseInt(item.statistics?.likeCount || "0", 10),
-      comments: Number.parseInt(item.statistics?.commentCount || "0", 10),
-      publishedAt: item.snippet?.publishedAt
-        ? new Date(item.snippet.publishedAt).toLocaleDateString()
-        : "N/A",
-      description: item.snippet?.description || "",
-      tags: item.snippet?.tags || [],
-    }));
+// Map the response to our Video type
+let videos = (data.items || []).map((item: any) => ({
+  id: item.id,
+  thumbnail_url: item.snippet?.thumbnails?.medium?.url || "/placeholder.svg",
+  title: item.snippet?.title || "Untitled Video",
+  status:
+    item.status?.privacyStatus === "public"
+      ? "Published"
+      : item.status?.privacyStatus === "private"
+      ? "Draft"
+      : "Scheduled",
+  views: Number.parseInt(item.statistics?.viewCount || "0", 10),
+  likes: Number.parseInt(item.statistics?.likeCount || "0", 10),
+  comments: Number.parseInt(item.statistics?.commentCount || "0", 10),
+  publishedAt: item.snippet?.publishedAt
+    ? new Date(item.snippet.publishedAt).toLocaleDateString()
+    : "N/A",
+  description: item.snippet?.description || "",
+  tags: item.snippet?.tags || [],
+}))
 
     // Apply search filter if provided
     if (search) {
-      videos = videos.filter((video: Video) =>
-        video.title.toLowerCase().includes(search.toLowerCase())
-      )
+      videos = videos.filter((video: Video) => video.title.toLowerCase().includes(search.toLowerCase()))
     }
 
     // Apply status filter if provided
     if (filter && filter !== "all") {
-      videos = videos.filter(
-        (video: Video) => video.status.toLowerCase() === filter.toLowerCase()
-      )
+      videos = videos.filter((video: Video) => video.status.toLowerCase() === filter.toLowerCase())
     }
 
     return videos
@@ -312,6 +312,7 @@ export async function getVideos(
     // Fall back to mock data on error
     return getMockVideos(search, filter)
   }
+  */
 }
 
 // Helper function to get mock videos (for fallback)

@@ -1,8 +1,10 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ArrowUpRight, Users, Video, Eye, ThumbsUp, MessageSquare, Loader2 } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
+ponents/ui/card"
+import { ArrowUpRight, Users, Video, Eye, ThumbsUp, MessageSquare, Loader2 } fro
+m "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { YouTubeChannel } from "@/lib/db"
 
@@ -26,7 +28,8 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
       setStats({
     subscribers: {
           current: channelData.subscriber_count || 0,
-          growth: calculateGrowth(channelData.subscriber_count, channelData.previous_subscribers)
+          growth: calculateGrowth(channelData.subscriber_count, channelData.prev
+ious_subscribers)
     },
     videos: {
           current: channelData.video_count || 0,
@@ -38,7 +41,8 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
     },
     watchTime: {
           current: channelData.watch_time || 0,
-          growth: calculateGrowth(channelData.watch_time, channelData.previous_watch_time)
+          growth: calculateGrowth(channelData.watch_time, channelData.previous_w
+atch_time)
     },
     likes: {
           current: channelData.likes || 0,
@@ -46,13 +50,15 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
     },
     comments: {
           current: channelData.comments || 0,
-          growth: calculateGrowth(channelData.comments, channelData.previous_comments)
+          growth: calculateGrowth(channelData.comments, channelData.previous_com
+ments)
         }
       })
     }
   }, [channelData])
 
-  const calculateGrowth = (current: number | undefined, previous: number | undefined) => {
+  const calculateGrowth = (current: number | undefined, previous: number | undef
+ined) => {
     if (!current || !previous || previous === 0) return 0
     return ((current - previous) / previous) * 100
   }
@@ -70,7 +76,8 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {[...Array(6)].map((_, i) => (
           <Card key={i}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader className="flex flex-row items-center justify-between sp
+ace-y-0 pb-2">
               <Skeleton className="h-4 w-2/3" />
               <Skeleton className="h-4 w-4" />
             </CardHeader>
@@ -115,53 +122,67 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Subscribers</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-
+y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Total Subscribers</CardTitl
+e>
           <Users className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(stats.subscribers.current)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.subscribers.cu
+rrent)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+{stats.subscribers.growth.toFixed(1)}%</span> from last month
+            <span className="text-green-500">+{stats.subscribers.growth.toFixed(
+1)}%</span> from last month
           </p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-
+y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Videos</CardTitle>
           <Video className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(stats.videos.current)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.videos.current
+)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+{stats.videos.growth}</span> new this month
+            <span className="text-green-500">+{stats.videos.growth}</span> new t
+his month
           </p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-
+y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Views</CardTitle>
           <Eye className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(stats.views.current)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.views.current)
+}</div>
           <p className="text-xs text-muted-foreground">
-            <span className="text-green-500">+{stats.views.growth.toFixed(1)}%</span> from last month
+            <span className="text-green-500">+{stats.views.growth.toFixed(1)}%</
+span> from last month
           </p>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Watch Time (hours)</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-
+y-0 pb-2">
+          <CardTitle className="text-sm font-medium">Watch Time (hours)</CardTit
+le>
           <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(stats.watchTime.current)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.watchTime.curr
+ent)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className={stats.watchTime.growth >= 0 ? "text-green-500" : "text-red-500"}>
+            <span className={stats.watchTime.growth >= 0 ? "text-green-500" : "t
+ext-red-500"}>
               {formatGrowth(stats.watchTime.growth)}%
             </span> from last month
           </p>
@@ -169,14 +190,17 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-
+y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Likes</CardTitle>
           <ThumbsUp className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(stats.likes.current)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.likes.current)
+}</div>
           <p className="text-xs text-muted-foreground">
-            <span className={stats.likes.growth >= 0 ? "text-green-500" : "text-red-500"}>
+            <span className={stats.likes.growth >= 0 ? "text-green-500" : "text-
+red-500"}>
               {formatGrowth(stats.likes.growth)}%
             </span> from last month
           </p>
@@ -184,14 +208,17 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardHeader className="flex flex-row items-center justify-between space-
+y-0 pb-2">
           <CardTitle className="text-sm font-medium">Total Comments</CardTitle>
           <MessageSquare className="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold">{formatNumber(stats.comments.current)}</div>
+          <div className="text-2xl font-bold">{formatNumber(stats.comments.curre
+nt)}</div>
           <p className="text-xs text-muted-foreground">
-            <span className={stats.comments.growth >= 0 ? "text-green-500" : "text-red-500"}>
+            <span className={stats.comments.growth >= 0 ? "text-green-500" : "te
+xt-red-500"}>
               {formatGrowth(stats.comments.growth)}%
             </span> from last month
           </p>
@@ -207,19 +234,25 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
           <div className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Channel Name</h3>
-                <p className="text-sm">{channelData?.title || "Not available"}</p>
+                <h3 className="text-sm font-medium text-muted-foreground">Channe
+l Name</h3>
+                <p className="text-sm">{channelData?.title || "Not available"}</
+p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Channel ID</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Channe
+l ID</h3>
                 <p className="text-sm">{channelData?.id || "Not available"}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Description</h3>
-                <p className="text-sm line-clamp-3">{channelData?.description || "No description available"}</p>
+                <h3 className="text-sm font-medium text-muted-foreground">Descri
+ption</h3>
+                <p className="text-sm line-clamp-3">{channelData?.description ||
+ "No description available"}</p>
               </div>
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Last Updated</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Last U
+pdated</h3>
                 <p className="text-sm">
                   {channelData?.updated_at
                     ? new Date(channelData.updated_at).toLocaleDateString()

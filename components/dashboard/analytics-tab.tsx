@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { Loader2 } from "lucide-react"
 import { db, type AnalyticsData } from "@/lib/db"
-import { Skeleton } from "@/components/ui/skeleton"
 
 export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isLoading: boolean }) {
   const [analytics, setAnalytics] = useState<AnalyticsData[]>([])
@@ -76,22 +75,10 @@ export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isL
 
   if (isLoading || isLoadingData) {
     return (
-      <div className="space-y-4">
-        <div className="flex justify-end">
-          <Skeleton className="h-10 w-[180px]" />
-        </div>
-        <div className="grid gap-4 md:grid-cols-2">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-1/3" />
-                <Skeleton className="mt-2 h-4 w-2/3" />
-              </CardHeader>
-              <CardContent className="h-[300px]">
-                <Skeleton className="h-full w-full" />
-              </CardContent>
-            </Card>
-          ))}
+      <div className="flex h-[400px] items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading analytics data...</p>
         </div>
       </div>
     )

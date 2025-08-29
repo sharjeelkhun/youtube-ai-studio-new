@@ -2,47 +2,18 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 export default function AnalyticsLoading() {
   return (
-    <div className="space-y-6 p-6">
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-[250px]" />
-        <Skeleton className="h-4 w-[350px]" />
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Skeleton key={i} className="h-32 w-full rounded-lg" />
+        ))}
       </div>
-
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <div className="rounded-lg border p-4 shadow-sm">
-          <Skeleton className="h-6 w-[120px] mb-4" />
-          <Skeleton className="h-24 w-full" />
-        </div>
-        <div className="rounded-lg border p-4 shadow-sm">
-          <Skeleton className="h-6 w-[140px] mb-4" />
-          <Skeleton className="h-24 w-full" />
-        </div>
-        <div className="rounded-lg border p-4 shadow-sm">
-          <Skeleton className="h-6 w-[100px] mb-4" />
-          <Skeleton className="h-24 w-full" />
-        </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <Skeleton className="h-[350px] w-full rounded-lg" />
+        <Skeleton className="h-[350px] w-full rounded-lg" />
       </div>
-
-      <div className="rounded-lg border p-4 shadow-sm">
-        <Skeleton className="h-6 w-[180px] mb-4" />
-        <Skeleton className="h-[300px] w-full" />
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border p-4 shadow-sm">
-          <Skeleton className="h-6 w-[150px] mb-4" />
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
-        <div className="rounded-lg border p-4 shadow-sm">
-          <Skeleton className="h-6 w-[130px] mb-4" />
-          <Skeleton className="h-[200px] w-full" />
-        </div>
-      </div>
+      <Skeleton className="h-[400px] w-full rounded-lg" />
     </div>
   )
 }
