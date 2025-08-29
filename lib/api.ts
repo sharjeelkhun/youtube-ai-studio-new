@@ -275,24 +275,26 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
     // Fetch videos from YouTube API
     const data = await fetchFromYouTubeAPI(query, token)
 
-    // Map the response to our Video type
-    let videos = data.items.map((item: any) => ({
-      id: item.id,
-      thumbnail_url: item.snippet.thumbnails.medium.url,
-      title: item.snippet.title,
-      status:
-        item.status.privacyStatus === "public"
-          ? "Published"
-          : item.status.privacyStatus === "private"
-            ? "Draft"
-            : "Scheduled",
-      views: Number.parseInt(item.statistics.viewCount, 10),
-      likes: Number.parseInt(item.statistics.likeCount, 10),
-      comments: Number.parseInt(item.statistics.commentCount, 10),
-      publishedAt: new Date(item.snippet.publishedAt).toLocaleDateString(),
-      description: item.snippet.description,
-      tags: item.snippet.tags || [],
-    }))
+// Map the response to our Video type
+let videos = (data.items || []).map((item: any) => ({
+  id: item.id,
+  thumbnail_url: item.snippet?.thumbnails?.medium?.url || "/placeholder.svg",
+  title: item.snippet?.title || "Untitled Video",
+  status:
+    item.status?.privacyStatus === "public"
+      ? "Published"
+      : item.status?.privacyStatus === "private"
+      ? "Draft"
+      : "Scheduled",
+  views: Number.parseInt(item.statistics?.viewCount || "0", 10),
+  likes: Number.parseInt(item.statistics?.likeCount || "0", 10),
+  comments: Number.parseInt(item.statistics?.commentCount || "0", 10),
+  publishedAt: item.snippet?.publishedAt
+    ? new Date(item.snippet.publishedAt).toLocaleDateString()
+    : "N/A",
+  description: item.snippet?.description || "",
+  tags: item.snippet?.tags || [],
+}))
 
     // Apply search filter if provided
     if (search) {
@@ -314,25 +316,30 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
 }
 
 // Helper function to get mock videos (for fallback)
-function getMockVideos(search?: string, filter?: string): Promise<Video[]> {
-  // Use the existing mock data logic
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      let filteredVideos = [...mockVideos]
-      
-      console.log("Mock videos being returned:", filteredVideos)
+async function getMockVideos(search?: string, filter?: string): Promise<Video[]> {
+  await delay(500) // Simulate network delay
 
-      if (search) {
-        filteredVideos = filteredVideos.filter((video) => video.title.toLowerCase().includes(search.toLowerCase()))
-      }
+  console.log("getMockVideos called with search:", search, "filter:", filter)
 
-      if (filter && filter !== "all") {
-        filteredVideos = filteredVideos.filter((video) => video.status.toLowerCase() === filter.toLowerCase())
-      }
+  let videos = [...mockVideos]
 
-      resolve(filteredVideos)
-    }, 800)
-  })
+  // Apply search filter if provided
+  if (search) {
+    videos = videos.filter((video) =>
+      video.title.toLowerCase().includes(search.toLowerCase())
+    )
+  }
+
+  // Apply status filter if provided
+  if (filter && filter !== "all") {
+    videos = videos.filter(
+      (video) => video.status.toLowerCase() === filter.toLowerCase()
+    )
+  }
+
+  console.log("Returning mock videos:", videos)
+
+  return videos
 }
 
 export async function getVideo(id: string): Promise<Video | null> {
