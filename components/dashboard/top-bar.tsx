@@ -1,26 +1,21 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { Button } from "@/components/ui/button"
 import { ChannelIndicator } from "@/components/channel-indicator"
 import { UserNav } from "@/components/user-nav"
-import { useSidebar, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export function TopBar() {
   const { channel, loading, isConnected } = useYouTubeChannel()
-  const { isMobile } = useSidebar()
-  const [isClient, setIsClient] = useState(false)
-
-  useEffect(() => {
-    setIsClient(true)
-  }, [])
 
   return (
     <div className="border-b">
       <div className="flex h-16 items-center px-4">
-        {isClient && isMobile && <SidebarTrigger />}
-        <div className="flex-1">
+        <div className="flex items-center gap-2 md:hidden">
+          <SidebarTrigger />
+        </div>
+        <div className="hidden md:flex flex-1">
           {loading ? (
             <div className="w-[200px] h-5 bg-gray-200 animate-pulse rounded" />
           ) : (
@@ -31,9 +26,13 @@ export function TopBar() {
             />
           )}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-1 items-center justify-end gap-4">
           {!isConnected && !loading && (
-            <Button variant="default" size="sm" asChild>
+            <Button
+              variant="default"
+              size="sm"
+              asChild
+            >
               <a href="/connect-channel">Connect Channel</a>
             </Button>
           )}
