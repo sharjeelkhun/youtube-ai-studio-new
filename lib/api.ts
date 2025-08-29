@@ -275,24 +275,26 @@ export async function getVideos(search?: string, filter?: string): Promise<Video
     // Fetch videos from YouTube API
     const data = await fetchFromYouTubeAPI(query, token)
 
-    // Map the response to our Video type
-    let videos = data.items.map((item: any) => ({
-      id: item.id,
-      thumbnail_url: item.snippet.thumbnails.medium.url,
-      title: item.snippet.title,
-      status:
-        item.status.privacyStatus === "public"
-          ? "Published"
-          : item.status.privacyStatus === "private"
-            ? "Draft"
-            : "Scheduled",
-      views: Number.parseInt(item.statistics.viewCount, 10),
-      likes: Number.parseInt(item.statistics.likeCount, 10),
-      comments: Number.parseInt(item.statistics.commentCount, 10),
-      publishedAt: new Date(item.snippet.publishedAt).toLocaleDateString(),
-      description: item.snippet.description,
-      tags: item.snippet.tags || [],
-    }))
+// Map the response to our Video type
+let videos = (data.items || []).map((item: any) => ({
+  id: item.id,
+  thumbnail_url: item.snippet?.thumbnails?.medium?.url || "/placeholder.svg",
+  title: item.snippet?.title || "Untitled Video",
+  status:
+    item.status?.privacyStatus === "public"
+      ? "Published"
+      : item.status?.privacyStatus === "private"
+      ? "Draft"
+      : "Scheduled",
+  views: Number.parseInt(item.statistics?.viewCount || "0", 10),
+  likes: Number.parseInt(item.statistics?.likeCount || "0", 10),
+  comments: Number.parseInt(item.statistics?.commentCount || "0", 10),
+  publishedAt: item.snippet?.publishedAt
+    ? new Date(item.snippet.publishedAt).toLocaleDateString()
+    : "N/A",
+  description: item.snippet?.description || "",
+  tags: item.snippet?.tags || [],
+}))
 
     // Apply search filter if provided
     if (search) {
