@@ -1,17 +1,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
-ponents/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
-/components/ui/table"
-import { Eye, ThumbsUp, MessageSquare, Loader2, Search, Filter } from "lucide-re
-act"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Eye, ThumbsUp, MessageSquare, Loader2, Search, Filter } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
-/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Video, YouTubeChannel } from "@/lib/db"
@@ -181,14 +177,12 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
       <Card>
         <CardHeader>
           <CardTitle>Your Videos</CardTitle>
-          <CardDescription>Manage and analyze your YouTube videos</CardDescripti
-on>
+          <CardDescription>Manage and analyze your YouTube videos</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="mb-6 flex flex-col gap-4 sm:flex-row">
             <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-fo
-reground" />
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search videos..."
                 className="pl-8"
@@ -231,8 +225,7 @@ reground" />
               ))}
             </div>
           ) : filteredVideos.length === 0 ? (
-            <div className="flex h-[200px] flex-col items-center justify-center
-rounded-md border border-dashed p-8 text-center">
+            <div className="flex h-[200px] flex-col items-center justify-center rounded-md border border-dashed p-8 text-center">
               <p className="text-sm text-muted-foreground">No videos found</p>
               {searchQuery || statusFilter !== "all" ? (
                 <Button
@@ -299,30 +292,21 @@ rounded-md border border-dashed p-8 text-center">
                     <TableCell className="font-medium">{video.title}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5
- py-0.5 text-xs font-medium ${
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           video.status === "public"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30
-dark:text-green-400"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                             : video.status === "private"
-                              ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark
-:text-gray-400"
-                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-90
-0/30 dark:text-yellow-400"
+                              ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
                         }`}
                       >
-                        {video.status === "public" ? "Published" : video.status
-=== "private" ? "Draft" : "Unlisted"}
+                        {video.status === "public" ? "Published" : video.status === "private" ? "Draft" : "Unlisted"}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">{formatNumber(video.view_c
-ount)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right">{form
-atNumber(video.like_count)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-right">{form
-atNumber(video.comment_count)}</TableCell>
-                    <TableCell className="text-right">{formatDate(video.publishe
-d_at)}</TableCell>
+                    <TableCell className="text-right">{formatNumber(video.view_count)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right">{formatNumber(video.like_count)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-right">{formatNumber(video.comment_count)}</TableCell>
+                    <TableCell className="text-right">{formatDate(video.published_at)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
