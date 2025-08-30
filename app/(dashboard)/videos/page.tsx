@@ -9,18 +9,18 @@ import VideosLoading from '@/app/dashboard/videos/loading'
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { channel } = useYouTubeChannel()
+  const [videosLoading, setVideosLoading] = useState(true)
+  const { channel, isLoading: channelIsLoading } = useYouTubeChannel()
 
   useEffect(() => {
     const fetchVideos = async () => {
       if (!channel?.id) {
-        setIsLoading(false)
+        setVideosLoading(false)
         return
       }
 
       try {
-        setIsLoading(true)
+        setVideosLoading(true)
         const { data, error } = await supabase
           .from('youtube_videos')
           .select('*')
@@ -114,14 +114,16 @@ export default function VideosPage() {
       } catch (error) {
         console.error('Error fetching videos:', error)
       } finally {
-        setIsLoading(false)
+        setVideosLoading(false)
       }
     }
 
-    fetchVideos()
-  }, [channel?.id, supabase])
+    if (!channelIsLoading) {
+      fetchVideos()
+    }
+  }, [channel, channelIsLoading, supabase])
 
-  if (isLoading) {
+  if (videosLoading || channelIsLoading) {
     return <VideosLoading />
   }
 
