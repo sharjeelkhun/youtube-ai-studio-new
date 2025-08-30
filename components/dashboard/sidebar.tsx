@@ -25,7 +25,7 @@ import {
 
 export function DashboardSidebar() {
   const pathname = usePathname()
-  const { isConnected } = useYouTubeChannel()
+  const { isConnected, isLoading } = useYouTubeChannel()
 
   const menuItems = [
     {
@@ -105,7 +105,7 @@ export function DashboardSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {!isConnected && (
+        {!isLoading && !isConnected && (
           <div className="px-3 py-2">
             <YoutubeConnectionStatus />
           </div>
