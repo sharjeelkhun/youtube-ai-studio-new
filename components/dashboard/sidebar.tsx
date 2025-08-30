@@ -18,6 +18,9 @@ import {
   BarChart,
   Settings,
   Sparkles,
+  MessageSquare,
+  TrendingUp,
+  Lightbulb,
 } from "lucide-react"
 
 export function DashboardSidebar() {
@@ -36,9 +39,24 @@ export function DashboardSidebar() {
       icon: Video,
     },
     {
+      href: "/comments",
+      label: "Comments",
+      icon: MessageSquare,
+    },
+    {
       href: "/analytics",
       label: "Analytics",
       icon: BarChart,
+    },
+    {
+      href: "/seo",
+      label: "SEO",
+      icon: TrendingUp,
+    },
+    {
+      href: "/suggestions",
+      label: "Suggestions",
+      icon: Lightbulb,
     },
   ]
 
