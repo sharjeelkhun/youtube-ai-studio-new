@@ -14,7 +14,10 @@ export default function VideosPage() {
 
   useEffect(() => {
     const fetchVideos = async () => {
-      if (!channel?.id) return
+      if (!channel?.id) {
+        setIsLoading(false)
+        return
+      }
 
       try {
         setIsLoading(true)
