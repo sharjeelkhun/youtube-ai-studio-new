@@ -30,6 +30,7 @@ export function VideoCard({ video, onVideoUpdated }: VideoCardProps) {
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'public':
+      case 'published':
         return 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
       case 'private':
         return 'bg-red-500/10 text-red-500 hover:bg-red-500/20'
