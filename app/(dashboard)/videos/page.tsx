@@ -6,19 +6,14 @@ import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 import VideosLoading from './loading'
-import { set } from 'date-fns'
 
 function Videos() {
   const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
-  const { channel, isLoading: channelIsLoading } = useYouTubeChannel()
-  const [videosLoading, setVideosLoading] = useState(true);
+  const { channel } = useYouTubeChannel()
 
   useEffect(() => {
     const fetchVideos = async () => {
-      if (!channel?.id) {
-        setVideosLoading(false);
-        return
-      }
+      if (!channel?.id) return
 
       try {
         const { data, error } = await supabase
@@ -113,19 +108,11 @@ function Videos() {
       }
       } catch (error) {
         console.error('Error fetching videos:', error)
-      } finally {
-        setVideosLoading(false)
       }
     }
 
-    if (!channelIsLoading) {
-      fetchVideos()
-    }
-  }, [channel, channelIsLoading, supabase])
-
-  if (videosLoading || channelIsLoading) {
-    return <VideosLoading />
-  }
+    fetchVideos()
+  }, [channel?.id, supabase])
 
   return (
     <div className="container py-6">
