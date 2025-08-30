@@ -59,10 +59,12 @@ export function DashboardSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={pathname === item.href}
-                icon={<item.icon />}
                 tooltip={item.label}
               >
-                <Link href={item.href}>{item.label}</Link>
+                <Link href={item.href}>
+                  <item.icon className="mr-2 h-4 w-4 shrink-0" />
+                  <span>{item.label}</span>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
@@ -74,10 +76,12 @@ export function DashboardSidebar() {
             <SidebarMenuButton
               asChild
               isActive={pathname === "/settings"}
-              icon={<Settings />}
               tooltip="Settings"
             >
-              <Link href="/settings">Settings</Link>
+              <Link href="/settings">
+                <Settings className="mr-2 h-4 w-4 shrink-0" />
+                <span>Settings</span>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
