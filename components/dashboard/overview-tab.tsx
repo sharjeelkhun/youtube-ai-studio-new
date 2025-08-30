@@ -1,10 +1,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
-ponents/ui/card"
-import { ArrowUpRight, Users, Video, Eye, ThumbsUp, MessageSquare, Loader2 } fro
-m "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { ArrowUpRight, Users, Video, Eye, ThumbsUp, MessageSquare, Loader2 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { YouTubeChannel } from "@/lib/db"
 
