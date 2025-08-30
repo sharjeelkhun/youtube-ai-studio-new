@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
+import VideosLoading from '@/app/dashboard/videos/loading'
 
 export default function VideosPage() {
   const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
@@ -25,14 +26,8 @@ export default function VideosPage() {
 
         if (error) throw error
 
-        console.log("Database videos found:", data?.length || 0)
-        if (data && data.length > 0) {
-          console.log("Sample video from database:", data[0])
-        }
-
         // If no videos in database, use mock data
         if (!data || data.length === 0) {
-          console.log("No videos in database, using mock data")
           const mockVideos: Database['public']['Tables']['youtube_videos']['Row'][] = [
             {
               id: "1",
@@ -122,6 +117,10 @@ export default function VideosPage() {
 
     fetchVideos()
   }, [channel?.id, supabase])
+
+  if (isLoading) {
+    return <VideosLoading />
+  }
 
   return (
     <div className="container py-6">
