@@ -63,12 +63,14 @@ export function DashboardSidebar() {
   return (
     <>
       <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary">
-            <Sparkles className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <span className="text-lg font-bold">AI Studio</span>
-        </div>
+        <a className="flex items-center gap-2" href="/dashboard">
+          <img
+            src="https://www.youtube.com/s/desktop/377f632f/img/logos/favicon_144x144.png"
+            alt="Logo"
+            className="h-8 w-8"
+          />
+          <span className="text-lg font-semibold">AI Studio</span>
+        </a>
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
