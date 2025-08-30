@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { DashboardProvider } from "@/components/dashboard-provider"
-import { Sidebar } from "@/components/dashboard/sidebar"
+import { DashboardSidebar as Sidebar } from "@/components/dashboard/sidebar"
 import { TopBar } from "@/components/dashboard/top-bar"
 import {
   Sidebar as AppSidebar,
