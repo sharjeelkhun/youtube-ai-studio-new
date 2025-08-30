@@ -1,26 +1,26 @@
 'use client'
 
 import { VideoGrid } from '@/components/video-grid'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
-import VideosLoading from '@/app/dashboard/videos/loading'
+import VideosLoading from './loading'
+import { set } from 'date-fns'
 
-export default function VideosPage() {
+function Videos() {
   const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
-  const [videosLoading, setVideosLoading] = useState(true)
   const { channel, isLoading: channelIsLoading } = useYouTubeChannel()
+  const [videosLoading, setVideosLoading] = useState(true);
 
   useEffect(() => {
     const fetchVideos = async () => {
       if (!channel?.id) {
-        setVideosLoading(false)
+        setVideosLoading(false);
         return
       }
 
       try {
-        setVideosLoading(true)
         const { data, error } = await supabase
           .from('youtube_videos')
           .select('*')
@@ -145,5 +145,13 @@ export default function VideosPage() {
         duration: video.duration || '0'
       }))} />
     </div>
+  )
+}
+
+export default function VideosPage() {
+  return (
+    <Suspense fallback={<VideosLoading />}>
+      <Videos />
+    </Suspense>
   )
 }
