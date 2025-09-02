@@ -57,7 +57,7 @@ export async function GET(request: Request) {
     "https://www.googleapis.com/auth/youtube.force-ssl",
     "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.channel-memberships.creator",
-    "https://www.googleapis.com/auth/youtube.analytics.readonly"
+    "https://www.googleapis.com/auth/yt-analytics.readonly"
   ]
 
   const state = uuidv4()
