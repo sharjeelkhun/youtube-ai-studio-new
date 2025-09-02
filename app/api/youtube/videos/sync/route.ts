@@ -48,10 +48,11 @@ async function refreshAccessToken(refreshToken: string) {
   return data.access_token
 }
 
-async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string) {
+async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string, existingVideoIds: Set<string>) {
   let allVideos: any[] = []
   let nextPageToken: string | null = null
   let pageCount = 0
+  let foundExistingVideo = false
 
   do {
     pageCount++
@@ -81,9 +82,20 @@ async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string) {
     console.log(`Fetched ${data.items?.length || 0} videos from page ${pageCount}`)
     
     if (data.items) {
-      allVideos = [...allVideos, ...data.items]
+      for (const item of data.items) {
+        if (existingVideoIds.has(item.snippet.resourceId.videoId)) {
+          foundExistingVideo = true
+          break
+        }
+        allVideos.push(item)
+      }
     }
     
+    if (foundExistingVideo) {
+      console.log('Found existing video, stopping fetch.')
+      break
+    }
+
     nextPageToken = data.nextPageToken
 
   } while (nextPageToken)
@@ -210,9 +222,21 @@ export async function POST(request: Request) {
     const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads
     console.log('Found uploads playlist:', uploadsPlaylistId)
 
+    // Get existing video IDs to avoid re-fetching
+    const { data: existingVideos, error: existingVideosError } = await supabase
+      .from('youtube_videos')
+      .select('video_id')
+      .eq('channel_id', channel.id)
+
+    if (existingVideosError) {
+      console.error('Error fetching existing videos:', existingVideosError)
+      // Not fatal, so we just log it
+    }
+    const existingVideoIds = new Set(existingVideos?.map(v => v.video_id) || [])
+
     // Fetch all videos from the uploads playlist
-    const playlistItems = await fetchAllVideos(accessToken, uploadsPlaylistId)
-    console.log(`Total videos found: ${playlistItems.length}`)
+    const playlistItems = await fetchAllVideos(accessToken, uploadsPlaylistId, existingVideoIds)
+    console.log(`Total new videos found: ${playlistItems.length}`)
 
     if (playlistItems.length === 0) {
       console.log('No videos found in playlist')
@@ -323,4 +347,4 @@ export async function POST(request: Request) {
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
-} 
+}
