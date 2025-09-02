@@ -21,19 +21,9 @@ export async function POST(request: Request) {
     // Define your YouTube OAuth configuration
     const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
     const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-    const getRedirectUri = () => {
-      if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}/connect-channel/callback`;
-      }
-      const url = new URL(request.url);
-      if (url.origin.includes('localhost')) {
-        return `${url.origin}/connect-channel/callback`;
-      }
-      // For other environments, you might want a fallback or specific logic
-      return url.origin;
-    };
-
-    const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || getRedirectUri();
+    const host = request.headers.get('host')
+    const protocol = request.headers.get('x-forwarded-proto') || 'http'
+    const REDIRECT_URI = `${protocol}://${host}/connect-channel/callback`;
 
     console.log("OAuth configuration:", {
       hasClientId: !!CLIENT_ID,

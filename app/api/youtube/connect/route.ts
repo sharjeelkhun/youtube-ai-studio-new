@@ -32,19 +32,9 @@ export async function GET(request: Request) {
     )
   }
 
-  const getRedirectUri = () => {
-    if (process.env.VERCEL_URL) {
-      return `https://${process.env.VERCEL_URL}/connect-channel/callback`;
-    }
-    const url = new URL(request.url);
-    if (url.origin.includes('localhost')) {
-      return `${url.origin}/connect-channel/callback`;
-    }
-    // For other environments, you might want a fallback or specific logic
-    return url.origin;
-  };
-
-  const REDIRECT_URI = process.env.NEXT_PUBLIC_REDIRECT_URI || getRedirectUri();
+  const host = request.headers.get('host')
+  const protocol = request.headers.get('x-forwarded-proto') || 'http'
+  const REDIRECT_URI = `${protocol}://${host}/connect-channel/callback`;
 
   // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
