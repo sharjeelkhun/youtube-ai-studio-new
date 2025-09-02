@@ -210,9 +210,9 @@ export async function POST(request: Request) {
           const videoThumbnail = item.snippet.thumbnails?.medium?.url || null
           const publishedAt = item.snippet.publishedAt
 
-          // Get video statistics
-          const videoStatsResponse = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${videoId}`,
+          // Get video statistics and content details
+          const videoDetailsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,status&id=${videoId}`,
             {
               headers: {
                 Authorization: `Bearer ${access_token}`,
@@ -220,30 +220,38 @@ export async function POST(request: Request) {
             },
           )
 
-          const videoStats = await videoStatsResponse.json()
-          const stats = videoStats.items?.[0]?.statistics || {}
+          const videoDetails = await videoDetailsResponse.json()
+          const details = videoDetails.items?.[0] || {}
+          const stats = details.statistics || {}
+          const contentDetails = details.contentDetails || {}
+          const status = details.status || {}
 
           return {
-            id: videoId,
+            video_id: videoId,
             channel_id: channelId,
             title: videoTitle,
             description: videoDescription,
-            thumbnail: videoThumbnail,
-            views: parseInt(stats.viewCount || '0'),
-            likes: parseInt(stats.likeCount || '0'),
-            comments: parseInt(stats.commentCount || '0'),
-            status: "Published",
+            thumbnail_url: videoThumbnail,
+            view_count: parseInt(stats.viewCount || '0'),
+            like_count: parseInt(stats.likeCount || '0'),
+            comment_count: parseInt(stats.commentCount || '0'),
+            duration: contentDetails.duration || '',
+            status: status.privacyStatus || 'public',
             published_at: publishedAt,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
+            // Ensure all fields expected by youtube_videos table are present
+            tags: [],
+            thumbnails: item.snippet.thumbnails || {},
+            last_synced_at: new Date().toISOString()
           }
         })
 
         const videos = await Promise.all(videoPromises)
 
         // Insert videos into database
-        const { error: videosError } = await supabase.from("videos").upsert(videos, {
-          onConflict: "id",
+        const { error: videosError } = await supabase.from("youtube_videos").upsert(videos, {
+          onConflict: "video_id",
         })
 
         if (videosError) {
