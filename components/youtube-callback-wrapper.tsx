@@ -2,6 +2,7 @@
 
 import React, { Suspense } from "react"
 import YouTubeCallbackContent from "@/components/youtube-callback-content"
+import Loading from "./loading"
 
 // Wrapper component that handles the useSearchParams call
 function YouTubeCallbackInner() {
@@ -11,7 +12,7 @@ function YouTubeCallbackInner() {
 // Main wrapper with Suspense boundary
 export function YouTubeCallbackWrapper() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<Loading />}>
       <YouTubeCallbackInner />
     </Suspense>
   )
