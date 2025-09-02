@@ -16,6 +16,12 @@ import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, Trendin
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import NextImage from 'next/image'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Video {
   id: string
@@ -62,6 +68,12 @@ export default function VideoPage() {
   const { profile, loading: isProfileLoading } = useProfile()
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
   const { billingErrorProvider, setBillingErrorProvider } = useAI()
+
+  const isAiConfigured =
+    profile?.ai_provider &&
+    profile.ai_settings &&
+    profile.ai_settings.apiKeys &&
+    profile.ai_settings.apiKeys[profile.ai_provider]
 
   const canGenerateImages = profile?.ai_provider === 'openai' || profile?.ai_provider === 'gemini'
 
@@ -486,22 +498,62 @@ export default function VideoPage() {
             <Youtube className="mr-2 h-4 w-4" />
             Edit in Studio
           </Button>
-          <Button variant="outline" onClick={handleAIGenerate} disabled={isGenerating}>
-            {isGenerating ? (
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Wand2 className="mr-2 h-4 w-4" />
-            )}
-            AI Generate
-          </Button>
-          <Button variant="outline" onClick={handleGetThumbnailIdeas} disabled={isGettingThumbnailIdeas || !canGenerateImages}>
-            {isGettingThumbnailIdeas ? (
-              <Loader className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <ImageIcon className="mr-2 h-4 w-4" />
-            )}
-            Get Thumbnail Ideas
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex">
+                  <Button
+                    variant="outline"
+                    onClick={handleAIGenerate}
+                    disabled={isGenerating || !isAiConfigured}
+                    className="w-full"
+                  >
+                    {isGenerating ? (
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wand2 className="mr-2 h-4 w-4" />
+                    )}
+                    AI Generate
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {!isAiConfigured && (
+                <TooltipContent>
+                  <p>Please configure your AI provider in the settings.</p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex">
+                  <Button
+                    variant="outline"
+                    onClick={handleGetThumbnailIdeas}
+                    disabled={isGettingThumbnailIdeas || !isAiConfigured || !canGenerateImages}
+                    className="w-full"
+                  >
+                    {isGettingThumbnailIdeas ? (
+                      <Loader className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                    )}
+                    Get Thumbnail Ideas
+                  </Button>
+                </div>
+              </TooltipTrigger>
+              {(!isAiConfigured || !canGenerateImages) && (
+                <TooltipContent>
+                  <p>
+                    {!canGenerateImages
+                      ? "Image generation is only available for OpenAI and Gemini providers."
+                      : "Please configure your AI provider in the settings."}
+                  </p>
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
           <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
             {isSaving ? 'Saving...' : 'Save Changes'}
           </Button>
