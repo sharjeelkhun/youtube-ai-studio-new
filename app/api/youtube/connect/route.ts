@@ -32,14 +32,48 @@ export async function GET(request: Request) {
     )
   }
 
-  const getRedirectUri = () => {
-    if (process.env.NODE_ENV === 'production') {
-      return 'https://youtube-ai-studio-new.vercel.app/connect-channel/callback';
-    }
-    return 'http://localhost:3000/connect-channel/callback';
-  };
+// Build redirect URI dynamically with fallbacks
+const getRedirectUri = (request) => {
+  // 1. Explicit override via env
+  if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
+    return process.env.NEXT_PUBLIC_REDIRECT_URI;
+  }
 
-  const REDIRECT_URI = getRedirectUri();
+  // 2. Vercel auto-generated URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}/connect-channel/callback`;
+  }
+
+  // 3. Hardcoded for production / localhost (from fix/video-sync)
+  if (process.env.NODE_ENV === 'production') {
+    return 'https://youtube-ai-studio-new.vercel.app/connect-channel/callback';
+  }
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000/connect-channel/callback';
+  }
+
+  // 4. Try to infer from request
+  if (request) {
+    const url = new URL(request.url);
+
+    if (url.origin.includes("localhost")) {
+      return `${url.origin}/connect-channel/callback`;
+    }
+
+    const host = request.headers.get("host");
+    const protocol = request.headers.get("x-forwarded-proto") || "http";
+    if (host) {
+      return `${protocol}://${host}/connect-channel/callback`;
+    }
+
+    return `${url.origin}/connect-channel/callback`;
+  }
+
+  // 5. Fallback safety
+  return 'http://localhost:3000/connect-channel/callback';
+};
+
+const REDIRECT_URI = getRedirectUri(request);
 
   // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
