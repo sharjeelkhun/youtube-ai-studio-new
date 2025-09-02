@@ -18,12 +18,26 @@ export function IntegrationsSettings() {
 
   const handleDisconnectYouTube = async () => {
     try {
-      // TODO: Implement disconnect functionality
-      toast.warning("Disconnect feature", {
-        description: "Disconnect functionality will be implemented soon.",
-      })
+      const response = await fetch('/api/youtube/disconnect', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to disconnect');
+      }
+
+      toast.success("YouTube channel disconnected", {
+        description: "Your YouTube channel has been successfully disconnected.",
+      });
+
+      // Refresh the channel data to update the UI
+      await refreshChannel();
     } catch (error) {
-      console.error("Error disconnecting YouTube:", error)
+      console.error("Error disconnecting YouTube:", error);
+      toast.error("Error", {
+        description: error instanceof Error ? error.message : "An unknown error occurred.",
+      });
     }
   }
 
