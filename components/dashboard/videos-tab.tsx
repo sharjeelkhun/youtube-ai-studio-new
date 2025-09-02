@@ -36,7 +36,7 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
     try {
       if (channelData?.id) {
         const { data: videosData, error: videosError } = await supabase
-          .from('videos')
+          .from('youtube_videos')
           .select('*')
           .eq('channel_id', channelData.id)
           .order('published_at', { ascending: false })
