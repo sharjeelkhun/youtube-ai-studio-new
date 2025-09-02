@@ -21,9 +21,28 @@ export async function POST(request: Request) {
     // Define your YouTube OAuth configuration
     const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
     const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
-    const host = request.headers.get('host')
-    const protocol = request.headers.get('x-forwarded-proto') || 'http'
-    const REDIRECT_URI = `${protocol}://${host}/connect-channel/callback`;
+    // Build redirect URI dynamically with fallbacks
+    const getRedirectUri = () => {
+      if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
+        return process.env.NEXT_PUBLIC_REDIRECT_URI
+      }
+      if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}/connect-channel/callback`
+      }
+      const url = new URL(request.url)
+      if (url.origin.includes("localhost")) {
+        return `${url.origin}/connect-channel/callback`
+      }
+      // Use request headers as a fallback
+      const host = request.headers.get("host")
+      const protocol = request.headers.get("x-forwarded-proto") || "http"
+      if (host) {
+        return `${protocol}://${host}/connect-channel/callback`
+      }
+      return `${url.origin}/connect-channel/callback`
+    }
+
+    const REDIRECT_URI = getRedirectUri()
 
     console.log("OAuth configuration:", {
       hasClientId: !!CLIENT_ID,
