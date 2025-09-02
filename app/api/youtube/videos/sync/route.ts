@@ -347,4 +347,4 @@ export async function POST(request: Request) {
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
-} 
+}
