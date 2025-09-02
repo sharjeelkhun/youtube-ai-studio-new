@@ -39,17 +39,17 @@ const getRedirectUri = (request?: Request) => {
     return process.env.NEXT_PUBLIC_REDIRECT_URI
   }
 
-  // 2. Vercel auto-generated URL
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}/connect-channel/callback`
-  }
-
-  // 3. Hardcoded for production / localhost (from fix/video-sync)
+  // 2. Hardcoded for production / localhost (from fix/video-sync)
   if (process.env.NODE_ENV === "production") {
     return "https://youtube-ai-studio-new.vercel.app/connect-channel/callback"
   }
   if (process.env.NODE_ENV === "development") {
     return "http://localhost:3000/connect-channel/callback"
+  }
+
+  // 3. Vercel auto-generated URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}/connect-channel/callback`
   }
 
   // 4. Try to infer from request

@@ -22,13 +22,14 @@ export async function POST(request: Request) {
     const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
     const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
     const getRedirectUri = () => {
-const getRedirectUri = () => {
-  // Highest priority: explicit env variable
+// Build redirect URI dynamically with fallbacks
+const getRedirectUri = (request: Request) => {
+  // 1. Explicit override via env
   if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
     return process.env.NEXT_PUBLIC_REDIRECT_URI
   }
 
-  // Handle production and localhost explicitly (from fix/video-sync)
+  // 2. Hardcoded for production / localhost (from fix/video-sync)
   if (process.env.NODE_ENV === "production") {
     return "https://youtube-ai-studio-new.vercel.app/connect-channel/callback"
   }
@@ -36,33 +37,29 @@ const getRedirectUri = () => {
     return "http://localhost:3000/connect-channel/callback"
   }
 
-  // Vercel auto URL
+  // 3. Vercel auto URL
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}/connect-channel/callback`
   }
 
-  // Inspect request origin
+  // 4. Inspect request origin
   const url = new URL(request.url)
   if (url.origin.includes("localhost")) {
     return `${url.origin}/connect-channel/callback`
   }
 
-  // Fallback to headers
+  // 5. Fallback to headers
   const host = request.headers.get("host")
   const protocol = request.headers.get("x-forwarded-proto") || "http"
   if (host) {
     return `${protocol}://${host}/connect-channel/callback`
   }
 
-  // Last fallback
+  // 6. Last fallback
   return `${url.origin}/connect-channel/callback`
 }
 
-const REDIRECT_URI = getRedirectUri()
-
-
-    const REDIRECT_URI = getRedirectUri();
-
+const REDIRECT_URI = getRedirectUri(request)
 
     console.log("OAuth configuration:", {
       hasClientId: !!CLIENT_ID,
