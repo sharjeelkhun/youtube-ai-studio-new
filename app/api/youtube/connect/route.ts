@@ -41,17 +41,10 @@ export async function GET(request: Request) {
 
   const REDIRECT_URI = getRedirectUri();
 
-  // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return NextResponse.json(
       { 
-        error: "Google OAuth credentials are not configured",
-        debug: {
-          clientId: !!process.env.GOOGLE_CLIENT_ID,
-          clientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-          redirectUri: REDIRECT_URI,
-          env: process.env.NODE_ENV
-        }
+        error: "Google OAuth credentials are not configured"
       },
       { status: 500 }
     )
@@ -80,23 +73,15 @@ export async function GET(request: Request) {
 
   authUrl.search = params.toString()
 
-  // Store state in a cookie for verification
   cookieStore.set('youtube_oauth_state', state, {
     path: '/',
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'lax',
-    maxAge: 60 * 10 // 10 minutes
+    maxAge: 60 * 10 
   })
 
   return NextResponse.json({
     authUrl: authUrl.toString(),
-    state,
-    debug: {
-      redirectUri: REDIRECT_URI,
-      clientIdConfigured: !!process.env.GOOGLE_CLIENT_ID,
-      appUrl: process.env.NEXT_PUBLIC_APP_URL,
-      env: process.env.NODE_ENV
-    }
   })
 }
