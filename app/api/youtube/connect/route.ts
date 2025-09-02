@@ -32,28 +32,14 @@ export async function GET(request: Request) {
     )
   }
 
-    // Build redirect URI dynamically with fallbacks
-    const getRedirectUri = () => {
-      if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
-        return process.env.NEXT_PUBLIC_REDIRECT_URI
-      }
-      if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}/connect-channel/callback`
-      }
-      const url = new URL(request.url)
-      if (url.origin.includes("localhost")) {
-        return `${url.origin}/connect-channel/callback`
-      }
-      // Use request headers as a fallback
-      const host = request.headers.get("host")
-      const protocol = request.headers.get("x-forwarded-proto") || "http"
-      if (host) {
-        return `${protocol}://${host}/connect-channel/callback`
-      }
-      return `${url.origin}/connect-channel/callback`
+  const getRedirectUri = () => {
+    if (process.env.NODE_ENV === 'production') {
+      return 'https://youtube-ai-studio-new.vercel.app/connect-channel/callback';
     }
+    return 'http://localhost:3000/connect-channel/callback';
+  };
 
-    const REDIRECT_URI = getRedirectUri()
+  const REDIRECT_URI = getRedirectUri();
 
   // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
