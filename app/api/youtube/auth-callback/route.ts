@@ -22,44 +22,13 @@ export async function POST(request: Request) {
     const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ""
     const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ""
     const getRedirectUri = () => {
-// Build redirect URI dynamically with fallbacks
-const getRedirectUri = (request: Request) => {
-  // 1. Explicit override via env
-  if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
-    return process.env.NEXT_PUBLIC_REDIRECT_URI
-  }
+      if (process.env.NODE_ENV === 'production') {
+        return 'https://youtube-ai-studio-new.vercel.app/connect-channel/callback';
+      }
+      return 'http://localhost:3000/connect-channel/callback';
+    };
 
-  // 2. Hardcoded for production / localhost (from fix/video-sync)
-  if (process.env.NODE_ENV === "production") {
-    return "https://youtube-ai-studio-new.vercel.app/connect-channel/callback"
-  }
-  if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000/connect-channel/callback"
-  }
-
-  // 3. Vercel auto URL
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}/connect-channel/callback`
-  }
-
-  // 4. Inspect request origin
-  const url = new URL(request.url)
-  if (url.origin.includes("localhost")) {
-    return `${url.origin}/connect-channel/callback`
-  }
-
-  // 5. Fallback to headers
-  const host = request.headers.get("host")
-  const protocol = request.headers.get("x-forwarded-proto") || "http"
-  if (host) {
-    return `${protocol}://${host}/connect-channel/callback`
-  }
-
-  // 6. Last fallback
-  return `${url.origin}/connect-channel/callback`
-}
-
-const REDIRECT_URI = getRedirectUri(request)
+    const REDIRECT_URI = getRedirectUri();
 
     console.log("OAuth configuration:", {
       hasClientId: !!CLIENT_ID,
@@ -276,7 +245,6 @@ const REDIRECT_URI = getRedirectUri(request)
             published_at: publishedAt,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            // Ensure all fields expected by youtube_videos table are present
             tags: [],
             thumbnails: item.snippet.thumbnails || {},
             last_synced_at: new Date().toISOString()
@@ -292,15 +260,12 @@ const REDIRECT_URI = getRedirectUri(request)
 
         if (videosError) {
           console.error("Error saving videos:", videosError)
-          // Continue anyway, as we've already connected the channel
         }
       }
     } catch (videoError) {
       console.error("Error fetching videos:", videoError)
-      // Continue anyway, as we've already connected the channel
     }
 
-    // Return success response with the expected format
     return NextResponse.json({
       success: true,
       access_token: access_token,
