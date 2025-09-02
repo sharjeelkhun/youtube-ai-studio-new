@@ -32,61 +32,19 @@ export async function GET(request: Request) {
     )
   }
 
-// Build redirect URI dynamically with fallbacks
-const getRedirectUri = (request?: Request) => {
-  // 1. Explicit override via env
-  if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
-    return process.env.NEXT_PUBLIC_REDIRECT_URI
-  }
-
-  // 2. Hardcoded for production / localhost (from fix/video-sync)
-  if (process.env.NODE_ENV === "production") {
-    return "https://youtube-ai-studio-new.vercel.app/connect-channel/callback"
-  }
-  if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000/connect-channel/callback"
-  }
-
-  // 3. Vercel auto-generated URL
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}/connect-channel/callback`
-  }
-
-  // 4. Try to infer from request
-  if (request) {
-    const url = new URL(request.url)
-
-    if (url.origin.includes("localhost")) {
-      return `${url.origin}/connect-channel/callback`
+  const getRedirectUri = () => {
+    if (process.env.NODE_ENV === 'production') {
+      return 'https://youtube-ai-studio-new.vercel.app/connect-channel/callback';
     }
+    return 'http://localhost:3000/connect-channel/callback';
+  };
 
-    const host = request.headers.get("host")
-    const protocol = request.headers.get("x-forwarded-proto") || "http"
-    if (host) {
-      return `${protocol}://${host}/connect-channel/callback`
-    }
+  const REDIRECT_URI = getRedirectUri();
 
-    return `${url.origin}/connect-channel/callback`
-  }
-
-  // 5. Fallback safety
-  return "http://localhost:3000/connect-channel/callback"
-}
-
-const REDIRECT_URI = getRedirectUri(request)
-
-
-  // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return NextResponse.json(
       { 
-        error: "Google OAuth credentials are not configured",
-        debug: {
-          clientId: !!process.env.GOOGLE_CLIENT_ID,
-          clientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-          redirectUri: REDIRECT_URI,
-          env: process.env.NODE_ENV
-        }
+        error: "Google OAuth credentials are not configured"
       },
       { status: 500 }
     )
@@ -115,23 +73,15 @@ const REDIRECT_URI = getRedirectUri(request)
 
   authUrl.search = params.toString()
 
-  // Store state in a cookie for verification
   cookieStore.set('youtube_oauth_state', state, {
     path: '/',
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'lax',
-    maxAge: 60 * 10 // 10 minutes
+    maxAge: 60 * 10 
   })
 
   return NextResponse.json({
     authUrl: authUrl.toString(),
-    state,
-    debug: {
-      redirectUri: REDIRECT_URI,
-      clientIdConfigured: !!process.env.GOOGLE_CLIENT_ID,
-      appUrl: process.env.NEXT_PUBLIC_APP_URL,
-      env: process.env.NODE_ENV
-    }
   })
 }
