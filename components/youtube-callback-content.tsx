@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Check, XCircle } from "lucide-react"
@@ -19,6 +19,7 @@ export default function YouTubeCallbackContent() {
   const isPreview = isPreviewEnvironment()
 
   useEffect(() => {
+    const didHandleRef = (window as any).__yt_callback_handled__ ??= { value: false }
     // Redirect to login if not authenticated
     if (!isLoading && !user && !isPreview) {
       router.push("/login?redirect=/connect-channel")
@@ -35,6 +36,8 @@ export default function YouTubeCallbackContent() {
     }
 
     async function handleCallback() {
+      if (didHandleRef.value) return
+      didHandleRef.value = true
       try {
         const code = searchParams.get("code")
         const error = searchParams.get("error")

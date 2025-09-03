@@ -170,7 +170,14 @@ export async function POST(request: Request) {
       console.error("Error fetching initial videos:", videoError)
     }
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      access_token,
+      refresh_token,
+      expires_in,
+      channelId,
+      channelTitle: channel.snippet.title,
+    })
   } catch (error: any) {
     return NextResponse.json(
       { error: `An unexpected error occurred: ${error.message}` },
