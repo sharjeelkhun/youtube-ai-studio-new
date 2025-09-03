@@ -92,9 +92,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No YouTube channel found" }, { status: 404 })
     }
 
+    const channelId = channel.id;
     await supabase.from("youtube_channels").upsert(
       {
-        id: channel.id,
+        id: channelId,
         user_id: session.user.id,
         title: channel.snippet.title,
         description: channel.snippet.description,
@@ -107,6 +108,76 @@ export async function POST(request: Request) {
       },
       { onConflict: "id" }
     )
+
+    // Fetch some videos to populate the database
+    try {
+      const videosResponse = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=10&order=date&type=video`,
+        {
+          headers: {
+            Authorization: `Bearer ${access_token}`,
+          },
+        },
+      )
+
+      const videosData = await videosResponse.json()
+
+      if (videosResponse.ok && videosData.items?.length > 0) {
+        // Process videos in parallel
+        const videoPromises = videosData.items.map(async (item: any) => {
+          const videoId = item.id.videoId
+          const videoTitle = item.snippet.title
+          const videoDescription = item.snippet.description
+          const videoThumbnail = item.snippet.thumbnails?.medium?.url || null
+          const publishedAt = item.snippet.publishedAt
+
+          // Get video statistics and content details
+          const videoDetailsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,status&id=${videoId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${access_token}`,
+              },
+            },
+          )
+
+          const videoDetails = await videoDetailsResponse.json()
+          const details = videoDetails.items?.[0] || {}
+          const stats = details.statistics || {}
+          const contentDetails = details.contentDetails || {}
+          const status = details.status || {}
+
+          return {
+            video_id: videoId,
+            channel_id: channelId,
+            title: videoTitle,
+            description: videoDescription,
+            thumbnail_url: videoThumbnail,
+            view_count: parseInt(stats.viewCount || '0'),
+            like_count: parseInt(stats.likeCount || '0'),
+            comment_count: parseInt(stats.commentCount || '0'),
+            duration: contentDetails.duration || '',
+            status: status.privacyStatus || 'public',
+            published_at: publishedAt,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            tags: [],
+            thumbnails: item.snippet.thumbnails || {},
+            last_synced_at: new Date().toISOString()
+          }
+        })
+
+        const videos = await Promise.all(videoPromises)
+
+        // Insert videos into database
+        await supabase.from("youtube_videos").upsert(videos, {
+          onConflict: "video_id",
+        })
+      }
+    } catch (videoError) {
+      console.error("Error fetching initial videos:", videoError)
+      // Do not block the whole process if this fails
+    }
 
     return NextResponse.json({ success: true })
   } catch (error: any) {
