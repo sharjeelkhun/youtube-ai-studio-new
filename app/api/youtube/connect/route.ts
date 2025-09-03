@@ -1,7 +1,22 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { v4 as uuidv4 } from "uuid"
+
+// Helper: always resolve redirect dynamically
+const getRedirectUri = (request: Request) => {
+  try {
+    // Always prefer the origin of the incoming request
+    const url = new URL(request.url)
+    return `${url.origin}/connect-channel/callback`
+  } catch {
+    // Fallback to Vercel or localhost
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}/connect-channel/callback`
+    }
+    return "http://localhost:3000/connect-channel/callback"
+  }
+}
 
 export async function GET(request: Request) {
   const cookieStore = cookies()
@@ -23,54 +38,12 @@ export async function GET(request: Request) {
     }
   )
 
-  const { data: { session } } = await supabase.auth.getSession()
-  
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
   if (!session) {
-    return NextResponse.json(
-      { error: "Not authenticated" },
-      { status: 401 }
-    )
-  }
-
-  // Build redirect URI dynamically with fallbacks
-  const getRedirectUri = (request?: Request) => {
-    // 1. Explicit override via env
-    if (process.env.NEXT_PUBLIC_REDIRECT_URI) {
-      return process.env.NEXT_PUBLIC_REDIRECT_URI
-    }
-
-    // 2. Hardcoded for production / localhost
-    if (process.env.NODE_ENV === "production") {
-      return "https://youtube-ai-studio-new.vercel.app/connect-channel/callback"
-    }
-    if (process.env.NODE_ENV === "development") {
-      return "http://localhost:3000/connect-channel/callback"
-    }
-
-    // 3. Vercel auto-generated URL
-    if (process.env.VERCEL_URL) {
-      return `https://${process.env.VERCEL_URL}/connect-channel/callback`
-    }
-
-    // 4. Try to infer from request
-    if (request) {
-      const url = new URL(request.url)
-
-      if (url.origin.includes("localhost")) {
-        return `${url.origin}/connect-channel/callback`
-      }
-
-      const host = request.headers.get("host")
-      const protocol = request.headers.get("x-forwarded-proto") || "http"
-      if (host) {
-        return `${protocol}://${host}/connect-channel/callback`
-      }
-
-      return `${url.origin}/connect-channel/callback`
-    }
-
-    // 5. Last fallback
-    return "http://localhost:3000/connect-channel/callback"
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
   }
 
   const REDIRECT_URI = getRedirectUri(request)
@@ -78,14 +51,14 @@ export async function GET(request: Request) {
   // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return NextResponse.json(
-      { 
+      {
         error: "Google OAuth credentials are not configured",
         debug: {
           clientId: !!process.env.GOOGLE_CLIENT_ID,
           clientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
           redirectUri: REDIRECT_URI,
-          env: process.env.NODE_ENV
-        }
+          env: process.env.NODE_ENV,
+        },
       },
       { status: 500 }
     )
@@ -96,31 +69,31 @@ export async function GET(request: Request) {
     "https://www.googleapis.com/auth/youtube.force-ssl",
     "https://www.googleapis.com/auth/youtube",
     "https://www.googleapis.com/auth/youtube.channel-memberships.creator",
-    "https://www.googleapis.com/auth/yt-analytics.readonly"
+    "https://www.googleapis.com/auth/yt-analytics.readonly",
   ]
 
   const state = uuidv4()
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
-  
+
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
-    response_type: 'code',
-    scope: SCOPES.join(' '),
-    access_type: 'offline',
-    state: state,
-    prompt: 'consent'
+    response_type: "code",
+    scope: SCOPES.join(" "),
+    access_type: "offline",
+    state,
+    prompt: "consent",
   })
 
   authUrl.search = params.toString()
 
   // Store state in a cookie for verification
-  cookieStore.set('youtube_oauth_state', state, {
-    path: '/',
-    secure: process.env.NODE_ENV === 'production',
+  cookieStore.set("youtube_oauth_state", state, {
+    path: "/",
+    secure: process.env.NODE_ENV === "production",
     httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 10 // 10 minutes
+    sameSite: "lax",
+    maxAge: 60 * 10, // 10 minutes
   })
 
   return NextResponse.json({
@@ -130,7 +103,7 @@ export async function GET(request: Request) {
       redirectUri: REDIRECT_URI,
       clientIdConfigured: !!process.env.GOOGLE_CLIENT_ID,
       appUrl: process.env.NEXT_PUBLIC_APP_URL,
-      env: process.env.NODE_ENV
-    }
+      env: process.env.NODE_ENV,
+    },
   })
 }
