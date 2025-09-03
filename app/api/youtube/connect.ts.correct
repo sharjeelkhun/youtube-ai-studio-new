@@ -24,7 +24,7 @@ export async function GET(request: Request) {
   )
 
   const { data: { session } } = await supabase.auth.getSession()
-  
+
   if (!session) {
     return NextResponse.json(
       { error: "Not authenticated" },
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
   // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return NextResponse.json(
-      { 
+      {
         error: "Google OAuth credentials are not configured",
         debug: {
           clientId: !!process.env.GOOGLE_CLIENT_ID,
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
 
   const state = uuidv4()
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth")
-  
+
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
     redirect_uri: REDIRECT_URI,
