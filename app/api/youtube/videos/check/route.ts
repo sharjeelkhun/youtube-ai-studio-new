@@ -2,15 +2,17 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 
+type UploadsResult = { ids: string[] } | { error: { status?: number; body?: any } }
+
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-async function fetchAllUploadIds(accessToken: string, uploadsPlaylistId: string) {
+async function fetchAllUploadIds(accessToken: string, uploadsPlaylistId: string): Promise<UploadsResult> {
   const ids: string[] = []
   let nextPageToken: string | null = null
 
   do {
-    const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
+    const url: string = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
     const response = await fetch(url, {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
@@ -98,7 +100,8 @@ export async function GET() {
     // Fetch all upload IDs from YouTube
     const uploads = await fetchAllUploadIds(accessToken!, uploadsPlaylistId)
     if ('error' in uploads) {
-      return NextResponse.json({ error: 'Failed to fetch uploads', details: uploads.error }, { status: uploads.error.status || 500 })
+      const err = uploads.error || {}
+      return NextResponse.json({ error: 'Failed to fetch uploads', details: err }, { status: err.status || 500 })
     }
 
     const youtubeIds = new Set(uploads.ids)
