@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr"
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { v4 as uuidv4 } from "uuid"
@@ -52,13 +52,7 @@ export async function GET(request: Request) {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return NextResponse.json(
       {
-        error: "Google OAuth credentials are not configured",
-        debug: {
-          clientId: !!process.env.GOOGLE_CLIENT_ID,
-          clientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-          redirectUri: REDIRECT_URI,
-          env: process.env.NODE_ENV,
-        },
+        error: "Google OAuth credentials are not configured"
       },
       { status: 500 }
     )
@@ -98,12 +92,6 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     authUrl: authUrl.toString(),
-    state,
-    debug: {
-      redirectUri: REDIRECT_URI,
-      clientIdConfigured: !!process.env.GOOGLE_CLIENT_ID,
-      appUrl: process.env.NEXT_PUBLIC_APP_URL,
-      env: process.env.NODE_ENV,
-    },
+    state
   })
 }

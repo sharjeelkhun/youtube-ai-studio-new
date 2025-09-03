@@ -123,15 +123,8 @@ export async function POST(request: Request) {
       const videosData = await videosResponse.json()
 
       if (videosResponse.ok && videosData.items?.length > 0) {
-        // Process videos in parallel
         const videoPromises = videosData.items.map(async (item: any) => {
           const videoId = item.id.videoId
-          const videoTitle = item.snippet.title
-          const videoDescription = item.snippet.description
-          const videoThumbnail = item.snippet.thumbnails?.medium?.url || null
-          const publishedAt = item.snippet.publishedAt
-
-          // Get video statistics and content details
           const videoDetailsResponse = await fetch(
             `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,status&id=${videoId}`,
             {
@@ -150,18 +143,18 @@ export async function POST(request: Request) {
           return {
             video_id: videoId,
             channel_id: channelId,
-            title: videoTitle,
-            description: videoDescription,
-            thumbnail_url: videoThumbnail,
+            title: item.snippet.title,
+            description: item.snippet.description,
+            thumbnail_url: item.snippet.thumbnails?.medium?.url || null,
             view_count: parseInt(stats.viewCount || '0'),
             like_count: parseInt(stats.likeCount || '0'),
             comment_count: parseInt(stats.commentCount || '0'),
             duration: contentDetails.duration || '',
             status: status.privacyStatus || 'public',
-            published_at: publishedAt,
+            published_at: item.snippet.publishedAt,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            tags: [],
+            tags: [], 
             thumbnails: item.snippet.thumbnails || {},
             last_synced_at: new Date().toISOString()
           }
@@ -169,14 +162,12 @@ export async function POST(request: Request) {
 
         const videos = await Promise.all(videoPromises)
 
-        // Insert videos into database
         await supabase.from("youtube_videos").upsert(videos, {
           onConflict: "video_id",
         })
       }
     } catch (videoError) {
       console.error("Error fetching initial videos:", videoError)
-      // Do not block the whole process if this fails
     }
 
     return NextResponse.json({ success: true })
