@@ -232,7 +232,7 @@ export async function POST(request: Request) {
       const batchIds = videoIds.slice(i, i + 50)
       console.log(`Processing video batch ${i/50 + 1}...`)
 
-      const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,status&id=${batchIds.join(',')}`
+      const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status,liveStreamingDetails&id=${batchIds.join(',')}`
       console.log('Fetching video stats from:', statsUrl)
 
       const statsResponse = await fetch(statsUrl, {
@@ -256,26 +256,44 @@ export async function POST(request: Request) {
 
       // Process each video
       for (const video of statsData.items) {
+        const base = playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet
+        const iso = video.contentDetails?.duration || ''
+        const seconds = (() => {
+          try {
+            const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+            const h = match?.[1] ? parseInt(match[1], 10) : 0
+            const m = match?.[2] ? parseInt(match[2], 10) : 0
+            const s = match?.[3] ? parseInt(match[3], 10) : 0
+            return h * 3600 + m * 60 + s
+          } catch { return 0 }
+        })()
+        const isShort = seconds > 0 && seconds <= 60
+        const liveFlag = video?.snippet?.liveBroadcastContent
+        const hasLiveDetails = !!video?.liveStreamingDetails
+        const isLive = (liveFlag && liveFlag !== 'none') || hasLiveDetails
+        const computedTags: string[] = []
+        if (isShort) computedTags.push('short')
+        if (isLive) computedTags.push('live')
         const videoData = {
+          id: video.id,
           channel_id: channel.id,
-          video_id: video.id,
-          title: playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet.title || '',
-          description: playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet.description || '',
-          thumbnails: playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet.thumbnails || {},
-          published_at: playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet.publishedAt || '',
+          title: base?.title || '',
+          description: base?.description || '',
+          thumbnail_url: base?.thumbnails?.medium?.url || base?.thumbnails?.default?.url || null,
+          published_at: base?.publishedAt || '',
           view_count: parseInt(video.statistics.viewCount || '0'),
           like_count: parseInt(video.statistics.likeCount || '0'),
           comment_count: parseInt(video.statistics.commentCount || '0'),
           duration: video.contentDetails.duration || '',
           status: video.status.privacyStatus || 'private',
-          last_synced_at: new Date().toISOString()
+          tags: computedTags
         }
 
         // Upsert the video data
         const { error: upsertError } = await supabase
           .from('youtube_videos')
           .upsert(videoData, {
-            onConflict: 'channel_id,video_id'
+            onConflict: 'id'
           })
 
         if (upsertError) {
@@ -301,7 +319,7 @@ export async function POST(request: Request) {
       .update({
         view_count: totalViews,
         video_count: videos.length,
-        last_synced_at: new Date().toISOString()
+        last_synced: new Date().toISOString()
       })
       .eq('id', channel.id)
       .eq('user_id', session.user.id)

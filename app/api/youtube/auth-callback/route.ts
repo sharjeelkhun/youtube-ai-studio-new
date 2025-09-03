@@ -126,7 +126,7 @@ export async function POST(request: Request) {
         const videoPromises = videosData.items.map(async (item: any) => {
           const videoId = item.id.videoId
           const videoDetailsResponse = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,status&id=${videoId}`,
+            `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status,liveStreamingDetails&id=${videoId}`,
             {
               headers: {
                 Authorization: `Bearer ${access_token}`,
@@ -139,9 +139,27 @@ export async function POST(request: Request) {
           const stats = details.statistics || {}
           const contentDetails = details.contentDetails || {}
           const status = details.status || {}
+          const liveStreamingDetails = details.liveStreamingDetails || null
+
+          const iso = contentDetails?.duration || ''
+          const seconds = (() => {
+            try {
+              const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+              const h = match?.[1] ? parseInt(match[1], 10) : 0
+              const m = match?.[2] ? parseInt(match[2], 10) : 0
+              const s = match?.[3] ? parseInt(match[3], 10) : 0
+              return h * 3600 + m * 60 + s
+            } catch { return 0 }
+          })()
+          const liveFlag = details?.snippet?.liveBroadcastContent
+          const isShort = seconds > 0 && seconds <= 60
+          const isLive = (liveFlag && liveFlag !== 'none') || !!liveStreamingDetails
+          const tags: string[] = []
+          if (isShort) tags.push('short')
+          if (isLive) tags.push('live')
 
           return {
-            video_id: videoId,
+            id: videoId,
             channel_id: channelId,
             title: item.snippet.title,
             description: item.snippet.description,
@@ -154,16 +172,14 @@ export async function POST(request: Request) {
             published_at: item.snippet.publishedAt,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
-            tags: [], 
-            thumbnails: item.snippet.thumbnails || {},
-            last_synced_at: new Date().toISOString()
+            tags,
           }
         })
 
         const videos = await Promise.all(videoPromises)
 
         await supabase.from("youtube_videos").upsert(videos, {
-          onConflict: "video_id",
+          onConflict: "id",
         })
       }
     } catch (videoError) {
