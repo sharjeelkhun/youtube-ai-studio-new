@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { OverviewTab } from "@/components/tabs/overview-tab"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,9 @@ import { Youtube, ArrowRight, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 export function DashboardContent() {
-  const [activeTab, setActiveTab] = useState("overview")
+  const searchParams = useSearchParams()
+  const initialTab = (searchParams?.get('tab') as string) || 'overview'
+  const [activeTab, setActiveTab] = useState(initialTab)
   const router = useRouter()
   const { isConnected, channelData, isLoading: isChannelLoading } = useYouTubeChannel()
   const { user, isLoading: isAuthLoading } = useAuth()
@@ -23,6 +25,13 @@ export function DashboardContent() {
     // Navigate to the appropriate page for non-overview tabs
     if (value !== "overview") {
       router.push(`/dashboard/${value}`)
+    }
+    // Keep tab in the URL when staying on /dashboard
+    if (value === 'overview') {
+      const params = new URLSearchParams(window.location.search)
+      params.set('tab', value)
+      const query = params.toString()
+      router.replace(`/dashboard${query ? `?${query}` : ''}`)
     }
   }
 
@@ -55,6 +64,12 @@ export function DashboardContent() {
       </div>
     )
   }
+
+  // Sync tab from URL if it changes
+  useEffect(() => {
+    const tab = (searchParams?.get('tab') as string) || 'overview'
+    if (tab !== activeTab) setActiveTab(tab)
+  }, [searchParams])
 
   // If no channel is connected, show a connection prompt
   if (!isConnected || !channelData) {

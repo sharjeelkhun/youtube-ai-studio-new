@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, Youtube, ArrowRight } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { OverviewTab } from './overview-tab';
 import { VideosTab } from './videos-tab';
 import { AnalyticsTab } from './analytics-tab';
@@ -19,7 +19,9 @@ interface DashboardContentProps {
 }
 
 export default function DashboardContent({ userId, email, channelId }: DashboardContentProps) {
-  const [activeTab, setActiveTab] = useState('overview');
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams?.get('tab') as string) || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const { channel, loading, error, refreshChannel } = useYouTubeChannel();
   const router = useRouter();
 
@@ -36,6 +38,20 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
       refreshChannel();
     }
   }, [channelId, refreshChannel]);
+
+  // Keep activeTab in sync with URL changes
+  useEffect(() => {
+    const tab = (searchParams?.get('tab') as string) || 'overview';
+    if (tab !== activeTab) setActiveTab(tab);
+  }, [searchParams]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', value);
+    const query = params.toString();
+    router.replace(`/dashboard${query ? `?${query}` : ''}`);
+  };
 
   // If no userId is provided, show loading or redirect
   if (!userId) {
@@ -120,7 +136,7 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
         <p className="text-gray-600">Welcome back, {email}</p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="videos">Videos</TabsTrigger>

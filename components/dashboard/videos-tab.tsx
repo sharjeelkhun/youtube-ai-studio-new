@@ -119,7 +119,7 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
 
   // Handle video click
   const handleVideoClick = (videoId: string) => {
-    router.push(`/dashboard/videos/${videoId}`)
+    router.push(`/videos/${videoId}`)
   }
 
   if (isLoading) {

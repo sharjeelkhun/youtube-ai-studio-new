@@ -221,9 +221,11 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
               <div>
                 <h3 className="text-sm font-medium text-muted-foreground">Last Updated</h3>
                 <p className="text-sm">
-                  {channelData?.updated_at
-                    ? new Date(channelData.updated_at).toLocaleDateString()
-                    : "Not available"}
+                  {(() => {
+                    const ts = channelData?.last_synced || channelData?.updated_at
+                    if (!ts) return 'Not available'
+                    try { return new Date(ts).toLocaleString() } catch { return 'Not available' }
+                  })()}
                 </p>
               </div>
             </div>
