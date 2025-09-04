@@ -12,12 +12,17 @@ import { AnalyticsChart } from "@/components/charts/analytics-chart"
 import { getAnalyticsData } from "@/lib/api"
 import type { AnalyticsData } from "@/lib/types"
 import { toast } from "sonner"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export function AnalyticsTab() {
   const [dateRange, setDateRange] = useState("30d")
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedMetric, setSelectedMetric] = useState("views")
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const initialSubtab = (searchParams?.get('tab') as string) || 'overview'
+  const [activeTab, setActiveTab] = useState(initialSubtab)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -36,6 +41,20 @@ export function AnalyticsTab() {
 
     fetchData()
   }, [dateRange])
+
+  // Sync from URL
+  useEffect(() => {
+    const t = (searchParams?.get('tab') as string) || 'overview'
+    if (t !== activeTab) setActiveTab(t)
+  }, [searchParams])
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+    params.set('tab', value)
+    const query = params.toString()
+    router.replace(`/analytics${query ? `?${query}` : ''}`)
+  }
 
   const handleExportData = () => {
     toast.info("Export Started", {
@@ -88,7 +107,7 @@ export function AnalyticsTab() {
         <MetricCard title="Engagement" value="24.8%" change="+5.1%" icon={ThumbsUp} />
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>

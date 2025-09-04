@@ -16,6 +16,8 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 function Videos() {
   const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
@@ -23,10 +25,40 @@ function Videos() {
   const [videosLoading, setVideosLoading] = useState(true);
   const [showSyncNotice, setShowSyncNotice] = useState(false);
   const [newCount, setNewCount] = useState<number | null>(null)
-  const [page, setPage] = useState(1)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const initialPage = Number(searchParams?.get('page') || '1') || 1
+  const initialType = (searchParams?.get('type') as 'all'|'video'|'short'|'live') || 'all'
+  const initialStatus = (searchParams?.get('status') as 'all'|'public'|'private'|'unlisted') || 'all'
+  const [page, setPage] = useState(initialPage)
   const pageSize = 12
   const [totalCount, setTotalCount] = useState<number>(0)
-  const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'short' | 'live'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'short' | 'live'>(initialType)
+  const [statusFilter, setStatusFilter] = useState<'all'|'public'|'private'|'unlisted'>(initialStatus)
+
+  // keep state in sync if URL changes externally
+  useEffect(() => {
+    const sp = searchParams
+    const p = Number(sp?.get('page') || '1') || 1
+    const t = (sp?.get('type') as 'all'|'video'|'short'|'live') || 'all'
+    const s = (sp?.get('status') as 'all'|'public'|'private'|'unlisted') || 'all'
+    if (p !== page) setPage(p)
+    if (t !== typeFilter) setTypeFilter(t)
+    if (s !== statusFilter) setStatusFilter(s)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  const updateUrl = (next: {page?: number, type?: 'all'|'video'|'short'|'live', status?: 'all'|'public'|'private'|'unlisted'}) => {
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+    const p = next.page ?? page
+    const t = next.type ?? typeFilter
+    const s = next.status ?? statusFilter
+    params.set('page', String(p))
+    params.set('type', t)
+    params.set('status', s)
+    const query = params.toString()
+    router.replace(`/videos${query ? `?${query}` : ''}`)
+  }
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -47,6 +79,9 @@ function Videos() {
         } else if (typeFilter === 'video') {
           // normal videos: not short, not live
           query = query.not('tags', 'cs', '{short}').not('tags', 'cs', '{live}')
+        }
+        if (statusFilter !== 'all') {
+          query = query.eq('status', statusFilter)
         }
         const { data, error, count } = await query
           .range((page - 1) * pageSize, page * pageSize - 1)
@@ -114,7 +149,7 @@ function Videos() {
         fetchVideos()
       }
     }
-  }, [channel, channelIsLoading, supabase, page, typeFilter])
+  }, [channel, channelIsLoading, supabase, page, typeFilter, statusFilter])
 
   useEffect(() => {
     let aborted = false
@@ -173,10 +208,24 @@ function Videos() {
       )}
       <div className="mb-4 flex items-center gap-2">
         <span className="text-sm text-muted-foreground">Type:</span>
-        <Button variant={typeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('all') }}>All</Button>
-        <Button variant={typeFilter === 'video' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('video') }}>Videos</Button>
-        <Button variant={typeFilter === 'short' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('short') }}>Shorts</Button>
-        <Button variant={typeFilter === 'live' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('live') }}>Live</Button>
+        <Button variant={typeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('all'); updateUrl({page:1, type:'all'}) }}>All</Button>
+        <Button variant={typeFilter === 'video' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('video'); updateUrl({page:1, type:'video'}) }}>Videos</Button>
+        <Button variant={typeFilter === 'short' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('short'); updateUrl({page:1, type:'short'}) }}>Shorts</Button>
+        <Button variant={typeFilter === 'live' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('live'); updateUrl({page:1, type:'live'}) }}>Live</Button>
+        <div className="ml-4 flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Status:</span>
+          <Select value={statusFilter} onValueChange={(v) => { const val = v as 'all'|'public'|'private'|'unlisted'; setPage(1); setStatusFilter(val); updateUrl({page:1, status: val}) }}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="public">Published</SelectItem>
+              <SelectItem value="private">Private</SelectItem>
+              <SelectItem value="unlisted">Unlisted</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       {!!newCount && newCount > 0 && (
         <div className="mb-4">
@@ -221,6 +270,7 @@ function Videos() {
                       if (isDisabled) return
                       e.preventDefault()
                       setPage(page - 1)
+                      updateUrl({ page: page - 1 })
                     }}
                     href={isDisabled ? undefined : '#'}
                   />
@@ -241,6 +291,7 @@ function Videos() {
                       if (isDisabled) return
                       e.preventDefault()
                       setPage(page + 1)
+                      updateUrl({ page: page + 1 })
                     }}
                     href={isDisabled ? undefined : '#'}
                   />

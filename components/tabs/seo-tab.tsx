@@ -11,12 +11,17 @@ import { Badge } from "@/components/ui/badge"
 import { getSeoScores, analyzeSeo } from "@/lib/api"
 import type { SeoScore } from "@/lib/types"
 import { toast } from "sonner"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export function SeoTab() {
   const [searchQuery, setSearchQuery] = useState("")
   const [seoScores, setSeoScores] = useState<SeoScore[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const initialSubtab = (searchParams?.get('tab') as string) || 'videos'
+  const [activeTab, setActiveTab] = useState(initialSubtab)
 
   useEffect(() => {
     const fetchSeoScores = async () => {
@@ -101,7 +106,13 @@ export function SeoTab() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="videos" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value)
+        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+        params.set('tab', value)
+        const query = params.toString()
+        router.replace(`/seo${query ? `?${query}` : ''}`)
+      }} className="space-y-4">
         <TabsList>
           <TabsTrigger value="videos">My Videos</TabsTrigger>
           <TabsTrigger value="keywords">Keyword Research</TabsTrigger>

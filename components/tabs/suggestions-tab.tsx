@@ -11,6 +11,7 @@ import { SuggestionCard } from "@/components/suggestion-card"
 import { getContentSuggestions, getTrendingTopics, getVideoImprovements, generateAiContent } from "@/lib/api"
 import type { ContentSuggestion, TrendingTopic, VideoImprovement } from "@/lib/types"
 import { toast } from "sonner"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export function SuggestionsTab() {
   const [prompt, setPrompt] = useState("")
@@ -24,6 +25,10 @@ export function SuggestionsTab() {
   const [isLoadingContent, setIsLoadingContent] = useState(true)
   const [isLoadingTrends, setIsLoadingTrends] = useState(true)
   const [isLoadingImprovements, setIsLoadingImprovements] = useState(true)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const initialSubtab = (searchParams?.get('tab') as string) || 'content'
+  const [activeTab, setActiveTab] = useState(initialSubtab)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -191,7 +196,13 @@ export function SuggestionsTab() {
         </CardFooter>
       </Card>
 
-      <Tabs defaultValue="content" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value) => {
+        setActiveTab(value)
+        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+        params.set('tab', value)
+        const query = params.toString()
+        router.replace(`/suggestions${query ? `?${query}` : ''}`)
+      }} className="space-y-4">
         <TabsList>
           <TabsTrigger value="content">Content Ideas</TabsTrigger>
           <TabsTrigger value="trends">Trending Topics</TabsTrigger>
