@@ -91,7 +91,12 @@ export function DashboardSidebar() {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu>
+        {!isLoading && !isConnected && (
+          <div className="px-3 py-2">
+            <YoutubeConnectionStatus />
+          </div>
+        )}
+                <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
@@ -105,11 +110,6 @@ export function DashboardSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        {!isLoading && !isConnected && (
-          <div className="px-3 py-2">
-            <YoutubeConnectionStatus />
-          </div>
-        )}
       </SidebarFooter>
     </>
   )

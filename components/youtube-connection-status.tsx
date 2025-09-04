@@ -22,15 +22,12 @@ interface YoutubeConnectionStatusProps {
 export function YoutubeConnectionStatus({ channel = null }: YoutubeConnectionStatusProps) {
   if (!channel) {
     return (
-      <Card className="p-6">
+      <Card className="p-4">
         <div className="flex flex-col items-center text-center">
-          <div className="mb-4 rounded-full bg-yellow-100 p-3 dark:bg-yellow-900">
-            <AlertCircle className="h-6 w-6 text-yellow-600 dark:text-yellow-300" />
+          <div className="mb-4 rounded-full bg-yellow-100 p-2 dark:bg-yellow-900">
+            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-300" />
           </div>
-          <h2 className="text-xl font-semibold mb-2">No YouTube Channel Connected</h2>
-          <p className="text-muted-foreground mb-4">
-            Connect your YouTube channel to view and manage your videos.
-          </p>
+          <h2 className="text-l font-semibold mb-2">No YouTube Channel Connected</h2>
           <Link href="/connect-channel">
             <Button>Connect Channel</Button>
           </Link>
