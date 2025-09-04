@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Loader2, Upload, Save } from "lucide-react"
+import { Loader2, Save } from "lucide-react"
 import { toast } from "sonner"
 import { useSession } from "@/contexts/session-context"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
@@ -26,16 +26,26 @@ export function AccountSettings() {
 
   useEffect(() => {
     if (session) {
+      const meta = (session.user as any)?.user_metadata || {}
+      const derivedUsername =
+        meta.user_name ||
+        meta.username ||
+        meta.preferred_username ||
+        (meta.full_name ? String(meta.full_name).split(" ")[0] : "") ||
+        (session.user.email ? String(session.user.email).split("@")[0] : "") ||
+        ""
+
       setFormData((prev) => ({
         ...prev,
         email: session.user.email || "",
-        username: session.user.user_metadata.user_name || "",
+        username: derivedUsername || prev.username,
       }))
     }
     if (channelData) {
       setFormData((prev) => ({
         ...prev,
         name: channelData.title || "",
+        username: channelData.title || prev.username,
       }))
     }
   }, [session, channelData])
@@ -84,10 +94,6 @@ export function AccountSettings() {
                 <AvatarImage src={avatarSrc} alt="Profile" />
                 <AvatarFallback>{avatarFallback}</AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="sm">
-                <Upload className="mr-2 h-4 w-4" />
-                Change Avatar
-              </Button>
             </div>
             <div className="flex-1 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
@@ -109,6 +115,7 @@ export function AccountSettings() {
                     value={formData.username}
                     onChange={handleInputChange}
                     placeholder="Your username"
+                    disabled
                   />
                 </div>
               </div>
