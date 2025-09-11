@@ -47,6 +47,7 @@ export const aiProviders = [
     ],
     apiKeyPlaceholder: "sk-...",
     apiKeyHelpText: "Your API key is stored securely and never shared with third parties.",
+    apiKeyUrl: "https://platform.openai.com/api-keys"
   },
   {
     id: "gemini",
@@ -59,6 +60,7 @@ export const aiProviders = [
     ],
     apiKeyPlaceholder: "AIza...",
     apiKeyHelpText: "Get your API key from the Google AI Studio.",
+    apiKeyUrl: "https://aistudio.google.com/app/apikey"
   },
   {
     id: "anthropic",
@@ -71,6 +73,7 @@ export const aiProviders = [
     ],
     apiKeyPlaceholder: "sk-ant-...",
     apiKeyHelpText: "Get your API key from the Anthropic Console.",
+    apiKeyUrl: "https://console.anthropic.com/settings/keys"
   },
   {
     id: "mistral",
@@ -83,5 +86,6 @@ export const aiProviders = [
     ],
     apiKeyPlaceholder: "...",
     apiKeyHelpText: "Get your API key from the Mistral AI Platform.",
+    apiKeyUrl: "https://console.mistral.ai/api-keys",
   },
 ]

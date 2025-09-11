@@ -1,0 +1,344 @@
+import { NextResponse } from 'next/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
+import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
+import { Mistral } from '@mistralai/mistralai'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { aiProviders } from '@/lib/ai-providers'
+
+interface AiSettings {
+  defaultModel: string
+  temperature: 'precise' | 'balanced' | 'creative'
+}
+
+const temperatureMap = {
+  precise: 0.2,
+  balanced: 0.7,
+  creative: 1.0,
+}
+
+const handleGemini = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+  const genAI = new GoogleGenerativeAI(apiKey)
+  const model = genAI.getGenerativeModel({ model: settings.defaultModel })
+  const prompt = `You are a YouTube description writer. Create a clean, engaging description without any special formatting characters.
+
+Current Title: "${title}"
+Current Description: "${description}"
+
+FORMAT REQUIREMENTS (STRICT):
+1. DO NOT use any asterisks (*) or markdown formatting
+2. DO NOT use bold, italic, or any special text styling
+3. DO NOT use multiple emojis in a row
+4. DO NOT use excessive line breaks
+
+STRUCTURE GUIDELINES:
+1. Start with a powerful 2-3 line hook
+2. Use this section structure:
+   🎯 Main Description (2-3 paragraphs)
+   ⏱️ Timestamps/Chapters (if applicable)
+   📌 What You'll Learn
+   🔗 Resources & Links
+   💬 Call to Action
+3. Use only ONE emoji per section header
+4. End with 3-5 relevant hashtags
+
+Example Section Header Format:
+🎯 Main Description
+(content here)
+
+⏱️ Video Timeline
+(content here)
+
+Remember: NO asterisks (*), NO bold text, NO markdown - just clean, readable text with minimal formatting.`
+  
+  const result = await model.generateContent(prompt)
+  const response = await result.response
+  return { description: response.text().trim() }
+}
+
+const handleOpenAI = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+  const openai = new OpenAI({ apiKey })
+  const completion = await openai.chat.completions.create({
+    model: settings.defaultModel,
+    temperature: temperatureMap[settings.temperature],
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a YouTube description writer. Your task is to write clean, engaging descriptions WITHOUT using any markdown, asterisks, or special formatting characters.'
+      },
+      {
+        role: 'user',
+        content: `Write a YouTube description following these strict formatting rules:
+
+Current Title: "${title}"
+Current Description: "${description}"
+
+STRICT FORMATTING RULES:
+1. NO asterisks (*) anywhere in the text
+2. NO markdown formatting (**, *, _, etc.)
+3. NO bold or italic text
+4. ONE emoji maximum per section header
+5. Use simple line breaks for spacing
+
+Structure the description with these sections:
+🎯 Main Description (2-3 paragraphs)
+⏱️ Timestamps (if needed)
+📌 What You'll Learn
+🔗 Resources & Links
+💬 Call to Action
+#️⃣ 3-5 Relevant Hashtags
+
+Example Format:
+🎯 Main Description
+Your exciting content here...
+
+⏱️ Video Timeline
+00:00 - Intro
+02:00 - First Topic
+
+Remember: Write naturally, no special formatting - just clean text and single emojis for headers.`
+      }
+    ]
+  })
+
+  const text = completion.choices[0].message.content
+  if (!text) {
+    throw new Error('OpenAI returned an empty response.')
+  }
+  return { description: text.trim() }
+}
+
+const handleAnthropic = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+  const anthropic = new Anthropic({ apiKey })
+  const msg = await anthropic.messages.create({
+    model: settings.defaultModel,
+    temperature: temperatureMap[settings.temperature],
+    max_tokens: 1000,
+    messages: [
+      {
+        role: 'user',
+        content: `Write a YouTube description following these strict formatting rules:
+
+Current Title: "${title}"
+Current Description: "${description}"
+
+STRICT FORMATTING RULES:
+1. NO asterisks (*) anywhere in the text
+2. NO markdown formatting (**, *, _, etc.)
+3. NO bold or italic text
+4. ONE emoji maximum per section header
+5. Use simple line breaks for spacing
+
+Structure the description with these sections:
+🎯 Main Description (2-3 paragraphs)
+⏱️ Timestamps (if needed)
+📌 What You'll Learn
+🔗 Resources & Links
+💬 Call to Action
+#️⃣ 3-5 Relevant Hashtags
+
+Example Format:
+🎯 Main Description
+Your exciting content here...
+
+⏱️ Video Timeline
+00:00 - Intro
+02:00 - First Topic
+
+Remember: Write naturally, no special formatting - just clean text and single emojis for headers.`
+      }
+    ]
+  })
+
+  if (!msg.content || !msg.content[0] || !('text' in msg.content[0])) {
+    throw new Error('Anthropic returned an empty response.')
+  }
+
+  return { description: msg.content[0].text.trim() }
+}
+
+const handleMistral = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+  const mistral = new Mistral({ apiKey })
+  const response = await mistral.chat.complete({
+    model: settings.defaultModel,
+    temperature: temperatureMap[settings.temperature],
+    messages: [
+      {
+        role: 'system',
+        content: 'You are a YouTube description writer. Your task is to write clean, engaging descriptions WITHOUT using any markdown, asterisks, or special formatting characters.'
+      },
+      {
+        role: 'user',
+        content: `Write a YouTube description following these strict formatting rules:
+
+Current Title: "${title}"
+Current Description: "${description}"
+
+STRICT FORMATTING RULES:
+1. NO asterisks (*) anywhere in the text
+2. NO markdown formatting (**, *, _, etc.)
+3. NO bold or italic text
+4. ONE emoji maximum per section header
+5. Use simple line breaks for spacing
+
+Structure the description with these sections:
+🎯 Main Description (2-3 paragraphs)
+⏱️ Timestamps (if needed)
+📌 What You'll Learn
+🔗 Resources & Links
+💬 Call to Action
+#️⃣ 3-5 Relevant Hashtags
+
+Example Format:
+🎯 Main Description
+Your exciting content here...
+
+⏱️ Video Timeline
+00:00 - Intro
+02:00 - First Topic
+
+Remember: Write naturally, no special formatting - just clean text and single emojis for headers.`
+      }
+    ]
+  })
+
+  const text = response.choices[0].message.content
+  if (typeof text !== 'string') {
+    throw new Error('Mistral AI returned a response in an unexpected format.')
+  }
+  
+  return { description: text.trim() }
+}
+
+export async function POST(req: Request) {
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { data, error } = await supabase.rpc('get_ai_settings')
+
+    if (error) {
+      console.error('Error fetching AI settings:', error)
+      return NextResponse.json({ error: 'Failed to fetch AI settings' }, { status: 500 })
+    }
+
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'AI settings not found' }, { status: 404 })
+    }
+
+    const profile = {
+      provider: data[0].provider,
+      settings: data[0].settings
+    }
+
+    if (!profile.provider) {
+      return NextResponse.json({ error: 'AI provider not selected. Please select a provider in settings.' }, { status: 400 })
+    }
+
+    if (!profile.settings?.apiKeys || Object.keys(profile.settings.apiKeys).length === 0) {
+      return NextResponse.json({ error: 'No API keys configured. Please add your API key in settings.' }, { status: 400 })
+    }
+
+    const apiKey = profile.settings.apiKeys[profile.provider]
+    if (!apiKey) {
+      return NextResponse.json({ 
+        error: `API key for ${profile.provider} not found. Please add your ${profile.provider} API key in settings.` 
+      }, { status: 400 })
+    }
+
+    const body = await req.json()
+    const { title, description } = body
+
+    if (!title || !description) {
+      return NextResponse.json({ error: 'Title and description are required' }, { status: 400 })
+    }
+
+    const aiSettings = { ...profile.settings.features }
+
+    const providerConfig = aiProviders.find(p => p.id === profile.provider)
+    if (providerConfig) {
+      const isValidModel = providerConfig.models.some(m => m.id === aiSettings.defaultModel)
+      if (!isValidModel) {
+        aiSettings.defaultModel = providerConfig.models[0].id
+      }
+    }
+
+    let optimizedData
+    if (profile.provider === 'gemini') {
+      optimizedData = await handleGemini(apiKey, title, description, aiSettings)
+    } else if (profile.provider === 'openai') {
+      optimizedData = await handleOpenAI(apiKey, title, description, aiSettings)
+    } else if (profile.provider === 'anthropic') {
+      optimizedData = await handleAnthropic(apiKey, title, description, aiSettings)
+    } else if (profile.provider === 'mistral') {
+      optimizedData = await handleMistral(apiKey, title, description, aiSettings)
+    } else {
+      return NextResponse.json({ error: `Provider "${profile.provider}" is not supported.` }, { status: 400 })
+    }
+
+    return NextResponse.json(optimizedData)
+
+  } catch (error: any) {
+    console.error('[AI_OPTIMIZE_DESCRIPTION_ERROR]', error)
+
+    // Handle Mistral and other provider rate limits
+    if (error.type === 'service_tier_capacity_exceeded' || 
+        error.code === '3505' || 
+        error.response?.status === 429 || 
+        /rate.*limit|quota|capacity|exceeded/i.test(error.message)) {
+      return NextResponse.json({
+        error: 'Rate limit reached. Please wait 60 seconds and try again.',
+        errorCode: 'rate_limit',
+        retryAfter: 60
+      }, { 
+        status: 429,
+        headers: {
+          'Retry-After': '60'
+        }
+      })
+    }
+
+    // Handle other common errors
+    if (error instanceof Error) {
+      const errorMessage = error.message;
+
+      if (/credit|quota|limit|billing/i.test(errorMessage)) {
+        return NextResponse.json({
+          error: 'A billing-related error occurred with the AI provider.',
+          errorCode: 'billing_error'
+        }, { status: 400 });
+      }
+
+      if (/api key/i.test(errorMessage) || /authentication/i.test(errorMessage)) {
+        return NextResponse.json({ 
+          error: 'The provided API key is invalid or has been rejected by the provider.',
+          errorCode: 'auth_error'
+        }, { status: 400 })
+      }
+
+      // Handle JSON parsing errors
+      if (/JSON/.test(errorMessage)) {
+        return NextResponse.json({ 
+          error: 'Failed to parse AI response. Please try again.',
+          errorCode: 'parse_error'
+        }, { status: 500 })
+      }
+
+      return NextResponse.json({ 
+        error: errorMessage,
+        errorCode: 'unknown_error'
+      }, { status: 500 })
+    }
+
+    return NextResponse.json({ 
+      error: 'An unexpected error occurred.',
+      errorCode: 'unknown_error'  
+    }, { status: 500 })
+  }
+}

@@ -15,7 +15,9 @@ export async function POST(request: Request) {
     // Validate environment variables
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-    const redirectUri = "https://youtube-ai-studio-new.vercel.app/connect-channel";
+    const redirectUri = process.env.NODE_ENV === 'production'
+      ? "https://youtube-ai-studio-new.vercel.app/connect-channel"
+      : "http://localhost:3000/connect-channel";
 
     if (!clientId || !clientSecret) {
       console.error('Missing required environment variables:', {

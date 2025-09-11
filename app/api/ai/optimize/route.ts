@@ -158,21 +158,35 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data, error } = await supabase.rpc('get_ai_settings').single()
+    const { data, error } = await supabase.rpc('get_ai_settings')
 
-    if (error || !data) {
-      return NextResponse.json({ error: 'AI provider not configured. Please configure it in the settings.' }, { status: 400 })
+    if (error) {
+      console.error('Error fetching AI settings:', error)
+      return NextResponse.json({ error: 'Failed to fetch AI settings' }, { status: 500 })
     }
 
-    const profile = data as AiSettingsRpcResponse
-
-    if (!profile.provider || !profile.settings) {
-      return NextResponse.json({ error: 'AI provider not configured. Please configure it in the settings.' }, { status: 400 })
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'AI settings not found' }, { status: 404 })
     }
 
-    const apiKey = profile.settings.apiKeys?.[profile.provider]
+    const profile = {
+      provider: data[0].provider,
+      settings: data[0].settings
+    } as AiSettingsRpcResponse
+
+    if (!profile.provider) {
+      return NextResponse.json({ error: 'AI provider not selected. Please select a provider in settings.' }, { status: 400 })
+    }
+
+    if (!profile.settings?.apiKeys || Object.keys(profile.settings.apiKeys).length === 0) {
+      return NextResponse.json({ error: 'No API keys configured. Please add your API key in settings.' }, { status: 400 })
+    }
+
+    const apiKey = profile.settings.apiKeys[profile.provider]
     if (!apiKey) {
-      return NextResponse.json({ error: `API key for ${profile.provider} not found. Please add it in the settings.` }, { status: 400 })
+      return NextResponse.json({ 
+        error: `API key for ${profile.provider} not found. Please add your ${profile.provider} API key in settings.` 
+      }, { status: 400 })
     }
 
     const body = await req.json()

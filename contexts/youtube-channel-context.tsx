@@ -271,16 +271,26 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
         
         // Refresh token if it's expired or close to expiring
         if (now >= tokenExpiresAt - 5 * 60 * 1000) {
-          console.log('Token has expired or is expiring soon, refreshing...');
-          try {
-            currentChannel = await refreshToken(currentChannel)
-          } catch (error) {
-            console.error('Failed to refresh token:', error)
-            setError('Failed to refresh token. Please try reconnecting your channel.')
-            setChannel(null)
-            setLoading(false)
-            return
+        console.log('Token has expired or is expiring soon, refreshing...');
+        try {
+          currentChannel = await refreshToken(currentChannel)
+        } catch (error) {
+          console.error('Failed to refresh token:', error)
+          // Remove the channel if the refresh token is invalid
+          if (error instanceof Error && error.message.includes('Invalid refresh token')) {
+            const { error: deleteError } = await supabase
+              .from('youtube_channels')
+              .delete()
+              .eq('id', currentChannel.id)
+            if (deleteError) {
+              console.error('Error deleting invalid channel:', deleteError)
+            }
           }
+          setError('Failed to refresh token. Please reconnect your channel.')
+          setChannel(null)
+          setLoading(false)
+          return
+        }
         }
         
         // Fetch fresh stats if not synced recently

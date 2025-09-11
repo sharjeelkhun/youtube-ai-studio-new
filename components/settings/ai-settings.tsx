@@ -71,10 +71,30 @@ export function AISettings() {
 
     const apiKey = apiKeys[providerId]
     if (!apiKey) {
+      // Don't show error if user hasn't entered an API key yet
       return
     }
 
+    // Clear any previous billing errors
+    setBillingErrorProvider(null)
+
     try {
+      // Validate API key format first
+      const provider = aiProviders.find(p => p.id === providerId)
+      if (!provider) {
+        toast.error('Invalid provider selected')
+        return
+      }
+
+      // Basic format validation
+      if ((providerId === 'openai' && !apiKey.startsWith('sk-')) ||
+          (providerId === 'anthropic' && !apiKey.startsWith('sk-ant-')) ||
+          (providerId === 'gemini' && !apiKey.startsWith('AIza')) ||
+          (providerId === 'mistral' && apiKey.length < 32)) {
+        toast.error(`Invalid ${provider.name} API key format`)
+        return
+      }
+
       const response = await fetch('/api/ai/check-status', {
         method: 'POST',
         headers: {
@@ -86,14 +106,30 @@ export function AISettings() {
         }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        const errorBody = await response.json().catch(() => null)
-        if (errorBody?.errorCode === 'billing_error') {
+        if (response.status === 401) {
+          toast.error(`Invalid ${provider.name} API key`)
+        } else if (response.status === 429) {
+          toast.error(`${provider.name} API rate limit exceeded`)
           setBillingErrorProvider(providerId)
+        } else if (data?.errorCode === 'billing_error') {
+          setBillingErrorProvider(providerId)
+          toast.error(`Billing error with ${provider.name}: Please check your plan and billing details.`)
+        } else if (data?.error) {
+          toast.error(data.error)
+        } else {
+          toast.error(`Failed to validate ${provider.name} API key. Please check if the key is correct.`)
         }
+        return
       }
+
+      // Success case
+      toast.success(`Successfully connected to ${provider.name}`)
     } catch (error) {
       console.error('Error checking AI provider status:', error)
+      toast.error('An unexpected error occurred while validating the API key.')
     }
   }
 
@@ -207,10 +243,10 @@ export function AISettings() {
                     />
                     <Button variant="outline" size="icon" asChild>
                       <a
-                        href="https://platform.openai.com/api-keys"
+                        href={currentProviderConfig.apiKeyUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        aria-label="Get API key"
+                        aria-label={`Get ${currentProviderConfig.name} API key`}
                       >
                         <Info className="h-4 w-4" />
                       </a>
