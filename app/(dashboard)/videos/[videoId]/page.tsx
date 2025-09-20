@@ -12,10 +12,11 @@ import { useSession } from '@/contexts/session-context'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useAI } from '@/contexts/ai-context'
-import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader, AlertCircle, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader, AlertCircle, Image as ImageIcon, Download } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import NextImage from 'next/image'
+import { ImageOptimization } from '@/components/image-optimization'
 import {
   Tooltip,
   TooltipContent,
@@ -771,6 +772,18 @@ export default function VideoPage() {
     toast.success('Copied to clipboard')
   }
 
+  const handleOptimizedImage = (optimizedImage: any) => {
+    // Convert the optimized image blob to base64 for display
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = reader.result as string
+      const base64Data = base64.split(',')[1]
+      setGeneratedImage(base64Data)
+      toast.success('Optimized thumbnail applied')
+    }
+    reader.readAsDataURL(optimizedImage.blob)
+  }
+
   if (loading || isSessionLoading || isChannelLoading || isProfileLoading) {
     return (
       <div className="space-y-6">
@@ -928,17 +941,6 @@ export default function VideoPage() {
               <CardTitle>Video Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
-                {generatedImage ? (
-                  <NextImage src={`data:image/png;base64,${generatedImage}`} alt="Generated thumbnail" width={1280} height={720} className="h-full w-full object-cover" />
-                ) : (
-                  <img
-                    src={video.thumbnail_url}
-                    alt={video.title}
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </div>
               <div className="space-y-4">
                 <div className="space-y-2">
                                       <div className="flex items-center justify-between">
@@ -1199,6 +1201,14 @@ export default function VideoPage() {
         </div>
 
         <div className="space-y-6">
+          <ImageOptimization
+            thumbnailUrl={video.thumbnail_url}
+            videoTitle={video.title}
+            onOptimizedImage={handleOptimizedImage}
+            isAiConfigured={isAiConfigured}
+            aiProvider={profile?.ai_provider || undefined}
+          />
+
           <Card>
             <CardHeader>
               <CardTitle>Video Status</CardTitle>
