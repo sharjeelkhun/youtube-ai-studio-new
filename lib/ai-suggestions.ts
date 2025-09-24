@@ -1,9 +1,10 @@
 import { ContentSuggestion, TrendingTopic, VideoImprovement } from "./types";
 import { getAiClient, getModel } from "./ai-provider-utils";
+import { SupabaseClient } from "@supabase/supabase-js";
 
-async function generate(prompt: string, json: boolean = false) {
-    const aiClient = await getAiClient();
-    const model = await getModel();
+async function generate(supabase: SupabaseClient, prompt: string, json: boolean = false) {
+    const aiClient = await getAiClient(supabase);
+    const model = await getModel(supabase);
 
     let response;
 
@@ -36,7 +37,7 @@ async function generate(prompt: string, json: boolean = false) {
     return response.choices[0].message.content || "";
 }
 
-export async function generateContentSuggestions(): Promise<ContentSuggestion[]> {
+export async function generateContentSuggestions(supabase: SupabaseClient): Promise<ContentSuggestion[]> {
   const prompt = `
     You are an expert YouTube content strategist. Your goal is to generate 5 innovative and engaging video ideas for a channel focused on AI and tech.
 
@@ -50,7 +51,7 @@ export async function generateContentSuggestions(): Promise<ContentSuggestion[]>
     Format the output as a valid JSON array of objects. Each object should have the following keys: 'title', 'description', 'type', 'metrics'. The 'metrics' object should contain 'views' and 'engagement'.
   `;
 
-  const response = await generate(prompt, true);
+  const response = await generate(supabase, prompt, true);
   const suggestions = JSON.parse(response);
 
   return suggestions.map((suggestion: any, index: number) => ({
@@ -59,7 +60,7 @@ export async function generateContentSuggestions(): Promise<ContentSuggestion[]>
   }));
 }
 
-export async function generateTrendingTopics(): Promise<TrendingTopic[]> {
+export async function generateTrendingTopics(supabase: SupabaseClient): Promise<TrendingTopic[]> {
     const prompt = `
         You are a YouTube trend analyst specializing in the AI and tech niche. Identify the top 3-5 trending topics that are currently gaining significant traction.
 
@@ -71,7 +72,7 @@ export async function generateTrendingTopics(): Promise<TrendingTopic[]> {
         Format the output as a valid JSON array of objects. Each object should have the following keys: 'title', 'description', 'growth'.
     `;
 
-    const response = await generate(prompt, true);
+    const response = await generate(supabase, prompt, true);
     const topics = JSON.parse(response);
 
     return topics.map((topic: any, index: number) => ({
@@ -80,7 +81,7 @@ export async function generateTrendingTopics(): Promise<TrendingTopic[]> {
     }));
 }
 
-export async function generateVideoImprovements(videos: any[]): Promise<VideoImprovement[]> {
+export async function generateVideoImprovements(supabase: SupabaseClient, videos: any[]): Promise<VideoImprovement[]> {
     const prompt = `
         You are a YouTube optimization expert. Based on the provided video data, generate 2-3 actionable improvement suggestions for each video to enhance its performance.
 
@@ -97,12 +98,12 @@ export async function generateVideoImprovements(videos: any[]): Promise<VideoImp
         ${JSON.stringify(videos)}
     `;
 
-    const response = await generate(prompt, true);
+    const response = await generate(supabase, prompt, true);
     return JSON.parse(response);
 }
 
-export async function generateText(prompt: string): Promise<string> {
+export async function generateText(supabase: SupabaseClient, prompt: string): Promise<string> {
     const systemPrompt = "You are a versatile AI assistant for YouTube creators. Respond to the user's prompt with helpful, concise, and well-formatted content.";
     const fullPrompt = `${systemPrompt}\n\n${prompt}`;
-  return generate(fullPrompt);
+  return generate(supabase, fullPrompt);
 }

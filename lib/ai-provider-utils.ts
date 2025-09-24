@@ -1,11 +1,11 @@
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Anthropic from "@anthropic-ai/sdk";
+import { SupabaseClient } from "@supabase/supabase-js";
 const MistralClient = require("@mistralai/mistralai");
-import { supabase } from "./supabase/client";
 import { aiProviders } from "./ai-providers";
 
-async function getProfile() {
+async function getProfile(supabase: SupabaseClient) {
   const { data, error } = await supabase.rpc('get_ai_settings');
   if (error) {
     throw new Error(`Failed to fetch AI settings: ${error.message}`);
@@ -13,8 +13,8 @@ async function getProfile() {
   return data && data.length > 0 ? { ai_provider: data[0].provider, ai_settings: data[0].settings } : null;
 }
 
-export async function getAiClient() {
-  const profile = await getProfile();
+export async function getAiClient(supabase: SupabaseClient) {
+  const profile = await getProfile(supabase);
 
   if (!profile || !profile.ai_provider || !profile.ai_settings) {
     throw new Error("AI settings not configured");
@@ -41,8 +41,8 @@ export async function getAiClient() {
   }
 }
 
-export async function getModel() {
-    const profile = await getProfile();
+export async function getModel(supabase: SupabaseClient) {
+    const profile = await getProfile(supabase);
 
     if (!profile || !profile.ai_settings) {
         throw new Error("AI settings not configured");
