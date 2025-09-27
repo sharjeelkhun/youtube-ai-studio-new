@@ -2,7 +2,9 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
-  let response = NextResponse.next({
+  // This `response` object is used to set cookies on the client.
+  // It will be passed to the Supabase client.
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },
@@ -23,12 +25,7 @@ export async function middleware(request: NextRequest) {
             value,
             ...options,
           })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          // Also update the response's cookies.
+          // **The important part is to also update the response's cookies**.
           response.cookies.set({
             name,
             value,
@@ -42,12 +39,7 @@ export async function middleware(request: NextRequest) {
             value: '',
             ...options,
           })
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          })
-          // Also update the response's cookies.
+          // **The important part is to also update the response's cookies**.
           response.cookies.set({
             name,
             value: '',
@@ -58,9 +50,8 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Refresh session if expired - this will refresh the token and update the cookie
+  const { data: { user } } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
@@ -72,6 +63,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
+  // Return the response object to apply the cookie changes.
   return response
 }
 
