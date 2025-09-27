@@ -1,5 +1,5 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { NextResponse, type NextRequest } from 'next/server'
+import { createServerClient, type CookieOptions } from "@supabase/ssr"
+import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
   // This `response` object is used to set cookies on the client.
@@ -19,13 +19,13 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // If the cookie is set, update the request's cookies.
+          // Update the request's cookies
           request.cookies.set({
             name,
             value,
             ...options,
           })
-          // **The important part is to also update the response's cookies**.
+          // Also update the response's cookies
           response.cookies.set({
             name,
             value,
@@ -33,16 +33,16 @@ export async function middleware(request: NextRequest) {
           })
         },
         remove(name: string, options: CookieOptions) {
-          // If the cookie is removed, update the request's cookies.
+          // Remove from request cookies
           request.cookies.set({
             name,
-            value: '',
+            value: "",
             ...options,
           })
-          // **The important part is to also update the response's cookies**.
+          // Remove from response cookies
           response.cookies.set({
             name,
-            value: '',
+            value: "",
             ...options,
           })
         },
@@ -50,20 +50,28 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  // Refresh session if expired - this will refresh the token and update the cookie
-  const { data: { user } } = await supabase.auth.getUser()
+  // Refresh session if expired
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
-  if (user && (pathname === '/login' || pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  if (user && (pathname === "/login" || pathname === "/signup")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
-  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/videos') || pathname.startsWith('/settings') || pathname.startsWith('/suggestions'))) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  if (
+    !user &&
+    (pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/videos") ||
+      pathname.startsWith("/settings") ||
+      pathname.startsWith("/suggestions"))
+  ) {
+    return NextResponse.redirect(new URL("/login", request.url))
   }
 
-  // Return the response object to apply the cookie changes.
+  // Apply cookie changes
   return response
 }
 
@@ -76,6 +84,6 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 }
