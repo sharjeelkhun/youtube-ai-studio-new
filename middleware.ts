@@ -19,32 +19,14 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Update the request's cookies
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          })
-          // Also update the response's cookies
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          })
+          // Update both request and response cookies
+          request.cookies.set({ name, value, ...options })
+          response.cookies.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
-          // Remove from request cookies
-          request.cookies.set({
-            name,
-            value: "",
-            ...options,
-          })
-          // Remove from response cookies
-          response.cookies.set({
-            name,
-            value: "",
-            ...options,
-          })
+          // Remove from both request and response cookies
+          request.cookies.set({ name, value: "", ...options })
+          response.cookies.set({ name, value: "", ...options })
         },
       },
     }
@@ -77,13 +59,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
     "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 }
