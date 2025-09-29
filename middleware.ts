@@ -37,10 +37,12 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Redirect authenticated users away from login/signup
   if (user && (pathname === "/login" || pathname === "/signup")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
+  // Redirect unauthenticated users away from protected routes
   if (
     !user &&
     (pathname.startsWith("/dashboard") ||
@@ -55,8 +57,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    // Match all paths except for API routes, static files, images, and favicon
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
 };
