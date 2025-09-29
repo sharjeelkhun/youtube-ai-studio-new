@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { generateText } from "@/lib/ai-suggestions";
 import { createClient } from "@/lib/supabase/server";
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   const supabase = createClient();
