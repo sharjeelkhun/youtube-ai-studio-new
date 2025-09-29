@@ -6,13 +6,11 @@ const MistralClient = require("@mistralai/mistralai");
 import { aiProviders } from "./ai-providers";
 
 async function getProfile(supabase: SupabaseClient) {
-  const { data, error } = await supabase.rpc("get_ai_settings");
+  const { data, error } = await supabase.rpc('get_ai_settings');
   if (error) {
     throw new Error(`Failed to fetch AI settings: ${error.message}`);
   }
-  return data && data.length > 0
-    ? { ai_provider: data[0].provider, ai_settings: data[0].settings }
-    : null;
+  return data && data.length > 0 ? { ai_provider: data[0].provider, ai_settings: data[0].settings } : null;
 }
 
 export async function getAiClient(supabase: SupabaseClient) {
@@ -44,15 +42,15 @@ export async function getAiClient(supabase: SupabaseClient) {
 }
 
 export async function getModel(supabase: SupabaseClient) {
-  const profile = await getProfile(supabase);
+    const profile = await getProfile(supabase);
 
-  if (!profile || !profile.ai_settings) {
-    throw new Error("AI settings not configured");
-  }
+    if (!profile || !profile.ai_settings) {
+        throw new Error("AI settings not configured");
+    }
 
-  return profile.ai_settings.features.defaultModel || "default-model";
+    return profile.ai_settings.features.defaultModel || 'default-model';
 }
 
 export const getAIProvider = (providerId: string) => {
-  return aiProviders.find((provider) => provider.id === providerId);
-};
+    return aiProviders.find(provider => provider.id === providerId)
+}
