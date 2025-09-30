@@ -6,10 +6,6 @@ import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
-export const dynamic = "force-dynamic";
-
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   const supabase = createServerComponentClient({ cookies });
 
