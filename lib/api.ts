@@ -169,6 +169,86 @@ const mockSeoScores: SeoScore[] = [
   },
 ]
 
+// Mock content suggestions
+const mockContentSuggestions: ContentSuggestion[] = [
+  {
+    id: "1",
+    title: "10 AI Tools Every Content Creator Needs in 2025",
+    type: "Video Idea",
+    description:
+      "A comprehensive guide to the latest AI tools that can help content creators streamline their workflow and enhance their content quality.",
+    metrics: { views: "15K-25K", engagement: "High" },
+  },
+  {
+    id: "2",
+    title: "How to Use ChatGPT to Write Better YouTube Scripts",
+    type: "Tutorial Idea",
+    description:
+      "A step-by-step tutorial showing how to leverage ChatGPT to create more engaging and well-structured YouTube scripts.",
+    metrics: { views: "10K-20K", engagement: "Medium" },
+  },
+  {
+    id: "3",
+    title: "The Future of AI in Content Creation: 2025 Predictions",
+    type: "Trend Analysis",
+    description:
+      "An analysis of upcoming AI trends that will shape content creation in 2025, with insights from industry experts.",
+    metrics: { views: "20K-30K", engagement: "High" },
+  },
+]
+
+// Mock trending topics
+const mockTrendingTopics: TrendingTopic[] = [
+  {
+    id: "1",
+    title: "AI Video Generation Tools",
+    growth: "+125%",
+    description: "New tools that allow creators to generate video content using AI are seeing massive interest.",
+  },
+  {
+    id: "2",
+    title: "AI Ethics in Content Creation",
+    growth: "+82%",
+    description: "Discussions around ethical use of AI in content creation are trending upward.",
+  },
+  {
+    id: "3",
+    title: "YouTube Algorithm Changes",
+    growth: "+64%",
+    description: "Recent changes to the YouTube algorithm and how creators can adapt.",
+  },
+]
+
+// Mock video improvements
+const mockVideoImprovements: VideoImprovement[] = [
+  {
+    videoId: "1",
+    videoTitle: "How to Use AI for Content Creation in 2025",
+    suggestions: [
+      "Add timestamps to improve viewer retention and searchability.",
+      "Update your description with more relevant keywords.",
+    ],
+  },
+  {
+    videoId: "2",
+    videoTitle: "10 Tips for Better YouTube SEO",
+    suggestions: [
+      "Your thumbnail has low click-through rate. Try a more contrasting color scheme.",
+      "Add more specific call-to-action to increase engagement.",
+    ],
+  },
+  {
+    videoId: "3",
+    videoTitle: "The Ultimate Guide to Video Editing",
+    suggestions: [
+      "The first 15 seconds have high drop-off. Consider a more engaging hook.",
+      "Your video length is optimal, but consider breaking complex sections into chapters.",
+    ],
+  },
+]
+
+// API functions with simulated delay
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // Videos API
 // Update the getVideos function to fetch real data
@@ -300,6 +380,7 @@ export async function getVideo(id: string): Promise<Video | null> {
 }
 
 export async function createVideo(video: Omit<Video, "id">): Promise<Video> {
+  await delay(1000)
   const newVideo = {
     ...video,
     id: Math.random().toString(36).substring(2, 9),
@@ -309,6 +390,7 @@ export async function createVideo(video: Omit<Video, "id">): Promise<Video> {
 }
 
 export async function updateVideo(id: string, updates: Partial<Video>): Promise<Video | null> {
+  await delay(1000)
   const index = mockVideos.findIndex((video) => video.id === id)
   if (index === -1) return null
 
@@ -317,6 +399,7 @@ export async function updateVideo(id: string, updates: Partial<Video>): Promise<
 }
 
 export async function deleteVideo(id: string): Promise<boolean> {
+  await delay(1000)
   const index = mockVideos.findIndex((video) => video.id === id)
   if (index === -1) return false
 
@@ -326,56 +409,38 @@ export async function deleteVideo(id: string): Promise<boolean> {
 
 // Analytics API
 export async function getAnalyticsData(period = "30d"): Promise<AnalyticsData[]> {
+  await delay(1000)
   return mockAnalyticsData
 }
 
 // SEO API
 export async function getSeoScores(): Promise<SeoScore[]> {
+  await delay(800)
   return mockSeoScores
 }
 
 export async function analyzeSeo(url: string): Promise<SeoScore | null> {
+  await delay(2000)
   return mockSeoScores[0] // Just return the first mock score for demo
 }
 
 // AI Suggestions API
 export async function getContentSuggestions(): Promise<ContentSuggestion[]> {
-  const response = await fetch("/api/ai/suggestions/content");
-  if (!response.ok) {
-    throw new Error("Failed to fetch content suggestions");
-  }
-  return response.json();
+  await delay(800)
+  return mockContentSuggestions
 }
 
 export async function getTrendingTopics(): Promise<TrendingTopic[]> {
-  const response = await fetch("/api/ai/suggestions/trending");
-  if (!response.ok) {
-    throw new Error("Failed to fetch trending topics");
-  }
-  return response.json();
+  await delay(800)
+  return mockTrendingTopics
 }
 
 export async function getVideoImprovements(): Promise<VideoImprovement[]> {
-  const response = await fetch("/api/ai/suggestions/improvements");
-  if (!response.ok) {
-    throw new Error("Failed to fetch video improvements");
-  }
-  return response.json();
+  await delay(800)
+  return mockVideoImprovements
 }
 
 export async function generateAiContent(prompt: string): Promise<string> {
-  const response = await fetch("/api/ai/suggestions/generate", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ prompt }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Failed to generate AI content");
-  }
-
-  const data = await response.json();
-  return data.text;
+  await delay(2000) // Longer delay to simulate AI processing
+  return `Generated content based on: "${prompt}"\n\nThis is a simulated AI response that would contain content suggestions, title ideas, or other AI-generated content based on the user's prompt.`
 }
