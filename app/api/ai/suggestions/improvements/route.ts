@@ -4,8 +4,6 @@ import { getVideos } from "@/lib/api";
 import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 
-export const dynamic = 'force-dynamic'
-
 export const dynamic = "force-dynamic";
 
 export async function GET() {
