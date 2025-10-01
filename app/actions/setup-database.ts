@@ -1,10 +1,9 @@
 "use server"
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server"
 
 export async function setupDatabase() {
-  const supabase = createServerActionClient({ cookies })
+  const supabase = createClient()
 
   try {
     // Create profiles table if it doesn't exist

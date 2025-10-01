@@ -1,7 +1,6 @@
 "use server"
 
-import { createServerActionClient } from "@supabase/auth-helpers-nextjs"
-import { cookies } from "next/headers"
+import { createClient } from "@/lib/supabase/server"
 
 export async function initiateYouTubeAuth() {
   const redirectUri = "https://youtube-ai-studio-new.vercel.app/connect-channel"
@@ -19,7 +18,7 @@ export async function initiateYouTubeAuth() {
 }
 
 export async function handleYouTubeCallback(code: string) {
-  const supabase = createServerActionClient({ cookies })
+  const supabase = createClient()
 
   try {
     // Exchange code for tokens
@@ -53,10 +52,20 @@ export async function handleYouTubeCallback(code: string) {
       throw new Error("No active session")
     }
 
-    // Store the tokens in session storage instead of the database
-    sessionStorage.setItem("youtube_access_token", tokenData.access_token)
-    sessionStorage.setItem("youtube_refresh_token", tokenData.refresh_token)
-    sessionStorage.setItem("youtube_token_expiry", (Math.floor(Date.now() / 1000) + tokenData.expires_in).toString())
+    // Store the tokens in the database
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        youtube_access_token: tokenData.access_token,
+        youtube_refresh_token: tokenData.refresh_token,
+        youtube_token_expiry: (Math.floor(Date.now() / 1000) + tokenData.expires_in).toString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', session.user.id)
+
+    if (updateError) {
+      throw updateError
+    }
 
     return { success: true }
   } catch (error: any) {

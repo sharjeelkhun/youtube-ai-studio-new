@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '@/lib/supabase/client'
 
 interface Video {
   id: string
@@ -35,7 +35,6 @@ export function VideoEditor({ video, onSave }: VideoEditorProps) {
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const supabase = createClientComponentClient()
       const { error } = await supabase
         .from('youtube_videos')
         .update({
