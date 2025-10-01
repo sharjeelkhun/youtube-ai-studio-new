@@ -51,7 +51,7 @@ Example Section Header Format:
 (content here)
 
 Remember: NO asterisks (*), NO bold text, NO markdown - just clean, readable text with minimal formatting.`
-  
+
   const result = await model.generateContent(prompt)
   const response = await result.response
   return { description: response.text().trim() }
@@ -207,7 +207,7 @@ Remember: Write naturally, no special formatting - just clean text and single em
   if (typeof text !== 'string') {
     throw new Error('Mistral AI returned a response in an unexpected format.')
   }
-  
+
   return { description: text.trim() }
 }
 
@@ -247,8 +247,8 @@ export async function POST(req: Request) {
 
     const apiKey = profile.settings.apiKeys[profile.provider]
     if (!apiKey) {
-      return NextResponse.json({ 
-        error: `API key for ${profile.provider} not found. Please add your ${profile.provider} API key in settings.` 
+      return NextResponse.json({
+        error: `API key for ${profile.provider} not found. Please add your ${profile.provider} API key in settings.`
       }, { status: 400 })
     }
 
@@ -288,15 +288,15 @@ export async function POST(req: Request) {
     console.error('[AI_OPTIMIZE_DESCRIPTION_ERROR]', error)
 
     // Handle Mistral and other provider rate limits
-    if (error.type === 'service_tier_capacity_exceeded' || 
-        error.code === '3505' || 
-        error.response?.status === 429 || 
+    if (error.type === 'service_tier_capacity_exceeded' ||
+        error.code === '3505' ||
+        error.response?.status === 429 ||
         /rate.*limit|quota|capacity|exceeded/i.test(error.message)) {
       return NextResponse.json({
         error: 'Rate limit reached. Please wait 60 seconds and try again.',
         errorCode: 'rate_limit',
         retryAfter: 60
-      }, { 
+      }, {
         status: 429,
         headers: {
           'Retry-After': '60'
@@ -316,7 +316,7 @@ export async function POST(req: Request) {
       }
 
       if (/api key/i.test(errorMessage) || /authentication/i.test(errorMessage)) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'The provided API key is invalid or has been rejected by the provider.',
           errorCode: 'auth_error'
         }, { status: 400 })
@@ -324,21 +324,21 @@ export async function POST(req: Request) {
 
       // Handle JSON parsing errors
       if (/JSON/.test(errorMessage)) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           error: 'Failed to parse AI response. Please try again.',
           errorCode: 'parse_error'
         }, { status: 500 })
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: errorMessage,
         errorCode: 'unknown_error'
       }, { status: 500 })
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'An unexpected error occurred.',
-      errorCode: 'unknown_error'  
+      errorCode: 'unknown_error'
     }, { status: 500 })
   }
 }
