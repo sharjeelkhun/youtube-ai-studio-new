@@ -60,12 +60,20 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  if (user && (pathname === '/login' || pathname === '/signup')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  // Redirect authenticated users away from login/signup
+  if (user && (pathname === "/login" || pathname === "/signup")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  if (!user && (pathname.startsWith('/dashboard') || pathname.startsWith('/videos') || pathname.startsWith('/settings'))) {
-    return NextResponse.redirect(new URL('/login', request.url))
+  // Redirect unauthenticated users away from protected routes
+  if (
+    !user &&
+    (pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/videos") ||
+      pathname.startsWith("/settings") ||
+      pathname.startsWith("/suggestions"))
+  ) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   return response
