@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase/client'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -39,6 +39,7 @@ export default function VideoDetails({ initialVideo, channel }: VideoDetailsProp
   const [video, setVideo] = useState<Video>(initialVideo)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const supabase = createClientComponentClient()
 
   const handleSave = async () => {
     setSaving(true)

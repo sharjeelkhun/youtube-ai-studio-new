@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import type { Database } from '@/lib/database.types'
 
@@ -60,7 +61,7 @@ export async function GET(request: Request) {
     }
 
     console.log('Fetching channel:', channelId)
-    const supabase = createClient()
+    const supabase = createRouteHandlerClient<Database>({ cookies })
 
     // Get the current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()

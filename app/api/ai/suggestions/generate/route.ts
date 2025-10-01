@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { generateText } from "@/lib/ai-suggestions";
-import { createClient } from "@/lib/supabase/server";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const supabase = createClient();
+  const supabase = createServerComponentClient({ cookies });
 
   try {
     const { prompt } = await req.json();

@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { generateVideoImprovements } from "@/lib/ai-suggestions";
 import { getVideos } from "@/lib/api";
-import { createClient } from "@/lib/supabase/server";
+import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const supabase = createClient();
+  const supabase = createServerComponentClient({ cookies });
 
   try {
     const videos = await getVideos();

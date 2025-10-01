@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
+import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 
 // Helper: always resolve redirect dynamically
@@ -75,7 +76,8 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = createClient()
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const {
       data: { session },
     } = await supabase.auth.getSession()

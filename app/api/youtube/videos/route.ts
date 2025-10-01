@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import { Database } from '@/lib/database.types'
 
 // Force dynamic rendering
@@ -102,7 +103,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const supabase = createClient()
+    const supabase = createRouteHandlerClient<Database>({ cookies })
     
     // Get the current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()

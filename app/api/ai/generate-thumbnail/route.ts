@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import OpenAI from 'openai'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
@@ -60,7 +61,8 @@ const handleGemini = async (apiKey: string, prompt: string) => {
 }
 
 export async function POST(req: Request) {
-  const supabase = createClient()
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
   try {
     const { data: { session } } = await supabase.auth.getSession()

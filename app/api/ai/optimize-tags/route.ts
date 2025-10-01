@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
+import { cookies } from 'next/headers'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { Mistral } from '@mistralai/mistralai'
@@ -196,7 +197,8 @@ const handleMistral = async (apiKey: string, title: string, description: string,
 }
 
 export async function POST(req: Request) {
-  const supabase = createClient()
+  const cookieStore = cookies()
+  const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
 
   try {
     const { data: { session } } = await supabase.auth.getSession()
