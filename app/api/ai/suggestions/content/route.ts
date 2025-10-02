@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateContentSuggestions } from "@/lib/ai-suggestions";
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
 export const dynamic = "force-dynamic";
@@ -8,7 +8,24 @@ export const dynamic = "force-dynamic";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const supabase = createServerComponentClient({ cookies });
+  const cookieStore = cookies();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name: string) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name: string, value: string, options) {
+          cookieStore.set({ name, value, ...options });
+        },
+        remove(name: string, options) {
+          cookieStore.set({ name, value: "", ...options });
+        },
+      },
+    }
+  );
 
   try {
     const suggestions = await generateContentSuggestions(supabase);
