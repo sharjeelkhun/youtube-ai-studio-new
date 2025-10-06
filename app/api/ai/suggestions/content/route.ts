@@ -6,6 +6,8 @@ import { cookies } from "next/headers";
 // Cache-busting comment to ensure Vercel rebuilds this file correctly.
 export const dynamic = "force-dynamic";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const cookieStore = cookies();
   const supabase = createServerClient(
