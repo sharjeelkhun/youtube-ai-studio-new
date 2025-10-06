@@ -3,8 +3,7 @@ import { generateTrendingTopics } from "@/lib/ai-suggestions";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export const dynamic = "force-dynamic";
-
+// Cache-busting comment to ensure Vercel rebuilds this file correctly.
 export const dynamic = "force-dynamic";
 
 export async function GET() {
