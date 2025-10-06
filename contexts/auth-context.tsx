@@ -88,7 +88,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasSession: !!data.session
       })
 
-      router.refresh();
+      // Wait for session to be set
+      await new Promise(resolve => setTimeout(resolve, 1000))
+
+      // Force a refresh of the session
+      const { data: { session: newSession }, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError) {
+        console.error('Error getting session after sign in:', sessionError)
+        return { error: sessionError }
+      }
+
+      if (!newSession) {
+        console.error('No session after sign in')
+        return { error: new Error('No session after sign in') }
+      }
+
       return { error: null }
     } catch (err) {
       console.error('Unexpected error during sign in:', err)

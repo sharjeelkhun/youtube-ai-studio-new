@@ -3,7 +3,7 @@ import { generateContentSuggestions } from "@/lib/ai-suggestions";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export const dynamic = "force-dynamic";
+// Intentionally omitting 'export const dynamic' for diagnostic purposes.
 
 export const dynamic = "force-dynamic";
 

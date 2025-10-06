@@ -17,38 +17,14 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value,
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value,
-            ...options,
-          });
+          request.cookies.set({ name, value, ...options });
+          response = NextResponse.next({ request: { headers: request.headers } });
+          response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          request.cookies.set({
-            name,
-            value: "",
-            ...options,
-          });
-          response = NextResponse.next({
-            request: {
-              headers: request.headers,
-            },
-          });
-          response.cookies.set({
-            name,
-            value: "",
-            ...options,
-          });
+          request.cookies.set({ name, value: "", ...options });
+          response = NextResponse.next({ request: { headers: request.headers } });
+          response.cookies.set({ name, value: "", ...options });
         },
       },
     }
@@ -60,18 +36,17 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Redirect authenticated users away from login/signup
+  // Redirect logged-in users away from login/signup
   if (user && (pathname === "/login" || pathname === "/signup")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
-  // Redirect unauthenticated users away from protected routes
+  // Redirect unauthenticated users from protected routes
   if (
     !user &&
     (pathname.startsWith("/dashboard") ||
       pathname.startsWith("/videos") ||
-      pathname.startsWith("/settings") ||
-      pathname.startsWith("/suggestions"))
+      pathname.startsWith("/settings"))
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -80,12 +55,14 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  /*
-   * Match all request paths except for the ones starting with:
-   * - api (API routes)
-   * - _next/static (static files)
-   * - _next/image (image optimization files)
-   * - favicon.ico (favicon file)
-   */
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+  ],
 };
