@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 
 // Intentionally omitting 'export const dynamic' for diagnostic purposes.
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: Request) {
   const cookieStore = cookies();
   const supabase = createServerClient(
