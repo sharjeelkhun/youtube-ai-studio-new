@@ -3,10 +3,7 @@ import { generateText } from "@/lib/ai-suggestions";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-// Cache-busting comment to ensure Vercel rebuilds this file correctly.
-export const dynamic = "force-dynamic";
-
-export const dynamic = "force-dynamic";
+// Intentionally omitting 'export const dynamic' for diagnostic purposes.
 
 export async function POST(req: Request) {
   const cookieStore = cookies();

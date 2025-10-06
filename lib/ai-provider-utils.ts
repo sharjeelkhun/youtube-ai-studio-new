@@ -2,7 +2,6 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Anthropic from "@anthropic-ai/sdk";
-// CORRECTED IMPORT AND USAGE BASED ON OFFICIAL DOCUMENTATION
 import { Mistral } from "@mistralai/mistralai";
 
 export async function getAIProvider(supabase: SupabaseClient) {
@@ -52,7 +51,6 @@ export async function getAiClient(supabase: SupabaseClient) {
     case "mistral":
       apiKey = settings.mistral_api_key;
       if (!apiKey) throw new Error("Mistral API key not configured");
-      // CORRECTED INSTANTIATION
       return new Mistral({ apiKey });
     default:
       throw new Error(`Unsupported AI provider: ${provider}`);
