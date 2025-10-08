@@ -300,8 +300,38 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
       <CardContent className="space-y-6">
         {/* Current Thumbnail Preview */}
         <div className="space-y-3">
-          <Label className="text-sm font-medium">Current Thumbnail</Label>
-          <div className="relative group">
+          <div className="flex items-start justify-between">
+            <Label className="text-sm font-medium">Current Thumbnail</Label>
+            <div className="flex items-center gap-2">
+              {/* Download and AI Optimize buttons moved above image */}
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={downloadCurrentThumbnail}
+                className="justify-center whitespace-nowrap font-medium transition-colors rounded-md flex items-center gap-1.5 h-7 px-2 text-sm"
+              >
+                <Download className="mr-2 h-3.5 w-3.5" />
+                Download
+              </Button>
+              {isAiConfigured && (
+                <Button
+                  size="sm"
+                  onClick={handleAiOptimize}
+                  disabled={isAiOptimizing}
+                  className="justify-center whitespace-nowrap font-medium transition-colors rounded-md flex items-center gap-1.5 h-7 px-2 text-sm"
+                >
+                  {isAiOptimizing ? (
+                    <Loader className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Wand2 className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  AI Optimize
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div className="relative">
             <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
               <img
                 src={currentImageUrl}
@@ -313,31 +343,6 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
                   setOriginalImage(img)
                 }}
               />
-            </div>
-            {/* Overlay buttons */}
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={downloadCurrentThumbnail}
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Download
-              </Button>
-              {isAiConfigured && (
-                <Button
-                  size="sm"
-                  onClick={handleAiOptimize}
-                  disabled={isAiOptimizing}
-                >
-                  {isAiOptimizing ? (
-                    <Loader className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Wand2 className="mr-2 h-4 w-4" />
-                  )}
-                  AI Optimize
-                </Button>
-              )}
             </div>
           </div>
         </div>
