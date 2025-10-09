@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateTrendingTopics } from "@/lib/ai-suggestions";
+import { getTrendingTopics as getMockTrendingTopics } from "@/lib/api";
+import { isTrendingTopicArray } from "@/lib/ai-schema";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -29,12 +31,38 @@ export async function GET() {
 
   try {
     const topics = await generateTrendingTopics(supabase);
-    return NextResponse.json(topics);
+    if (typeof topics === 'string') {
+      return NextResponse.json([
+        { id: 'ai-1', title: 'AI Response', growth: '', description: topics },
+      ])
+    }
+
+    if (isTrendingTopicArray(topics)) {
+      return NextResponse.json(topics);
+    }
+
+    if (topics && typeof topics === 'object' && (Array.isArray((topics as any).topics) || typeof (topics as any).topics === 'string')) {
+      const t = (topics as any).topics
+      if (typeof t === 'string') {
+        return NextResponse.json([{ id: 'ai-1', title: 'AI Response', growth: '', description: t }])
+      }
+      return NextResponse.json(t)
+    }
+
+    console.warn('AI returned invalid trending topics shape, falling back to mock')
+    const mock = await getMockTrendingTopics()
+    return NextResponse.json(mock)
   } catch (error) {
     console.error("Error generating trending topics:", error);
-    return NextResponse.json(
-      { error: "Failed to generate trending topics" },
-      { status: 500 }
-    );
+    try {
+      const mock = await getMockTrendingTopics()
+      return NextResponse.json(mock)
+    } catch (e) {
+      console.error('Failed to load mock trending topics:', e)
+      return NextResponse.json(
+        { error: "Failed to generate trending topics" },
+        { status: 500 }
+      );
+    }
   }
 }

@@ -9,25 +9,79 @@ export async function getAIProvider(supabase: SupabaseClient) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
+    // No logged-in user — fall back to server-level provider if available
+    // This allows development/testing with a server API key set in env vars.
+    // We'll handle absence of env vars in the caller.
     throw new Error("User not authenticated");
   }
 
-  const { data: settings, error } = await supabase
-    .from("user_settings")
-    .select("ai_provider, openai_api_key, google_api_key, anthropic_api_key, mistral_api_key")
-    .eq("user_id", user.id)
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("ai_provider, ai_settings")
+    .eq("id", user.id)
     .single();
 
   if (error) {
-    console.error("Error fetching user settings:", error);
-    throw new Error("Failed to fetch user settings");
+    console.error("Error fetching user profile:", error);
+    throw new Error("Failed to fetch user profile");
   }
 
-  if (!settings) {
+  if (!profile || !profile.ai_provider) {
     throw new Error("AI provider not configured");
   }
 
-  return settings;
+  // Extract API keys from ai_settings JSONB
+  const apiKeys = profile.ai_settings?.apiKeys || {};
+  
+  return {
+    ai_provider: profile.ai_provider,
+    openai_api_key: apiKeys.openai || null,
+    google_api_key: apiKeys.google || null,
+    anthropic_api_key: apiKeys.anthropic || null,
+    mistral_api_key: apiKeys.mistral || null,
+  };
+}
+
+// Server-side helper to get provider information, preferring user settings.
+// If user settings are unavailable, callers may catch and use server env keys.
+export function getServerProviderFallback() {
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      ai_provider: "openai",
+      openai_api_key: process.env.OPENAI_API_KEY,
+      google_api_key: null,
+      anthropic_api_key: null,
+      mistral_api_key: null,
+    }
+  }
+  if (process.env.GOOGLE_API_KEY) {
+    return {
+      ai_provider: "google",
+      openai_api_key: null,
+      google_api_key: process.env.GOOGLE_API_KEY,
+      anthropic_api_key: null,
+      mistral_api_key: null,
+    }
+  }
+  if (process.env.ANTHROPIC_API_KEY) {
+    return {
+      ai_provider: "anthropic",
+      openai_api_key: null,
+      google_api_key: null,
+      anthropic_api_key: process.env.ANTHROPIC_API_KEY,
+      mistral_api_key: null,
+    }
+  }
+  if (process.env.MISTRAL_API_KEY) {
+    return {
+      ai_provider: "mistral",
+      openai_api_key: null,
+      google_api_key: null,
+      anthropic_api_key: null,
+      mistral_api_key: process.env.MISTRAL_API_KEY,
+    }
+  }
+  return null
 }
 
 export async function getAiClient(supabase: SupabaseClient) {

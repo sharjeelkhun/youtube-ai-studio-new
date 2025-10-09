@@ -177,7 +177,7 @@ const mockContentSuggestions: ContentSuggestion[] = [
     type: "Video Idea",
     description:
       "A comprehensive guide to the latest AI tools that can help content creators streamline their workflow and enhance their content quality.",
-    metrics: { views: "15K-25K", engagement: "High" },
+    metrics: { estimatedViews: "15K-25K", engagement: "High" },
   },
   {
     id: "2",
@@ -185,7 +185,7 @@ const mockContentSuggestions: ContentSuggestion[] = [
     type: "Tutorial Idea",
     description:
       "A step-by-step tutorial showing how to leverage ChatGPT to create more engaging and well-structured YouTube scripts.",
-    metrics: { views: "10K-20K", engagement: "Medium" },
+    metrics: { estimatedViews: "10K-20K", engagement: "Medium" },
   },
   {
     id: "3",
@@ -193,7 +193,7 @@ const mockContentSuggestions: ContentSuggestion[] = [
     type: "Trend Analysis",
     description:
       "An analysis of upcoming AI trends that will shape content creation in 2025, with insights from industry experts.",
-    metrics: { views: "20K-30K", engagement: "High" },
+    metrics: { estimatedViews: "20K-30K", engagement: "High" },
   },
 ]
 

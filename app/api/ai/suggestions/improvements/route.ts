@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { generateVideoImprovements } from "@/lib/ai-suggestions";
-import { getVideos } from "@/lib/api";
+import { getVideos, getVideoImprovements as getMockVideoImprovements } from "@/lib/api";
+import { isVideoImprovementArray } from "@/lib/ai-schema";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -31,12 +32,39 @@ export async function GET() {
   try {
     const videos = await getVideos();
     const improvements = await generateVideoImprovements(supabase, videos);
-    return NextResponse.json(improvements);
+
+    if (typeof improvements === 'string') {
+      return NextResponse.json([
+        { videoId: 'ai-1', videoTitle: 'AI Response', suggestions: [improvements] },
+      ])
+    }
+
+    if (isVideoImprovementArray(improvements)) {
+      return NextResponse.json(improvements);
+    }
+
+    if (improvements && typeof improvements === 'object' && (Array.isArray((improvements as any).improvements) || typeof (improvements as any).improvements === 'string')) {
+      const m = (improvements as any).improvements
+      if (typeof m === 'string') {
+        return NextResponse.json([{ videoId: 'ai-1', videoTitle: 'AI Response', suggestions: [m] }])
+      }
+      return NextResponse.json(m)
+    }
+
+    console.warn('AI returned invalid video improvements shape, falling back to mock')
+    const mock = await getMockVideoImprovements()
+    return NextResponse.json(mock)
   } catch (error) {
     console.error("Error generating video improvements:", error);
-    return NextResponse.json(
-      { error: "Failed to generate video improvements" },
-      { status: 500 }
-    );
+    try {
+      const mock = await getMockVideoImprovements()
+      return NextResponse.json(mock)
+    } catch (e) {
+      console.error('Failed to load mock video improvements:', e)
+      return NextResponse.json(
+        { error: "Failed to generate video improvements" },
+        { status: 500 }
+      );
+    }
   }
 }

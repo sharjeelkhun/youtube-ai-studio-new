@@ -3,6 +3,47 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+      content_ideas: {
+        Row: {
+          id: string
+          user_id: string
+          title: string
+          description: string | null
+          type: 'video_idea' | 'script_outline' | 'series_idea' | 'collaboration_idea' | 'tutorial_idea'
+          status: 'saved' | 'in_progress' | 'completed' | 'archived'
+          metrics: Json
+          metadata: Json
+          source: 'ai_generated' | 'user_created' | 'imported'
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          title: string
+          description?: string | null
+          type?: 'video_idea' | 'script_outline' | 'series_idea' | 'collaboration_idea' | 'tutorial_idea'
+          status?: 'saved' | 'in_progress' | 'completed' | 'archived'
+          metrics?: Json
+          metadata?: Json
+          source?: 'ai_generated' | 'user_created' | 'imported'
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          title?: string
+          description?: string | null
+          type?: 'video_idea' | 'script_outline' | 'series_idea' | 'collaboration_idea' | 'tutorial_idea'
+          status?: 'saved' | 'in_progress' | 'completed' | 'archived'
+          metrics?: Json
+          metadata?: Json
+          source?: 'ai_generated' | 'user_created' | 'imported'
+          created_at?: string
+          updated_at?: string
+        }
+      },
       profiles: {
         Row: {
           id: string

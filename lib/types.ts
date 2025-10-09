@@ -46,10 +46,14 @@ export interface ContentSuggestion {
   type: string
   description: string
   metrics: {
-    views: string
+    estimatedViews: string
     engagement: string
   }
+  metadata?: {
+    tags: string[]
+  }
 }
+
 
 export interface TrendingTopic {
   id: string
