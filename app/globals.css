@@ -298,3 +298,40 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* Animated background patterns for futuristic effect */
+@keyframes moveLinesVertical {
+  0% {
+    background-position: 0 0;
+  }
+
+  100% {
+    background-position: 4rem 4rem;
+  }
+}
+
+@keyframes moveDiagonal {
+  0% {
+    transform: translateX(-50%) translateY(-50%);
+  }
+
+  100% {
+    transform: translateX(0%) translateY(0%);
+  }
+}
+
+@keyframes spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(calc(cos(var(--spark-angle)) * var(--spark-velocity)),
+        calc(sin(var(--spark-angle)) * var(--spark-velocity))) scale(0);
+  }
+}
+
+/* Aurora animations for fluid, organic movement */
