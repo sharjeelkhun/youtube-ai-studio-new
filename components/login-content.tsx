@@ -66,7 +66,7 @@ export default function LoginContent() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex items-center justify-center min-h-screen bg-background">
       <Card className="w-[400px]">
         <CardHeader>
           <CardTitle>Login</CardTitle>
@@ -103,7 +103,7 @@ export default function LoginContent() {
             )}
             <div className="text-sm text-right">
               <Link href="/forgot-password"
-                 className="font-medium text-primary hover:text-primary/90">
+                className="font-medium text-primary hover:text-primary/90">
                 Forgot password?
               </Link>
             </div>
@@ -122,7 +122,7 @@ export default function LoginContent() {
             <div className="text-sm text-center text-gray-500">
               Don't have an account?{' '}
               <Link href="/signup"
-                 className="font-medium text-primary hover:text-primary/90">
+                className="font-medium text-primary hover:text-primary/90">
                 Sign up
               </Link>
             </div>

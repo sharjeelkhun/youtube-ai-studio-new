@@ -42,38 +42,72 @@ export const aiProviders = [
     logo: OpenAILogo,
     models: [
       { id: "gpt-4o", name: "GPT-4o (Recommended)" },
+      { id: "gpt-4-turbo-preview", name: "GPT-4 Turbo" },
       { id: "gpt-4", name: "GPT-4" },
       { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo" },
     ],
+    fallbackModel: "gpt-3.5-turbo",
     apiKeyPlaceholder: "sk-...",
     apiKeyHelpText: "Your API key is stored securely and never shared with third parties.",
-    apiKeyUrl: "https://platform.openai.com/api-keys"
+    apiKeyUrl: "https://platform.openai.com/api-keys",
+    rateLimit: {
+      requestsPerMinute: 500,
+      tokensPerMinute: 10000
+    },
+    billing: {
+      tier: "pay-as-you-go",
+      pricingUrl: "https://openai.com/api/pricing/"
+    }
   },
   {
     id: "gemini",
     name: "Google Gemini",
-    description: "Gemini Pro and Ultra models",
+    description: "Gemini 2.5 and 2.0 models",
     logo: GeminiLogo,
     models: [
-      { id: "gemini-pro", name: "Gemini Pro (Recommended)" },
-      { id: "gemini-ultra", name: "Gemini Ultra" },
+      { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro (Recommended)" },
+      { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash (Fastest)" },
+      { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite (Most Efficient)" },
+      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
+      { id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite" },
     ],
+    fallbackModel: "gemini-2.5-flash",
     apiKeyPlaceholder: "AIza...",
     apiKeyHelpText: "Get your API key from the Google AI Studio.",
-    apiKeyUrl: "https://aistudio.google.com/app/apikey"
+    apiKeyUrl: "https://aistudio.google.com/app/apikey",
+    rateLimit: {
+      requestsPerMinute: 60,
+      tokensPerMinute: 1000000
+    },
+    billing: {
+      tier: "free",
+      pricingUrl: "https://ai.google.dev/pricing"
+    }
   },
   {
     id: "anthropic",
     name: "Anthropic",
-    description: "Claude 3 Opus and Sonnet models",
+    description: "Claude 3.5 Sonnet and Claude 3 models",
     logo: AnthropicLogo,
     models: [
-      { id: "claude-3-opus", name: "Claude 3 Opus (Recommended)" },
-      { id: "claude-3-sonnet", name: "Claude 3 Sonnet" },
+      { id: "claude-3-5-sonnet-20241022", name: "Claude 3.5 Sonnet (Latest)" },
+      { id: "claude-3-5-sonnet-20240620", name: "Claude 3.5 Sonnet (June 2024)" },
+      { id: "claude-3-opus-20240229", name: "Claude 3 Opus" },
+      { id: "claude-3-sonnet-20240229", name: "Claude 3 Sonnet" },
+      { id: "claude-3-haiku-20240307", name: "Claude 3 Haiku (Fastest)" },
     ],
+    fallbackModel: "claude-3-haiku-20240307",
     apiKeyPlaceholder: "sk-ant-...",
     apiKeyHelpText: "Get your API key from the Anthropic Console.",
-    apiKeyUrl: "https://console.anthropic.com/settings/keys"
+    apiKeyUrl: "https://console.anthropic.com/settings/keys",
+    rateLimit: {
+      requestsPerMinute: 5,
+      tokensPerMinute: 10000
+    },
+    billing: {
+      tier: "free-trial",
+      pricingUrl: "https://www.anthropic.com/api"
+    }
   },
   {
     id: "mistral",
@@ -82,10 +116,34 @@ export const aiProviders = [
     logo: MistralLogo,
     models: [
       { id: "mistral-large-latest", name: "Mistral Large (Recommended)" },
-      { id: "mistral-medium", name: "Mistral Medium" },
+      { id: "mistral-medium-latest", name: "Mistral Medium" },
+      { id: "mistral-small-latest", name: "Mistral Small" },
     ],
+    fallbackModel: "mistral-small-latest",
     apiKeyPlaceholder: "...",
     apiKeyHelpText: "Get your API key from the Mistral AI Platform.",
     apiKeyUrl: "https://console.mistral.ai/api-keys",
+    rateLimit: {
+      requestsPerMinute: 5,
+      tokensPerMinute: 50000
+    },
+    billing: {
+      tier: "free-trial",
+      pricingUrl: "https://mistral.ai/technology/#pricing"
+    }
   },
 ]
+
+// Helper function to validate if a model is valid for a provider
+export function isValidModel(providerId: string, modelId: string): boolean {
+  const provider = aiProviders.find(p => p.id === providerId)
+  if (!provider) return false
+  
+  return provider.models.some(m => m.id === modelId)
+}
+
+// Helper function to get fallback model for a provider
+export function getFallbackModel(providerId: string): string | null {
+  const provider = aiProviders.find(p => p.id === providerId)
+  return provider?.fallbackModel || null
+}

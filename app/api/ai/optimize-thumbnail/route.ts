@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
+import { trackUsage } from '@/lib/track-usage'
+import { acquireRateLimit } from '@/lib/rate-limiter'
+import { getFallbackModel } from '@/lib/ai-providers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -57,15 +60,18 @@ export async function POST(request: NextRequest) {
     const imageBuffer = await imageResponse.arrayBuffer()
     const base64Image = Buffer.from(imageBuffer).toString('base64')
 
+    // Extract userId for rate limiting
+    const userId = session.user.id
+
     let optimizedImage: string
 
     // Optimize based on AI provider
     switch (profile.ai_provider) {
       case 'openai':
-        optimizedImage = await optimizeWithOpenAI(base64Image, videoTitle, profile.ai_settings.apiKeys.openai)
+        optimizedImage = await optimizeWithOpenAI(base64Image, videoTitle, profile.ai_settings.apiKeys[profile.ai_provider], userId)
         break
       case 'gemini':
-        optimizedImage = await optimizeWithGemini(base64Image, videoTitle, profile.ai_settings.apiKeys.gemini)
+        optimizedImage = await optimizeWithGemini(base64Image, videoTitle, profile.ai_settings.apiKeys[profile.ai_provider], userId)
         break
       default:
         return NextResponse.json(
@@ -88,7 +94,12 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function optimizeWithOpenAI(base64Image: string, videoTitle: string, apiKey: string): Promise<string> {
+async function optimizeWithOpenAI(base64Image: string, videoTitle: string, apiKey: string, userId: string): Promise<string> {
+  // Acquire rate limit token before making API call
+  await acquireRateLimit('openai', userId)
+  
+  await trackUsage('openai', 'api_calls')
+  
   const response = await fetch('https://api.openai.com/v1/images/edits', {
     method: 'POST',
     headers: {
@@ -110,13 +121,24 @@ async function optimizeWithOpenAI(base64Image: string, videoTitle: string, apiKe
   }
 
   const data = await response.json()
+  
+  await trackUsage('openai', 'content_generation')
+  
   return data.data[0].b64_json
 }
 
-async function optimizeWithGemini(base64Image: string, videoTitle: string, apiKey: string): Promise<string> {
+async function optimizeWithGemini(base64Image: string, videoTitle: string, apiKey: string, userId: string): Promise<string> {
   // For Gemini, we'll use the vision API to analyze and provide optimization suggestions
   // Since Gemini doesn't have direct image editing, we'll return the original image with optimization applied via canvas
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+  await acquireRateLimit('gemini', userId)
+  
+  await trackUsage('gemini', 'api_calls')
+  
+  const model = getFallbackModel('gemini')
+  if (!model) {
+    throw new Error('No Gemini fallback model configured')
+  }
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -139,6 +161,8 @@ async function optimizeWithGemini(base64Image: string, videoTitle: string, apiKe
     const errorData = await response.json()
     throw new Error(`Gemini API error: ${errorData.error?.message || 'Unknown error'}`)
   }
+
+  await trackUsage('gemini', 'content_generation')
 
   // For now, return the original image since Gemini doesn't directly edit images
   // In a real implementation, you might use the analysis to apply canvas-based optimizations

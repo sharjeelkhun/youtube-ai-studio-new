@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Anthropic from "@anthropic-ai/sdk";
 import { Mistral } from "@mistralai/mistralai";
+import { getFallbackModel } from "@/lib/ai-providers";
 
 export async function getAIProvider(supabase: SupabaseClient) {
   const {
@@ -56,7 +57,7 @@ export function getServerProviderFallback() {
   }
   if (process.env.GOOGLE_API_KEY) {
     return {
-      ai_provider: "google",
+      ai_provider: "gemini",
       openai_api_key: null,
       google_api_key: process.env.GOOGLE_API_KEY,
       anthropic_api_key: null,
@@ -94,7 +95,8 @@ export async function getAiClient(supabase: SupabaseClient) {
       apiKey = settings.openai_api_key;
       if (!apiKey) throw new Error("OpenAI API key not configured");
       return new OpenAI({ apiKey });
-    case "google":
+    case "gemini":
+    case "google": // Support legacy "google" for backward compatibility
       apiKey = settings.google_api_key;
       if (!apiKey) throw new Error("Google API key not configured");
       return new GoogleGenerativeAI(apiKey);
@@ -115,8 +117,13 @@ export function getModel(provider: string): string {
     switch (provider) {
       case "openai":
         return "gpt-4-turbo";
-      case "google":
-        return "gemini-1.5-flash";
+      case "gemini":
+      case "google": // Support legacy "google" for backward compatibility
+        const geminiModel = getFallbackModel('gemini');
+        if (!geminiModel) {
+          throw new Error('No fallback model configured for Gemini');
+        }
+        return geminiModel;
       case "anthropic":
         return "claude-3-haiku-20240307";
       case "mistral":

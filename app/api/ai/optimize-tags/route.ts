@@ -6,6 +6,8 @@ import Anthropic from '@anthropic-ai/sdk'
 import { Mistral } from '@mistralai/mistralai'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { aiProviders } from '@/lib/ai-providers'
+import { acquireRateLimit, RateLimitTimeoutError } from '@/lib/rate-limiter'
+import { trackUsage } from '@/lib/track-usage'
 
 interface AiSettings {
   defaultModel: string
@@ -44,7 +46,7 @@ const parseTags = (response: string): string[] => {
     .filter(tag => tag.length > 0)
 }
 
-const handleGemini = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+const handleGemini = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const genAI = new GoogleGenerativeAI(apiKey)
   const model = genAI.getGenerativeModel({ model: settings.defaultModel })
   const prompt = `You are a YouTube SEO expert. Generate optimized tags for this video to maximize discoverability.
@@ -60,14 +62,31 @@ const handleGemini = async (apiKey: string, title: string, description: string, 
   
   Return only a JSON array of tags, like this format: ["tag1", "tag2", "tag3"]`
   
+  // Acquire rate limit token before making API call
+  await acquireRateLimit('gemini', userId)
+  
+  await trackUsage('gemini', 'api_calls')
+  
   const result = await model.generateContent(prompt)
   const response = await result.response
   const tags = parseTags(response.text())
+  
+  const estimatedTokens = Math.ceil(response.text().length / 4)
+  await trackUsage('gemini', 'content_generation', {
+    totalTokens: estimatedTokens
+  })
+  
   return { tags }
 }
 
-const handleOpenAI = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+const handleOpenAI = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const openai = new OpenAI({ apiKey })
+  
+  // Acquire rate limit token before making API call
+  await acquireRateLimit('openai', userId)
+  
+  await trackUsage('openai', 'api_calls')
+  
   const completion = await openai.chat.completions.create({
     model: settings.defaultModel,
     temperature: temperatureMap[settings.temperature],
@@ -93,6 +112,16 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
     response_format: { type: 'json_object' }
   })
 
+  if (completion.usage) {
+    await trackUsage('openai', 'content_generation', {
+      inputTokens: completion.usage.prompt_tokens,
+      outputTokens: completion.usage.completion_tokens,
+      totalTokens: completion.usage.total_tokens
+    })
+  } else {
+    await trackUsage('openai', 'content_generation')
+  }
+
   const text = completion.choices[0].message.content
   if (!text) {
     throw new Error('OpenAI returned an empty response.')
@@ -105,8 +134,14 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
   }
 }
 
-const handleAnthropic = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+const handleAnthropic = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const anthropic = new Anthropic({ apiKey })
+  
+  // Acquire rate limit token before making API call
+  await acquireRateLimit('anthropic', userId)
+  
+  await trackUsage('anthropic', 'api_calls')
+  
   const msg = await anthropic.messages.create({
     model: settings.defaultModel,
     temperature: temperatureMap[settings.temperature],
@@ -130,6 +165,16 @@ const handleAnthropic = async (apiKey: string, title: string, description: strin
     ]
   })
 
+  if (msg.usage) {
+    await trackUsage('anthropic', 'content_generation', {
+      inputTokens: msg.usage.input_tokens,
+      outputTokens: msg.usage.output_tokens,
+      totalTokens: (msg.usage.input_tokens || 0) + (msg.usage.output_tokens || 0)
+    })
+  } else {
+    await trackUsage('anthropic', 'content_generation')
+  }
+
   if (!msg.content || !msg.content[0] || !('text' in msg.content[0])) {
     throw new Error('Anthropic returned an empty response.')
   }
@@ -139,13 +184,18 @@ const handleAnthropic = async (apiKey: string, title: string, description: strin
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const handleMistral = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+const handleMistral = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const mistral = new Mistral({ apiKey })
   const maxRetries = 3;
   let lastError = null;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
+      // Acquire rate limit token before making API call
+      await acquireRateLimit('mistral', userId)
+      
+      await trackUsage('mistral', 'api_calls')
+      
       const response = await mistral.chat.complete({
         model: settings.defaultModel,
         temperature: temperatureMap[settings.temperature],
@@ -173,6 +223,21 @@ const handleMistral = async (apiKey: string, title: string, description: string,
       const text = response.choices[0].message.content
       if (typeof text !== 'string') {
         throw new Error('Mistral AI returned a response in an unexpected format.')
+      }
+      
+      if (response.usage) {
+        await trackUsage('mistral', 'content_generation', {
+          inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
+          outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
+          totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens || 
+            (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) + 
+            (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
+        })
+      } else {
+        const estimatedTokens = Math.ceil(text.length / 4)
+        await trackUsage('mistral', 'content_generation', {
+          totalTokens: estimatedTokens
+        })
       }
       
       return { tags: parseTags(text) }
@@ -254,15 +319,18 @@ export async function POST(req: Request) {
       }
     }
 
+    // Extract userId for rate limiting
+    const userId = session.user.id
+
     let optimizedData
     if (profile.provider === 'gemini') {
-      optimizedData = await handleGemini(apiKey, title, description, aiSettings)
+      optimizedData = await handleGemini(apiKey, title, description, aiSettings, userId)
     } else if (profile.provider === 'openai') {
-      optimizedData = await handleOpenAI(apiKey, title, description, aiSettings)
+      optimizedData = await handleOpenAI(apiKey, title, description, aiSettings, userId)
     } else if (profile.provider === 'anthropic') {
-      optimizedData = await handleAnthropic(apiKey, title, description, aiSettings)
+      optimizedData = await handleAnthropic(apiKey, title, description, aiSettings, userId)
     } else if (profile.provider === 'mistral') {
-      optimizedData = await handleMistral(apiKey, title, description, aiSettings)
+      optimizedData = await handleMistral(apiKey, title, description, aiSettings, userId)
     } else {
       return NextResponse.json({ error: `Provider "${profile.provider}" is not supported.` }, { status: 400 })
     }
@@ -272,43 +340,51 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('[AI_OPTIMIZE_TAGS_ERROR]', error)
 
-    // Handle Mistral-specific errors
-    if (error.type === 'service_tier_capacity_exceeded' || error.code === '3505') {
+    // Handle rate limit timeout errors from centralized limiter
+    if (error instanceof RateLimitTimeoutError) {
       return NextResponse.json({
-        error: 'Service capacity limit reached. Please try again in a few minutes.',
-        errorCode: 'rate_limit'
+        error: error.message,
+        errorCode: 'rate_limit_timeout'
       }, { status: 429 })
     }
 
-    if (error.response?.status === 429 || /rate.*limit|quota|capacity/i.test(error.message)) {
+    const errorMessage = error?.message || String(error)
+    const provider = error?.provider || 'unknown'
+
+    // Handle rate limit errors (429)
+    if (/429|rate.?limit|too many requests|quota exceeded|capacity/i.test(errorMessage) ||
+        error.type === 'service_tier_capacity_exceeded' || 
+        error.code === '3505' ||
+        error.response?.status === 429) {
       return NextResponse.json({
-        error: 'Rate limit reached. Please try again in a few minutes.',
-        errorCode: 'rate_limit'
+        error: `Your AI provider is currently rate limited. Please wait a moment and try again.`,
+        errorCode: 'rate_limit_error'
       }, { status: 429 })
+    }
+
+    // Handle billing/credit errors
+    if (/credit|insufficient|balance|billing|plan/i.test(errorMessage)) {
+      return NextResponse.json({
+        error: `Your AI provider account has a billing issue. Please check your credits or plan on the provider's website.`,
+        errorCode: 'billing_error'
+      }, { status: 400 })
     }
 
     if (error instanceof Error) {
-      const errorMessage = error.message;
+      const errorMsg = error.message;
 
-      if (/credit|quota|limit|billing/i.test(errorMessage)) {
-        return NextResponse.json({
-          error: 'A billing-related error occurred with the AI provider.',
-          errorCode: 'billing_error'
-        }, { status: 400 });
-      }
-
-      if (/api key/i.test(errorMessage) || /authentication/i.test(errorMessage)) {
-        return NextResponse.json({ error: 'The provided API key is invalid or has been rejected by the provider.' }, { status: 400 })
+      if (/api key/i.test(errorMsg) || /authentication|unauthorized/i.test(errorMsg)) {
+        return NextResponse.json({ error: 'The provided API key is invalid or has been rejected by the provider.' }, { status: 401 })
       }
 
       // Handle JSON parsing errors more gracefully
-      if (/JSON/.test(errorMessage)) {
+      if (/JSON/.test(errorMsg)) {
         return NextResponse.json({ 
           error: 'Failed to parse AI response. Please try again.' 
         }, { status: 500 })
       }
 
-      return NextResponse.json({ error: errorMessage }, { status: 500 })
+      return NextResponse.json({ error: errorMsg }, { status: 500 })
     }
 
     return NextResponse.json({ error: 'An unexpected error occurred.' }, { status: 500 })

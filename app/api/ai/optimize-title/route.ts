@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { optimizeTitlePrompt } from "@/lib/prompts";
+import { trackUsage } from '@/lib/track-usage';
 
 type SupportedProviders = 'mistral';
 
@@ -62,6 +63,8 @@ export async function POST(request: Request) {
       const { Mistral } = await import("@mistralai/mistralai");
       const client = new Mistral({ apiKey });
 
+      await trackUsage('mistral', 'api_calls')
+
       const response = await client.chat.complete({
         model: allowedModels[provider] || "mistral-medium",
         messages: [
@@ -83,6 +86,21 @@ export async function POST(request: Request) {
         throw new Error("Failed to generate optimized title");
       }
 
+      if (response.usage) {
+        await trackUsage('mistral', 'content_generation', {
+          inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
+          outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
+          totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens || 
+            (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) + 
+            (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
+        })
+      } else {
+        const estimatedTokens = Math.ceil(optimizedTitle.length / 4)
+        await trackUsage('mistral', 'content_generation', {
+          totalTokens: estimatedTokens
+        })
+      }
+
       // Clean up the response
       optimizedTitle = optimizedTitle
         .replace(/^["'`]+|["'`]+$/g, '') // Remove quotes
@@ -93,10 +111,29 @@ export async function POST(request: Request) {
         .trim();
 
       return NextResponse.json({ optimizedTitle });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error with AI provider:", error);
+      
+      const errorMessage = error?.message || String(error);
+
+      // Handle rate limit errors (429)
+      if (/429|rate.?limit|too many requests|quota exceeded/i.test(errorMessage)) {
+        return NextResponse.json({
+          error: `Your ${provider} provider is currently rate limited. Please wait a moment and try again.`,
+          errorCode: 'rate_limit_error'
+        }, { status: 429 });
+      }
+
+      // Handle billing/credit errors
+      if (/credit|insufficient|balance|billing|plan/i.test(errorMessage)) {
+        return NextResponse.json({
+          error: `Your ${provider} account has a billing issue. Please check your credits or plan on the provider's website.`,
+          errorCode: 'billing_error'
+        }, { status: 400 });
+      }
+
       return NextResponse.json(
-        { error: "Failed to optimize title with AI provider" },
+        { error: error?.message || "Failed to optimize title with AI provider" },
         { status: 500 }
       );
     }

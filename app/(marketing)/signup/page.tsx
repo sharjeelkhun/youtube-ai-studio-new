@@ -31,7 +31,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-center text-2xl font-bold">Create an account</CardTitle>
@@ -82,7 +82,7 @@ export default function SignupPage() {
                 required
                 minLength={6}
               />
-              <p className="text-xs text-gray-500">Password must be at least 6 characters long</p>
+              <p className="text-xs text-muted-foreground">Password must be at least 6 characters long</p>
             </div>
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
@@ -97,9 +97,9 @@ export default function SignupPage() {
           </form>
         </CardContent>
         <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-blue-600 hover:text-blue-500">
+            <Link href="/login" className="text-primary hover:text-primary/90 font-medium">
               Sign in
             </Link>
           </p>

@@ -6,6 +6,8 @@ import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { Mistral } from '@mistralai/mistralai'
 import { aiProviders } from '@/lib/ai-providers'
+import { acquireRateLimit, RateLimitTimeoutError } from '@/lib/rate-limiter'
+import { trackUsage } from '@/lib/track-usage'
 
 interface AiSettings {
   defaultModel: string
@@ -48,10 +50,16 @@ const parseJsonResponse = (text: string) => {
 }
 
 // Helper function for Gemini
-const handleGemini = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+const handleGemini = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const genAI = new GoogleGenerativeAI(apiKey)
   const model = genAI.getGenerativeModel({ model: settings.defaultModel })
   const prompt = getPrompt(title, description)
+  
+  // Acquire rate limit token before making API call
+  await acquireRateLimit('gemini', userId)
+  
+  await trackUsage('gemini', 'api_calls')
+  
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
@@ -60,12 +68,24 @@ const handleGemini = async (apiKey: string, title: string, description: string, 
   })
   const response = await result.response
   const text = response.text()
+  
+  const estimatedTokens = Math.ceil(text.length / 4)
+  await trackUsage('gemini', 'content_generation', {
+    totalTokens: estimatedTokens
+  })
+  
   return parseJsonResponse(text)
 }
 
 // Helper function for OpenAI
-const handleOpenAI = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+const handleOpenAI = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const openai = new OpenAI({ apiKey })
+  
+  // Acquire rate limit token before making API call
+  await acquireRateLimit('openai', userId)
+  
+  await trackUsage('openai', 'api_calls')
+  
   const completion = await openai.chat.completions.create({
     model: settings.defaultModel,
     temperature: temperatureMap[settings.temperature],
@@ -81,6 +101,17 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
     ],
     response_format: { type: 'json_object' }
   })
+  
+  if (completion.usage) {
+    await trackUsage('openai', 'content_generation', {
+      inputTokens: completion.usage.prompt_tokens,
+      outputTokens: completion.usage.completion_tokens,
+      totalTokens: completion.usage.total_tokens
+    })
+  } else {
+    await trackUsage('openai', 'content_generation')
+  }
+  
   const text = completion.choices[0].message.content
   if (!text) {
     throw new Error('OpenAI returned an empty response.')
@@ -89,8 +120,14 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
 }
 
 // Helper function for Anthropic
-const handleAnthropic = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+const handleAnthropic = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const anthropic = new Anthropic({ apiKey })
+  
+  // Acquire rate limit token before making API call
+  await acquireRateLimit('anthropic', userId)
+  
+  await trackUsage('anthropic', 'api_calls')
+  
   const msg = await anthropic.messages.create({
     model: settings.defaultModel,
     temperature: temperatureMap[settings.temperature],
@@ -107,12 +144,32 @@ const handleAnthropic = async (apiKey: string, title: string, description: strin
     throw new Error('Anthropic returned an empty or invalid response.')
   }
 
+  if (msg.usage) {
+    await trackUsage('anthropic', 'content_generation', {
+      inputTokens: msg.usage.input_tokens,
+      outputTokens: msg.usage.output_tokens,
+      totalTokens: msg.usage.input_tokens + msg.usage.output_tokens
+    })
+  } else {
+    const text = msg.content[0].text
+    const estimatedTokens = Math.ceil(text.length / 4)
+    await trackUsage('anthropic', 'content_generation', {
+      totalTokens: estimatedTokens
+    })
+  }
+
   return parseJsonResponse(msg.content[0].text)
 }
 
 // Helper function for Mistral
-const handleMistral = async (apiKey: string, title: string, description: string, settings: AiSettings) => {
+const handleMistral = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const mistral = new Mistral({ apiKey })
+  
+  // Acquire rate limit token before making API call
+  await acquireRateLimit('mistral', userId)
+  
+  await trackUsage('mistral', 'api_calls')
+  
   const response = await mistral.chat.complete({
     model: settings.defaultModel,
     temperature: temperatureMap[settings.temperature],
@@ -128,6 +185,22 @@ const handleMistral = async (apiKey: string, title: string, description: string,
     ],
     responseFormat: { type: 'json_object' }
   })
+
+  if (response.usage) {
+    await trackUsage('mistral', 'content_generation', {
+      inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
+      outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
+      totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens || 
+        (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) + 
+        (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
+    })
+  } else {
+    const content = response.choices[0].message.content
+    const estimatedTokens = typeof content === 'string' ? Math.ceil(content.length / 4) : 0
+    await trackUsage('mistral', 'content_generation', {
+      totalTokens: estimatedTokens
+    })
+  }
 
   const content = response.choices[0].message.content;
 
@@ -181,15 +254,18 @@ export async function POST(req: Request) {
       }
     }
 
+    // Extract userId for rate limiting
+    const userId = session.user.id
+
     let thumbnailIdeas
     if (profile.provider === 'gemini') {
-      thumbnailIdeas = await handleGemini(apiKey, title, description, aiSettings)
+      thumbnailIdeas = await handleGemini(apiKey, title, description, aiSettings, userId)
     } else if (profile.provider === 'openai') {
-      thumbnailIdeas = await handleOpenAI(apiKey, title, description, aiSettings)
+      thumbnailIdeas = await handleOpenAI(apiKey, title, description, aiSettings, userId)
     } else if (profile.provider === 'anthropic') {
-      thumbnailIdeas = await handleAnthropic(apiKey, title, description, aiSettings)
+      thumbnailIdeas = await handleAnthropic(apiKey, title, description, aiSettings, userId)
     } else if (profile.provider === 'mistral') {
-      thumbnailIdeas = await handleMistral(apiKey, title, description, aiSettings)
+      thumbnailIdeas = await handleMistral(apiKey, title, description, aiSettings, userId)
     } else {
       return NextResponse.json({ error: `Provider "${profile.provider}" is not supported.` }, { status: 400 })
     }
@@ -199,10 +275,27 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('[AI_GENERATE_THUMBNAIL_IDEAS_ERROR]', error)
 
+    // Handle rate limit timeout errors from centralized limiter
+    if (error instanceof RateLimitTimeoutError) {
+      return NextResponse.json({
+        error: error.message,
+        errorCode: 'rate_limit_timeout'
+      }, { status: 429 })
+    }
+
     if (error instanceof Error) {
       const errorMessage = error.message;
 
-      if (/credit|quota|limit|billing/i.test(errorMessage)) {
+      // Handle rate limit errors (429) - check before billing errors
+      if (/429|rate.?limit|too many requests|quota exceeded/i.test(errorMessage)) {
+        return NextResponse.json({
+          error: 'Your AI provider is currently rate limited. Please wait a moment and try again.',
+          errorCode: 'rate_limit_error'
+        }, { status: 429 })
+      }
+
+      // Handle billing/credit errors (400)
+      if (/credit|balance|billing|plan/i.test(errorMessage)) {
         return NextResponse.json({
           error: 'A billing-related error occurred with the AI provider. Please check your plan and billing details with the provider.',
           errorCode: 'billing_error'

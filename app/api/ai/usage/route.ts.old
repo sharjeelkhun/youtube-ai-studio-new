@@ -1,0 +1,476 @@
+import { NextResponse } from "next/server";
+import { cookies } from 'next/headers';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import Anthropic from '@anthropic-ai/sdk';
+import { UsageData } from '@/lib/types/usage';
+import { Database } from '@/lib/database.types';
+
+interface UserSettings {
+  openai_key: string | null;
+  gemini_key: string | null;
+  anthropic_key: string | null;
+  mistral_key: string | null;
+}
+
+export async function GET(req: Request) {
+  const cookieStore = cookies();
+  const supabase = createRouteHandlerClient<Database>({ cookies: () => cookieStore });
+  const searchParams = new URL(req.url).searchParams;
+  const provider = searchParams.get('provider') || 'openai';
+
+  // Common dates and response data
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  // Add hours to ensure proper timezone handling
+  startOfMonth.setUTCHours(0, 0, 0, 0);
+  endOfMonth.setUTCHours(23, 59, 59, 999);
+  nextReset.setUTCHours(0, 0, 0, 0);
+  console.log('Provider:', provider);
+
+  try {
+    // Get the user's session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError || !session) {
+      console.error('Session error:', sessionError);
+      return NextResponse.json(
+        { 
+          error: sessionError ? 'Session error' : 'Unauthorized',
+          provider,
+          apiCalls: {
+            used: 0,
+            limit: provider === 'openai' ? 1000 : 500,
+            resetAt: nextReset.toISOString()
+          },
+          contentGeneration: {
+            used: 0,
+            limit: provider === 'openai' ? 50 : 25,
+            resetAt: nextReset.toISOString()
+          },
+          billingCycle: {
+            start: startOfMonth.toISOString(),
+            end: endOfMonth.toISOString(),
+            nextReset: nextReset.toISOString()
+          },
+          limitReached: false,
+          providerStatus: {
+            isConfigured: false,
+            isWorking: false
+          },
+          resetTimeRemaining: '15 days'
+        },
+        { status: sessionError ? 500 : 401 }
+      );
+    }
+
+    // Validate provider
+    if (!provider || !['openai', 'gemini', 'anthropic', 'mistral'].includes(provider)) {
+      console.error('Invalid provider:', provider);
+      return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
+    }
+
+    // Get current billing cycle dates
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const nextReset = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    // Add hours to ensure proper timezone handling
+    startOfMonth.setUTCHours(0, 0, 0, 0);
+    endOfMonth.setUTCHours(23, 59, 59, 999);
+    nextReset.setUTCHours(0, 0, 0, 0);
+    
+    console.log('Billing cycle:', {
+      start: startOfMonth.toISOString(),
+      end: endOfMonth.toISOString(),
+      nextReset: nextReset.toISOString()
+    });
+
+    // Get the user's API key settings from their profile
+    console.log('Fetching user API key settings...');
+    let { data: settings, error: settingsError } = await supabase
+      .from('user_settings')
+      .select('openai_key, gemini_key, anthropic_key, mistral_key')
+      .eq('user_id', session.user.id)
+      .maybeSingle();
+
+    // If no settings found, create default settings
+    if (!settings && !settingsError) {
+      console.log('Creating default settings for user...');
+      const { data: newSettings, error: createError } = await supabase
+        .from('user_settings')
+        .insert({
+          user_id: session.user.id,
+          openai_key: null,
+          gemini_key: null,
+          anthropic_key: null,
+          mistral_key: null
+        })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error creating default settings:', createError);
+        return NextResponse.json({
+          error: 'Failed to create user settings',
+          message: 'An error occurred while creating your settings. Please try again.',
+          provider: provider,
+        apiCalls: {
+          used: 0,
+          limit: provider === 'openai' ? 1000 : 500,
+          resetAt: nextReset.toISOString()
+        },
+        contentGeneration: {
+          used: 0,
+          limit: provider === 'openai' ? 50 : 25,
+          resetAt: nextReset.toISOString()
+        },
+        billingCycle: {
+          start: startOfMonth.toISOString(),
+          end: endOfMonth.toISOString(),
+          nextReset: nextReset.toISOString()
+        },
+        limitReached: false,
+        providerStatus: {
+          isConfigured: false,
+          isWorking: false
+        },
+        resetTimeRemaining: '15 days'
+      }, { status: 200 });
+    }
+
+    if (!settings) {
+      console.log('No settings found for user, creating default settings...');
+      // Create default settings for the user
+      const { error: createError } = await supabase
+        .from('user_settings')
+        .insert({
+          user_id: session.user.id,
+          openai_key: null,
+          gemini_key: null,
+          anthropic_key: null,
+          mistral_key: null
+        });
+        
+      if (createError) {
+        console.error('Error creating default settings:', createError);
+      }
+
+      // Return empty usage data with not configured status
+      return NextResponse.json({
+        error: 'API key not configured',
+        message: `Please configure your ${provider.toUpperCase()} API key in settings`,
+        provider: provider,
+        apiCalls: {
+          used: 0,
+          limit: provider === 'openai' ? 1000 : 500,
+          resetAt: nextReset.toISOString()
+        },
+        contentGeneration: {
+          used: 0,
+          limit: provider === 'openai' ? 50 : 25,
+          resetAt: nextReset.toISOString()
+        },
+        billingCycle: {
+          start: startOfMonth.toISOString(),
+          end: endOfMonth.toISOString(),
+          nextReset: nextReset.toISOString()
+        },
+        limitReached: false,
+        providerStatus: {
+          isConfigured: false,
+          isWorking: false
+        },
+        resetTimeRemaining: '15 days'
+      }, { status: 200 });
+    }
+
+    // Check provider-specific configuration status and get API key
+    let providerConfigured = false;
+    let apiKey: string | undefined;
+
+    switch (provider) {
+      case 'openai':
+        apiKey = settings.openai_key;
+        providerConfigured = !!apiKey && apiKey.startsWith('sk-');
+        break;
+      case 'gemini':
+        apiKey = settings.gemini_key;
+        providerConfigured = !!apiKey && apiKey.startsWith('AIza');
+        break;
+      case 'anthropic':
+        apiKey = settings.anthropic_key;
+        providerConfigured = !!apiKey && apiKey.startsWith('sk-ant-');
+        break;
+      case 'mistral':
+        apiKey = settings.mistral_key;
+        providerConfigured = !!apiKey && apiKey.length >= 32;
+        break;
+      default:
+        return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
+    }
+
+    // Log configuration status
+    console.log(`[${provider.toUpperCase()}] Configuration status:`, {
+      isConfigured: providerConfigured,
+      hasApiKey: !!apiKey,
+      keyPrefix: apiKey ? apiKey.substring(0, 5) + '...' : 'none'
+    });
+
+    // Check if the user has configured their API key
+    if (!providerConfigured || !apiKey) {
+      console.log(`[${provider.toUpperCase()}] API key not configured for user`);
+      return NextResponse.json({
+        error: 'API key not configured',
+        message: `Please configure your ${provider.toUpperCase()} API key in settings`,
+        provider: provider,
+        apiCalls: {
+          used: 0,
+          limit: provider === 'openai' ? 1000 : 500,
+          resetAt: nextReset.toISOString()
+        },
+        contentGeneration: {
+          used: 0,
+          limit: provider === 'openai' ? 50 : 25,
+          resetAt: nextReset.toISOString()
+        },
+        billingCycle: {
+          start: startOfMonth.toISOString(),
+          end: endOfMonth.toISOString(),
+          nextReset: nextReset.toISOString()
+        },
+        limitReached: false,
+        providerStatus: {
+          isConfigured: false,
+          isWorking: false
+        },
+        resetTimeRemaining: '15 days'
+      }, { status: 200 }); // Return 200 with zero usage when not configured
+    }
+
+    // Initialize usage variables
+    let totalUsage = {
+      api_calls: 0,
+      content_generation: 0
+    };
+
+    // Try to fetch real usage data with the user's API key
+    try {
+      // Query analytics_usage for the current month's usage
+      const { data: usageRecords, error: usageError } = await supabase
+        .from('analytics_usage')
+        .select('api_calls, content_generation')
+        .eq('user_id', session.user.id)
+        .eq('provider', provider)
+        .gte('timestamp', startOfMonth.toISOString())
+        .lte('timestamp', endOfMonth.toISOString());
+
+      if (usageError) {
+        console.error('Error fetching usage records:', usageError);
+        throw new Error('Failed to fetch usage records');
+      }
+
+      // Sum up all usage for the month
+      totalUsage = {
+        api_calls: usageRecords?.reduce((sum, record) => sum + (record.api_calls || 0), 0) || 0,
+        content_generation: usageRecords?.reduce((sum, record) => sum + (record.content_generation || 0), 0) || 0
+      };
+
+      console.log(`[${provider.toUpperCase()}] Usage data from database:`, totalUsage);
+
+      // For providers with API-based usage tracking, fetch and compare
+      switch (provider) {
+        case 'openai': {
+          console.log('[OPENAI] Fetching API usage data...');
+          const startDate = startOfMonth.toISOString().split('T')[0];
+          const endDate = endOfMonth.toISOString().split('T')[0];
+          const url = `https://api.openai.com/v1/usage?start_date=${startDate}&end_date=${endDate}`;
+          
+          try {
+            const response = await fetch(url, {
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log('[OPENAI] API usage response:', JSON.stringify(data, null, 2));
+              
+              const apiUsage = {
+                api_calls: data.data?.length || 0,
+                content_generation: Math.ceil(data.data?.reduce((sum: number, item: any) => 
+                  sum + (item.n_context_tokens || 0) + (item.n_generated_tokens || 0), 0) / 1000) || 0
+              };
+
+              // Use the higher value between database and API
+              totalUsage = {
+                api_calls: Math.max(totalUsage.api_calls, apiUsage.api_calls),
+                content_generation: Math.max(totalUsage.content_generation, apiUsage.content_generation)
+              };
+            }
+          } catch (apiError) {
+            console.warn('[OPENAI] Failed to fetch API usage, using database values:', apiError);
+          }
+          break;
+        }
+
+        case 'mistral': {
+          console.log('[MISTRAL] Fetching API usage data...');
+          try {
+            const response = await fetch('https://api.mistral.ai/v1/user/usage', {
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log('[MISTRAL] API usage response:', JSON.stringify(data, null, 2));
+              
+              const apiUsage = {
+                api_calls: data.requests_count || 0,
+                content_generation: Math.ceil((data.total_tokens || 0) / 1000)
+              };
+
+              // Use the higher value between database and API
+              totalUsage = {
+                api_calls: Math.max(totalUsage.api_calls, apiUsage.api_calls),
+                content_generation: Math.max(totalUsage.content_generation, apiUsage.content_generation)
+              };
+            }
+          } catch (apiError) {
+            console.warn('[MISTRAL] Failed to fetch API usage, using database values:', apiError);
+          }
+          break;
+        }
+
+        case 'anthropic':
+        case 'gemini': {
+          // These providers don't have public usage APIs yet
+          console.log(`[${provider.toUpperCase()}] No public usage API available, using database values`);
+          break;
+        }
+      }
+    } catch (error) {
+      console.error(`Error fetching ${provider} usage:`, error);
+      // Return error response with zero usage if we can't fetch the data
+      return NextResponse.json({
+        error: 'Usage fetch failed',
+        message: `Failed to fetch usage data from ${provider.toUpperCase()}. Please check your API key.`,
+        provider: provider,
+        apiCalls: {
+          used: 0,
+          limit: provider === 'openai' ? 1000 : 500,
+          resetAt: nextReset.toISOString()
+        },
+        contentGeneration: {
+          used: 0,
+          limit: provider === 'openai' ? 50 : 25,
+          resetAt: nextReset.toISOString()
+        },
+        billingCycle: {
+          start: startOfMonth.toISOString(),
+          end: endOfMonth.toISOString(),
+          nextReset: nextReset.toISOString()
+        },
+        limitReached: false,
+        providerStatus: {
+          isConfigured: true,
+          isWorking: false
+        },
+        resetTimeRemaining: '15 days'
+      }, { status: 200 }); // Return 200 with zero usage when API fails
+    }
+
+    // Prepare usage data with provider-specific limits
+    const usageData: UsageData = {
+      apiCalls: {
+        used: totalUsage.api_calls,
+        limit: provider === 'openai' ? 1000 : 500,
+        resetAt: nextReset.toISOString()
+      },
+      contentGeneration: {
+        used: totalUsage.content_generation,
+        limit: provider === 'openai' ? 50 : 25,
+        resetAt: nextReset.toISOString()
+      },
+      billingCycle: {
+        start: startOfMonth.toISOString(),
+        end: endOfMonth.toISOString(),
+        nextReset: nextReset.toISOString()
+      },
+      providerStatus: {
+        isConfigured: true,
+        isWorking: true
+      },
+      limitReached: false
+    };
+
+    // Calculate if limits are reached
+    usageData.limitReached = (
+      totalUsage.api_calls >= usageData.apiCalls.limit ||
+      totalUsage.content_generation >= usageData.contentGeneration.limit
+    );
+
+    // Calculate resetTimeRemaining
+    const resetDate = new Date(nextReset);
+    const currentTime = new Date();
+    const timeUntilReset = resetDate.getTime() - currentTime.getTime();
+    const daysUntilReset = Math.ceil(timeUntilReset / (1000 * 60 * 60 * 24));
+    
+    // Prepare final response
+    const finalResponse = {
+      ...usageData,
+      providerStatus: {
+        isConfigured: true,
+        isWorking: true
+      },
+      resetTimeRemaining: daysUntilReset === 1 ? '1 day' : `${daysUntilReset} days`
+    };
+
+    console.log(`[${provider.toUpperCase()}] Final response:`, JSON.stringify(finalResponse, null, 2));
+    return NextResponse.json(finalResponse);
+
+  } catch (error: any) {
+    console.error('Error in usage endpoint:', {
+      provider,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+      stack: error.stack
+    });
+    
+    return NextResponse.json({
+      error: 'Usage data error',
+      message: error instanceof Error ? error.message : 'Failed to fetch usage data',
+      provider: provider,
+      apiCalls: {
+        used: 0,
+        limit: provider === 'openai' ? 1000 : 500,
+        resetAt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString()
+      },
+      contentGeneration: {
+        used: 0,
+        limit: provider === 'openai' ? 50 : 25,
+        resetAt: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString()
+      },
+      billingCycle: {
+        start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
+        end: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).toISOString(),
+        nextReset: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString()
+      },
+      limitReached: false,
+      providerStatus: {
+        isConfigured: false,
+        isWorking: false
+      },
+      resetTimeRemaining: '15 days'
+    }, { status: 200 });
+  }
+}

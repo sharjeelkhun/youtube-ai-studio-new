@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { ThemeProvider } from "@/components/theme-provider"
 import './globals.css';
 import { Providers } from '@/components/providers';
 import { AIProvider } from '@/contexts/ai-context';
@@ -24,7 +25,14 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <AIProvider>
-            {children}
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
           </AIProvider>
         </Providers>
       </body>

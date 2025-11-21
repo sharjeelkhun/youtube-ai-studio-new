@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,6 +23,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { getRateLimitStatus, RateLimitTimeoutError } from '@/lib/rate-limiter'
 
 interface Video {
   id: string
@@ -93,6 +94,56 @@ export default function VideoPage() {
   const { channel, loading: isChannelLoading } = useYouTubeChannel()
   const { billingErrorProvider, setBillingErrorProvider } = useAI()
 
+  // Retry state management for AI Generate All
+  const [retryAttempt, setRetryAttempt] = useState(0)
+  const [retryCountdown, setRetryCountdown] = useState(0)
+  const [retryScheduledFor, setRetryScheduledFor] = useState<Date | null>(null)
+  const [activeToastId, setActiveToastId] = useState<string | number | null>(null)
+  const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const countdownUpdateCounterRef = useRef<number>(0)
+  const retryNowInFlightRef = useRef<boolean>(false)
+  
+  // Debounce and concurrency control state
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [activeOperation, setActiveOperation] = useState<'title' | 'description' | 'tags' | 'all' | null>(null)
+  const activeOperationStartTime = useRef<Date | null>(null)
+  const operationLockTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  // ============================================================================
+  // CONSTANTS: Rate Limiter and Retry Configuration
+  // ============================================================================
+  
+  /**
+   * Maximum number of retry attempts before giving up.
+   * Chosen to balance user patience with reasonable failure recovery.
+   */
+  const MAX_RETRY_ATTEMPTS = 5
+  
+  /**
+   * Maximum acceptable queue depth before aborting retries.
+   * Prevents cascading failures when the rate limiter is overwhelmed.
+   * Set to 10 to allow some queuing but prevent excessive backup.
+   */
+  const MAX_QUEUE_DEPTH = 10
+  
+  /**
+   * Minimum delay between retries (5 seconds).
+   * Ensures we don't hammer the API too quickly.
+   */
+  const MIN_BACKOFF_DELAY_MS = 5000
+  
+  /**
+   * Maximum delay between retries (60 seconds).
+   * Caps exponential backoff to prevent excessively long waits.
+   */
+  const MAX_BACKOFF_DELAY_MS = 60000
+  
+  /**
+   * Timeout for rate limiter status checks (5 seconds).
+   * Pre-flight checks should be fast; if they time out, we proceed anyway.
+   */
+  const RATE_LIMITER_CHECK_TIMEOUT_MS = 5000
+
   const isAiConfigured =
     profile?.ai_provider &&
     profile.ai_settings &&
@@ -100,6 +151,189 @@ export default function VideoPage() {
     profile.ai_settings.apiKeys[profile.ai_provider]
 
   const canGenerateImages = profile?.ai_provider === 'openai' || profile?.ai_provider === 'gemini'
+  
+  const isMountedRef = useRef(true)
+
+  // ============================================================================
+  // HELPER FUNCTIONS
+  // ============================================================================
+
+  /**
+   * Debounce utility function to prevent rapid-fire button clicks.
+   * @param func The function to debounce
+   * @param delay Delay in milliseconds
+   * @returns Debounced version of the function
+   */
+  const debounce = <T extends (...args: any[]) => any>(
+    func: T,
+    delay: number
+  ): ((...args: Parameters<T>) => void) => {
+    return (...args: Parameters<T>) => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+      }
+      debounceTimeoutRef.current = setTimeout(() => {
+        func(...args)
+      }, delay)
+    }
+  }
+
+  /**
+   * Sets the active operation lock with timeout safety.
+   * @param operation The type of operation being started
+   */
+  const setActiveOperationLock = (operation: 'title' | 'description' | 'tags' | 'all') => {
+    console.log(`[CONCURRENCY] Acquiring lock for operation: ${operation}`)
+    setActiveOperation(operation)
+    activeOperationStartTime.current = new Date()
+    
+    // Safety timeout: automatically clear lock after 5 minutes
+    if (operationLockTimeoutRef.current) {
+      clearTimeout(operationLockTimeoutRef.current)
+    }
+    operationLockTimeoutRef.current = setTimeout(() => {
+      console.warn(`[CONCURRENCY] Operation lock for ${operation} exceeded 5 minutes, forcing release`)
+      clearActiveOperationLock()
+    }, 5 * 60 * 1000)
+  }
+
+  /**
+   * Clears the active operation lock.
+   */
+  const clearActiveOperationLock = () => {
+    if (activeOperation) {
+      const elapsed = activeOperationStartTime.current
+        ? Math.round((Date.now() - activeOperationStartTime.current.getTime()) / 1000)
+        : 0
+      console.log(`[CONCURRENCY] Releasing lock for operation: ${activeOperation} (elapsed: ${elapsed}s)`)
+    }
+    setActiveOperation(null)
+    activeOperationStartTime.current = null
+    if (operationLockTimeoutRef.current) {
+      clearTimeout(operationLockTimeoutRef.current)
+      operationLockTimeoutRef.current = null
+    }
+  }
+
+  /**
+   * Calculates exponential backoff delay with jitter and optional server-informed timing.
+   * @param attempt The current retry attempt number (1-indexed)
+   * @param serverResetIn Optional seconds until rate limiter reset from server
+   * @returns Delay in milliseconds before next retry
+   */
+  const calculateBackoffDelay = (attempt: number, serverResetIn?: number): number => {
+    let baseDelay: number
+    
+    if (serverResetIn && serverResetIn > 0) {
+      // Use server-informed reset time as base delay
+      baseDelay = serverResetIn * 1000
+    } else {
+      // Use exponential backoff: MIN * 2^(attempt-1), capped at MAX
+      baseDelay = Math.min(MIN_BACKOFF_DELAY_MS * Math.pow(2, attempt - 1), MAX_BACKOFF_DELAY_MS)
+    }
+    
+    // Apply jitter: ±20% randomization to prevent thundering herd
+    const jitter = baseDelay * (0.8 + Math.random() * 0.4)
+    const finalDelay = Math.max(MIN_BACKOFF_DELAY_MS, Math.floor(jitter))
+    
+    console.log(`[BACKOFF] Attempt ${attempt}, base: ${baseDelay}ms, with jitter: ${finalDelay}ms`)
+    
+    return finalDelay
+  }
+
+  // Helper function: Detect rate limit errors
+  const isRateLimitError = (error: any, response?: Response): boolean => {
+    if (response?.status === 429) return true
+    const errorMessage = error?.message || String(error)
+    if (/(rate.?limit|429|too many requests|quota)/i.test(errorMessage)) return true
+    if (error?.errorCode === 'rate_limit_timeout' || error?.errorCode === 'rate_limit_error') return true
+    return false
+  }
+
+  // Helper function: Parse wait time from error message
+  const parseWaitTimeFromError = (errorMessage: string): number | null => {
+    const match = errorMessage.match(/wait\s+(\d+)\s+seconds?|try again in\s+(\d+)\s+seconds?/i)
+    if (match) {
+      return parseInt(match[1] || match[2], 10)
+    }
+    return null
+  }
+
+  /**
+   * Checks the rate limiter status for a given provider.
+   * This is a pre-flight check to determine queue depth and availability.
+   * @param provider The AI provider name (e.g., 'gemini', 'openai')
+   * @param userId The user ID for scoping the rate limit check
+   * @returns Rate limiter status object or null on error
+   */
+  const checkRateLimiterStatus = async (
+    provider: string,
+    userId: string
+  ): Promise<{
+    available: number
+    queueLength: number
+    status: string
+    resetIn: number
+    percentAvailable: number
+  } | null> => {
+    try {
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Rate limiter check timeout')), RATE_LIMITER_CHECK_TIMEOUT_MS)
+      )
+
+      const fetchPromise = fetch(`/api/debug/rate-limiter-status?provider=${provider}`)
+
+      const response = await Promise.race([fetchPromise, timeoutPromise])
+
+      if (!response.ok) {
+        console.error(`[RATE-LIMITER-CHECK] Failed to fetch status: ${response.status}`)
+        return null
+      }
+
+      const result = await response.json()
+      console.log(`[RATE-LIMITER-CHECK] Status for ${provider}:`, result)
+      return result
+    } catch (error) {
+      console.error('[RATE-LIMITER-CHECK] Error checking rate limiter status:', error)
+      return null
+    }
+  }
+
+  /**
+   * Determines whether retry should be aborted due to excessive queue depth.
+   * @param queueLength Current number of requests in the queue
+   * @returns true if queue is too deep and retry should abort
+   */
+  const shouldAbortDueToQueueDepth = (queueLength: number): boolean => {
+    const shouldAbort = queueLength >= MAX_QUEUE_DEPTH
+    console.log(
+      `[RETRY-DECISION] Queue depth ${queueLength} ${shouldAbort ? 'exceeds' : 'within'} limit of ${MAX_QUEUE_DEPTH}`
+    )
+    return shouldAbort
+  }
+
+  /**
+   * Cancels any scheduled retry and resets all retry-related state.
+   * @param reason Human-readable reason for cancellation (for logging)
+   */
+  const cancelScheduledRetry = (reason: string) => {
+    console.log(`[RETRY-CANCEL] ${reason}`)
+    
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current)
+      retryTimeoutRef.current = null
+    }
+    
+    setRetryAttempt(0)
+    setRetryCountdown(0)
+    setRetryScheduledFor(null)
+    setIsGenerating(false)
+    
+    if (activeToastId) {
+      toast.dismiss(activeToastId)
+      setActiveToastId(null)
+    }
+  }
 
   useEffect(() => {
     if (editedVideo && video) {
@@ -183,6 +417,126 @@ export default function VideoPage() {
 
     fetchVideo()
   }, [params.videoId, router, session, channel, isSessionLoading, isChannelLoading, isProfileLoading])
+
+  // Countdown effect for AI Generate All retry with live toast updates
+  useEffect(() => {
+    if (retryScheduledFor && activeToastId) {
+      // Reset counter when effect starts
+      countdownUpdateCounterRef.current = 0
+      let lastQueueStatus: { queueLength: number; percentAvailable: number } | null = null
+
+      const interval = setInterval(async () => {
+        const remaining = Math.max(0, Math.ceil((retryScheduledFor.getTime() - Date.now()) / 1000))
+        setRetryCountdown(remaining)
+        
+        // Fetch rate limiter status every 5 seconds (not every second to avoid spam)
+        if (countdownUpdateCounterRef.current % 5 === 0 && profile?.ai_provider && session?.user?.id) {
+          try {
+            const status = await checkRateLimiterStatus(profile.ai_provider, session.user.id)
+            if (status) {
+              lastQueueStatus = {
+                queueLength: status.queueLength,
+                percentAvailable: status.percentAvailable
+              }
+            }
+          } catch (error) {
+            console.error('[COUNTDOWN] Failed to fetch rate limiter status:', error)
+          }
+        }
+        countdownUpdateCounterRef.current++
+        
+        // Update toast with new countdown - use retryAttempt as it's already incremented
+        if (remaining > 0) {
+          toast.dismiss(activeToastId)
+          const countdownQueueInfo = lastQueueStatus
+            ? `Queue: ${lastQueueStatus.queueLength} requests, ${lastQueueStatus.percentAvailable}% capacity available`
+            : 'Gemini free tier: 60 requests/minute'
+          
+          const newToastId = toast.error('Rate Limit Reached', {
+            description: `Attempt ${retryAttempt} of ${MAX_RETRY_ATTEMPTS}.\n\nRetrying in ${remaining} seconds...\n\n${countdownQueueInfo}\n\nClick X to cancel the retry.`,
+            duration: Infinity,
+            onDismiss: () => {
+              cancelScheduledRetry('User dismissed retry toast')
+            },
+            action: {
+              label: 'Retry Now',
+              onClick: async () => {
+                // Guard against double-clicks
+                if (retryNowInFlightRef.current) return
+                if (isGenerating) return
+                
+                retryNowInFlightRef.current = true
+                
+                try {
+                  // Check rate limiter status before allowing manual retry
+                  if (profile?.ai_provider && session?.user?.id) {
+                    const status = await checkRateLimiterStatus(profile.ai_provider, session.user.id)
+                    if (status && shouldAbortDueToQueueDepth(status.queueLength)) {
+                      toast.error('Queue Still Full', {
+                        description: 'The rate limiter queue is still full. Please wait a bit longer.',
+                        duration: 3000
+                      })
+                      return
+                    }
+                  }
+                  
+                  console.log('[MANUAL-RETRY] User triggered manual retry')
+                  
+                  if (retryTimeoutRef.current) {
+                    clearTimeout(retryTimeoutRef.current)
+                    retryTimeoutRef.current = null
+                  }
+                  setRetryCountdown(0)
+                  setRetryScheduledFor(null)
+                  setIsGenerating(false)
+                  toast.dismiss(newToastId)
+                  setActiveToastId(null)
+                  handleAIGenerate()
+                } finally {
+                  retryNowInFlightRef.current = false
+                }
+              }
+            }
+          })
+          setActiveToastId(newToastId)
+        } else {
+          clearInterval(interval)
+        }
+      }, 1000)
+      return () => clearInterval(interval)
+    }
+  }, [retryScheduledFor, activeToastId, retryAttempt, isGenerating, profile?.ai_provider, session?.user?.id])
+
+  // Cleanup effect on component unmount
+  useEffect(() => {
+    return () => {
+      console.log('[CLEANUP] Component unmounting, clearing retry state and locks')
+      isMountedRef.current = false
+      cancelScheduledRetry('Component unmounted')
+      // Dismiss ALL toasts to ensure cleanup
+      toast.dismiss()
+      // Clear debounce timeout
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current)
+        debounceTimeoutRef.current = null
+      }
+      // Clear operation lock timeout
+      if (operationLockTimeoutRef.current) {
+        clearTimeout(operationLockTimeoutRef.current)
+        operationLockTimeoutRef.current = null
+      }
+    }
+  }, [])
+
+  // Cleanup effect on navigation (video ID change)
+  useEffect(() => {
+    // This effect runs when videoId changes, indicating navigation to a different video
+    return () => {
+      if (retryTimeoutRef.current || retryAttempt > 0) {
+        cancelScheduledRetry('Navigation detected')
+      }
+    }
+  }, [params.videoId])
 
   const handleSave = async () => {
     if (!editedVideo) return
@@ -297,7 +651,7 @@ export default function VideoPage() {
   const [isOptimizingDescription, setIsOptimizingDescription] = useState(false)
   const [isOptimizingTags, setIsOptimizingTags] = useState(false)
 
-  const checkAIConfig = () => {
+  const checkAIConfig = (operationType?: 'title' | 'description' | 'tags' | 'all') => {
     // Wait for profile to load
     if (isProfileLoading) {
       toast.error('Loading', {
@@ -310,6 +664,18 @@ export default function VideoPage() {
     if (!profile) {
       toast.error('Error', {
         description: 'Profile not found. Please refresh the page.',
+      })
+      return false
+    }
+
+    // Check for active operations (concurrency control)
+    if (activeOperation) {
+      const elapsed = activeOperationStartTime.current
+        ? Math.round((Date.now() - activeOperationStartTime.current.getTime()) / 1000)
+        : 0
+      console.log(`[CONCURRENCY] Rejecting ${operationType || 'operation'} - ${activeOperation} already active (${elapsed}s)`)
+      toast.error('Operation In Progress', {
+        description: `Please wait for the current ${activeOperation} optimization to complete (${elapsed}s elapsed).`,
       })
       return false
     }
@@ -357,13 +723,11 @@ export default function VideoPage() {
   }, [profile])
 
   const handleOptimizeTitle = async () => {
-    if (!editedVideo || !profile || !checkAIConfig()) return
-    if (isOptimizingTitle || isOptimizingDescription || isOptimizingTags || isGenerating) {
-      toast.error('Please wait', { description: 'Another AI operation is in progress.' });
-      return;
-    }
+    if (!editedVideo || !profile || !checkAIConfig('title')) return
 
     setIsOptimizingTitle(true)
+    setActiveOperationLock('title')
+    console.log('[CONCURRENCY] Starting title optimization')
 
     try {
       const response = await fetch('/api/ai/optimize-title', {
@@ -405,17 +769,16 @@ export default function VideoPage() {
       });
     } finally {
       setIsOptimizingTitle(false);
+      clearActiveOperationLock()
     }
   }
 
   const handleOptimizeDescription = async () => {
-    if (!editedVideo || !profile || !checkAIConfig()) return
-    if (isOptimizingTitle || isOptimizingDescription || isOptimizingTags || isGenerating) {
-      toast.error('Please wait', { description: 'Another AI operation is in progress.' });
-      return;
-    }
+    if (!editedVideo || !profile || !checkAIConfig('description')) return
 
     setIsOptimizingDescription(true)
+    setActiveOperationLock('description')
+    console.log('[CONCURRENCY] Starting description optimization')
 
     try {
       const response = await fetch('/api/ai/optimize-description', {
@@ -451,17 +814,16 @@ export default function VideoPage() {
       })
     } finally {
       setIsOptimizingDescription(false)
+      clearActiveOperationLock()
     }
   }
 
   const handleOptimizeTags = async () => {
-    if (!editedVideo || !profile || !checkAIConfig()) return
-    if (isOptimizingTags || isOptimizingTitle || isOptimizingDescription || isGenerating) {
-      toast.error('Please wait', { description: 'Another AI operation is in progress.' });
-      return;
-    }
+    if (!editedVideo || !profile || !checkAIConfig('tags')) return
 
     setIsOptimizingTags(true)
+    setActiveOperationLock('tags')
+    console.log('[CONCURRENCY] Starting tags optimization')
 
     try {
       const response = await fetch('/api/ai/optimize-tags', {
@@ -537,12 +899,55 @@ export default function VideoPage() {
       });
     } finally {
       setIsOptimizingTags(false);
+      clearActiveOperationLock()
     }
   }
 
   const handleAIGenerate = async () => {
-    if (!editedVideo || !profile || !checkAIConfig()) return
+    // isGenerating guard to prevent concurrent requests
+    if (isGenerating) {
+      console.log('[AI-GENERATE] Already generating, skipping')
+      return
+    }
+
+    // Check if retry already scheduled
+    if (retryTimeoutRef.current) {
+      console.log('[AI-GENERATE] Retry already scheduled, skipping')
+      return
+    }
+
+    // Pre-flight checks with operation type
+    if (!editedVideo || !profile || !checkAIConfig('all')) return
+
+    // Initialize retry attempt if first attempt
+    if (retryAttempt === 0) {
+      setRetryAttempt(1)
+    }
+
+    // Pre-flight rate limiter check (only on retries, not first attempt)
+    if (retryAttempt > 0 && profile.ai_provider && session?.user?.id) {
+      try {
+        const status = await checkRateLimiterStatus(profile.ai_provider, session.user.id)
+        
+        if (status && shouldAbortDueToQueueDepth(status.queueLength)) {
+          console.log(`[RETRY-ABORT] Queue depth ${status.queueLength} exceeds maximum ${MAX_QUEUE_DEPTH}`)
+          
+          toast.error('Rate Limiter Queue Full', {
+            description: `The rate limiter queue is currently full (${status.queueLength} requests waiting). Please wait a few moments and try again manually. The queue should clear in approximately ${status.resetIn} seconds.`,
+            duration: 10000
+          })
+          
+          cancelScheduledRetry('Queue depth exceeded')
+          return
+        }
+      } catch (error) {
+        console.warn('[RETRY-WARNING] Could not check rate limiter status, proceeding with retry')
+      }
+    }
+
     setIsGenerating(true)
+    setActiveOperationLock('all')
+    console.log('[CONCURRENCY] Starting full AI optimization')
 
     try {
       const response = await fetch('/api/ai/optimize', {
@@ -556,37 +961,233 @@ export default function VideoPage() {
         }),
       })
 
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => null)
-        if (errorBody?.errorCode === 'billing_error') {
-          setBillingErrorProvider(profile.ai_provider)
-          router.push('/settings')
+      // Success path
+      if (response.ok) {
+        const data = await response.json()
+
+        console.log('[AI-GENERATE] Success! Resetting retry state')
+
+        // Reset retry state
+        setRetryAttempt(0)
+        setRetryCountdown(0)
+        setRetryScheduledFor(null)
+        if (retryTimeoutRef.current) {
+          clearTimeout(retryTimeoutRef.current)
+          retryTimeoutRef.current = null
         }
-        const errorMessage = errorBody?.error || 'An unknown error occurred.'
-        throw new Error(errorMessage)
+        if (activeToastId) {
+          toast.dismiss(activeToastId)
+          setActiveToastId(null)
+        }
+
+        setEditedVideo((prev) => ({
+          ...prev!,
+          title: data.title,
+          description: data.description,
+          tags: data.tags,
+        }))
+
+        toast.success('Success!', {
+          description: 'AI has optimized your video details.',
+        })
+
+        setIsGenerating(false)
+        clearActiveOperationLock()
+        return
       }
 
-      const data = await response.json()
+      // Error path - check for rate limit
+      const errorBody = await response.json().catch(() => null)
+      const errorMessage = errorBody?.error || 'An unknown error occurred.'
 
-      setEditedVideo((prev) => ({
-        ...prev!,
-        title: data.title,
-        description: data.description,
-        tags: data.tags,
-      }))
+      // Check if it's a rate limit error
+      if (isRateLimitError(errorBody, response)) {
+        // Fetch rate limiter status for server-informed backoff
+        let rateLimiterStatus: Awaited<ReturnType<typeof checkRateLimiterStatus>> = null
+        let serverResetIn: number | undefined = undefined
+        
+        if (profile.ai_provider && session?.user?.id) {
+          try {
+            rateLimiterStatus = await checkRateLimiterStatus(profile.ai_provider, session.user.id)
+            if (rateLimiterStatus && rateLimiterStatus.resetIn > 0) {
+              serverResetIn = rateLimiterStatus.resetIn
+              console.log(`[RETRY-BACKOFF] Server reset in ${serverResetIn}s, queue length: ${rateLimiterStatus.queueLength}`)
+            }
+          } catch (error) {
+            console.warn('[RETRY-WARNING] Failed to fetch rate limiter status for backoff calculation')
+          }
+        }
 
-      toast.success('Success!', {
-        description: 'AI has optimized your video details.',
-      })
+        // Check for Retry-After header first (honors server's reset time)
+        const retryAfterHeader = response.headers.get('retry-after')
+        let waitSeconds: number
+        
+        if (retryAfterHeader) {
+          // Retry-After can be in seconds or HTTP date
+          const retryAfterNum = parseInt(retryAfterHeader, 10)
+          if (!isNaN(retryAfterNum)) {
+            waitSeconds = retryAfterNum
+          } else {
+            // Try parsing as HTTP date
+            const retryAfterDate = new Date(retryAfterHeader)
+            if (!isNaN(retryAfterDate.getTime())) {
+              waitSeconds = Math.max(0, Math.ceil((retryAfterDate.getTime() - Date.now()) / 1000))
+            } else {
+              waitSeconds = parseWaitTimeFromError(errorMessage) || Math.ceil(calculateBackoffDelay(retryAttempt, serverResetIn) / 1000)
+            }
+          }
+        } else {
+          // Use server-informed backoff if available
+          waitSeconds = Math.max(5, parseWaitTimeFromError(errorMessage) || Math.ceil(calculateBackoffDelay(retryAttempt, serverResetIn) / 1000))
+        }
+
+        const delayMs = waitSeconds * 1000
+
+        // Check queue depth before scheduling retry
+        if (rateLimiterStatus && shouldAbortDueToQueueDepth(rateLimiterStatus.queueLength)) {
+          toast.error('Rate Limiter Queue Full', {
+            description: `The rate limiter queue is currently full (${rateLimiterStatus.queueLength} requests waiting). Please wait a few moments and try again manually. The queue should clear in approximately ${rateLimiterStatus.resetIn} seconds.`,
+            duration: 10000
+          })
+          
+          cancelScheduledRetry('Queue depth exceeded before scheduling retry')
+          setIsGenerating(false)
+          clearActiveOperationLock()
+          return
+        }
+
+        // Check max attempts
+        if (retryAttempt >= MAX_RETRY_ATTEMPTS) {
+          toast.error('Rate Limit Exceeded', {
+            description: `Maximum retry attempts (${MAX_RETRY_ATTEMPTS}) reached. The rate limiter is currently overloaded. Please wait a few minutes and try again manually.`
+          })
+          setRetryAttempt(0)
+          setRetryCountdown(0)
+          setRetryScheduledFor(null)
+          setIsGenerating(false)
+          clearActiveOperationLock()
+          return
+        }
+
+        // Compute next attempt locally before setState for immediate display
+        const nextAttempt = retryAttempt + 1
+        setRetryAttempt(nextAttempt)
+
+        // Schedule retry
+        const scheduledTime = new Date(Date.now() + delayMs)
+        setRetryScheduledFor(scheduledTime)
+        setRetryCountdown(waitSeconds)
+
+        // Build queue info for toast description
+        const toastQueueInfo = rateLimiterStatus
+          ? `Queue: ${rateLimiterStatus.queueLength} requests, ${rateLimiterStatus.percentAvailable}% capacity available`
+          : 'Gemini free tier: 60 requests/minute'
+
+        // Show toast with countdown and retry button - use local nextAttempt
+        const toastId = toast.error('Rate Limit Reached', {
+          description: `Rate limit reached. Attempt ${nextAttempt} of ${MAX_RETRY_ATTEMPTS}.\n\nRetrying in ${waitSeconds} seconds...\n\n${toastQueueInfo}\n\nClick X to cancel the retry.`,
+          duration: Infinity,
+          onDismiss: () => {
+            cancelScheduledRetry('User dismissed retry toast')
+          },
+          action: {
+            label: 'Retry Now',
+            onClick: async () => {
+              // Guard against double-clicks
+              if (retryNowInFlightRef.current) return
+              if (isGenerating) return
+              
+              retryNowInFlightRef.current = true
+              
+              try {
+                // Check rate limiter status before allowing manual retry
+                if (profile.ai_provider && session?.user?.id) {
+                  const status = await checkRateLimiterStatus(profile.ai_provider, session.user.id)
+                  if (status && shouldAbortDueToQueueDepth(status.queueLength)) {
+                    toast.error('Queue Still Full', {
+                      description: 'The rate limiter queue is still full. Please wait a bit longer.',
+                      duration: 3000
+                    })
+                    return
+                  }
+                }
+                
+                console.log('[MANUAL-RETRY] User triggered manual retry')
+
+                // Clear scheduled retry and reset state
+                if (retryTimeoutRef.current) {
+                  clearTimeout(retryTimeoutRef.current)
+                  retryTimeoutRef.current = null
+                }
+                setRetryCountdown(0)
+                setRetryScheduledFor(null)
+                toast.dismiss(toastId)
+                setActiveToastId(null)
+                setIsGenerating(false)
+                clearActiveOperationLock()
+                // Trigger immediate retry
+                handleAIGenerate()
+              } finally {
+                retryNowInFlightRef.current = false
+              }
+            }
+          }
+        })
+        setActiveToastId(toastId)
+
+        // Set isGenerating to false before scheduling retry so retry can proceed
+        // But keep operation lock active
+        setIsGenerating(false)
+
+        // Schedule automatic retry - capture toastId locally
+        retryTimeoutRef.current = setTimeout(() => {
+          // Check if component is still mounted
+          if (!isMountedRef.current) {
+            console.log('[RETRY-SKIP] Component unmounted, skipping retry')
+            return
+          }
+          
+          retryTimeoutRef.current = null
+          setRetryCountdown(0)
+          setRetryScheduledFor(null)
+          toast.dismiss(toastId)
+          setActiveToastId(null)
+          handleAIGenerate()
+        }, delayMs)
+
+        return
+      }
+
+      // Handle other errors (billing, auth, etc.)
+      if (errorBody?.errorCode === 'billing_error' && profile?.ai_provider) {
+        setBillingErrorProvider(profile.ai_provider)
+        router.push('/settings')
+      }
+
+      throw new Error(errorMessage)
+
     } catch (error) {
       console.error('Error generating AI content:', error)
       toast.error('AI Generation Failed', {
-        description: error instanceof Error ? error.message : 'An unknown error occurred. Please check the console for details.',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred.'
       })
-    } finally {
+
+      // Reset retry state on non-rate-limit errors
+      setRetryAttempt(0)
+      setRetryCountdown(0)
+      setRetryScheduledFor(null)
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current)
+        retryTimeoutRef.current = null
+      }
+
       setIsGenerating(false)
+      clearActiveOperationLock()
     }
   }
+
+  // Create debounced wrapper for main AI Generate button (500ms debounce)
+  const debouncedHandleAIGenerate = debounce(handleAIGenerate, 500)
 
   const handleGetThumbnailIdeas = async () => {
     if (!editedVideo || !profile) return
@@ -811,6 +1412,38 @@ export default function VideoPage() {
 
   return (
     <div className="space-y-6">
+      {/* Operation Progress Indicator */}
+      {activeOperation && (
+        <div className="fixed top-16 left-0 right-0 z-50 bg-blue-500/10 border-b border-blue-500/20 py-2">
+          <div className="container mx-auto flex items-center justify-center gap-3">
+            <Loader className="h-4 w-4 animate-spin text-blue-500" />
+            <span className="text-sm font-medium">
+              Optimizing {activeOperation}...
+              {activeOperationStartTime.current && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  ({Math.round((Date.now() - activeOperationStartTime.current.getTime()) / 1000)}s elapsed)
+                </span>
+              )}
+            </span>
+            {/* Cancel button - only shown if a retry is scheduled */}
+            {retryTimeoutRef.current && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  cancelScheduledRetry('User cancelled from banner')
+                  clearActiveOperationLock()
+                }}
+                className="ml-4 h-7 text-xs"
+              >
+                <X className="mr-1 h-3 w-3" />
+                Cancel
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -840,21 +1473,25 @@ export default function VideoPage() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="outline"
-                    onClick={handleAIGenerate}
-                    disabled={isGenerating || !isAiConfigured}
+                    variant={retryCountdown > 0 ? "secondary" : "outline"}
+                    onClick={debouncedHandleAIGenerate}
+                    disabled={isGenerating || !isAiConfigured || !!activeOperation}
                   >
                     {isGenerating ? (
                       <Loader className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Wand2 className="mr-2 h-4 w-4" />
                     )}
-                    AI Generate All
+                    {retryCountdown > 0 ? `Retry in ${retryCountdown}s` : 'AI Generate All'}
                   </Button>
                 </TooltipTrigger>
                 {!isAiConfigured ? (
                   <TooltipContent>
                     <p>Please configure your AI provider in the settings</p>
+                  </TooltipContent>
+                ) : activeOperation ? (
+                  <TooltipContent>
+                    <p>Please wait for the current {activeOperation} optimization to complete</p>
                   </TooltipContent>
                 ) : (
                   <TooltipContent>Generate title, description & tags with AI (⌥A)</TooltipContent>
@@ -952,7 +1589,7 @@ export default function VideoPage() {
                           size="sm"
                           className={`${isOptimizingTitle ? 'opacity-50' : ''} flex items-center gap-1.5 h-7 px-2 text-sm`}
                           onClick={handleOptimizeTitle}
-                          disabled={isOptimizingTitle || !isAiConfigured}
+                          disabled={isOptimizingTitle || !isAiConfigured || !!activeOperation}
                         >
                           {isOptimizingTitle ? (
                             <Loader className="h-3.5 w-3.5 animate-spin" />
@@ -970,7 +1607,9 @@ export default function VideoPage() {
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
-                                Configure AI provider in settings
+                                {activeOperation 
+                                  ? `Wait for ${activeOperation} optimization to complete`
+                                  : 'Configure AI provider in settings'}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -1012,7 +1651,7 @@ export default function VideoPage() {
                           size="sm"
                           className={`${isOptimizingDescription ? 'opacity-50' : ''} flex items-center gap-1.5 h-7 px-2 text-sm`}
                           onClick={handleOptimizeDescription}
-                          disabled={isOptimizingDescription || !isAiConfigured}
+                          disabled={isOptimizingDescription || !isAiConfigured || !!activeOperation}
                         >
                           {isOptimizingDescription ? (
                             <Loader className="h-3.5 w-3.5 animate-spin" />
@@ -1030,7 +1669,9 @@ export default function VideoPage() {
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
-                                Configure AI provider in settings
+                                {activeOperation 
+                                  ? `Wait for ${activeOperation} optimization to complete`
+                                  : 'Configure AI provider in settings'}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -1073,7 +1714,7 @@ export default function VideoPage() {
                           size="sm"
                           className={`${isOptimizingTags ? 'opacity-50' : ''} flex items-center gap-1.5 h-7 px-2 text-sm`}
                           onClick={handleOptimizeTags}
-                          disabled={isOptimizingTags || !isAiConfigured}
+                          disabled={isOptimizingTags || !isAiConfigured || !!activeOperation}
                         >
                           {isOptimizingTags ? (
                             <Loader className="h-3.5 w-3.5 animate-spin" />
@@ -1091,7 +1732,9 @@ export default function VideoPage() {
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
-                                Configure AI provider in settings
+                                {activeOperation 
+                                  ? `Wait for ${activeOperation} optimization to complete`
+                                  : 'Configure AI provider in settings'}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
