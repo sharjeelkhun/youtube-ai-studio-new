@@ -32,10 +32,12 @@ export default function LoginContent() {
   })
 
   useEffect(() => {
-    if (session && !isLoading && pathname !== redirectTo) {
-      router.push(redirectTo);
+    // Only redirect if we have a session and we're on the login page
+    if (session && !isLoading && pathname === '/login') {
+      console.log('Session detected on login page, redirecting to:', redirectTo)
+      window.location.href = redirectTo
     }
-  }, [session, isLoading, redirectTo, router, pathname])
+  }, [session, isLoading, redirectTo, pathname])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -46,13 +48,15 @@ export default function LoginContent() {
       const { error } = await signIn(email, password)
       if (error) {
         setError(error.message)
+        setIsSubmitting(false)
       } else {
-        router.push(redirectTo)
+        // Sign in successful - force immediate redirect
+        console.log('Login successful, forcing redirect to:', redirectTo)
+        window.location.href = redirectTo
       }
     } catch (err) {
       setError('An unexpected error occurred')
       console.error('Login error:', err)
-    } finally {
       setIsSubmitting(false)
     }
   }
