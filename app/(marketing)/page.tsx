@@ -19,7 +19,7 @@ export default function LandingPage() {
 
 
         <div className="relative z-10 container px-4 md:px-6">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-8 items-center">
+          <div className="flex flex-col-reverse gap-12 lg:grid lg:grid-cols-2 lg:gap-8 items-center">
             <div className="flex flex-col items-start space-y-8 text-left">
               <div className="inline-flex items-center rounded-full border border-border bg-muted/50 px-3 py-1 text-sm backdrop-blur-xl transition-colors hover:bg-muted">
                 <span className="flex h-2 w-2 rounded-full bg-[#FF0000] mr-2 animate-pulse"></span>
@@ -41,14 +41,24 @@ export default function LandingPage() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Button variant="outline" size="lg" className="h-12 px-8 text-base border-border hover:bg-accent hover:text-accent-foreground rounded-xl backdrop-blur-sm transition-all">
-                  View Demo
-                </Button>
+                <Link href="/dashboard">
+                  <Button variant="outline" size="lg" className="h-12 px-8 text-base border-border hover:bg-accent hover:text-accent-foreground rounded-xl backdrop-blur-sm transition-all">
+                    View Demo
+                  </Button>
+                </Link>
               </div>
               <div className="flex items-center gap-4 text-sm text-zinc-500">
                 <div className="flex -space-x-2">
                   {[1, 2, 3, 4].map((i) => (
-                    <div key={i} className="h-8 w-8 rounded-full border-2 border-background bg-muted" />
+                    <div key={i} className="h-8 w-8 rounded-full border-2 border-background overflow-hidden">
+                      <Image
+                        src={`/creator-avatar-${i}.png`}
+                        alt={`Creator ${i}`}
+                        width={32}
+                        height={32}
+                        className="object-cover"
+                      />
+                    </div>
                   ))}
                 </div>
                 <p>Trusted by 10,000+ creators</p>
@@ -474,10 +484,11 @@ export default function LandingPage() {
             {[
               {
                 name: "Starter",
-                price: "$19",
+                price: "Free",
                 description: "Perfect for new creators looking to grow their channel.",
                 features: ["Basic Analytics", "5 AI Content Suggestions per month", "Basic SEO Tools", "Email Support"],
                 cta: "Get Started",
+                ctaLink: "/signup",
                 popular: false,
               },
               {
@@ -492,6 +503,7 @@ export default function LandingPage() {
                   "Priority Support",
                 ],
                 cta: "Get Started",
+                ctaLink: "/signup",
                 popular: true,
               },
               {
@@ -507,6 +519,7 @@ export default function LandingPage() {
                   "API Access",
                 ],
                 cta: "Contact Sales",
+                ctaLink: "mailto:sales@youtubeaistudio.com",
                 popular: false,
               },
             ].map((plan, index) => (
@@ -538,15 +551,17 @@ export default function LandingPage() {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    size="lg"
-                    className={`w-full rounded-xl font-bold transition-all ${plan.popular
-                      ? "bg-[#FF0000] hover:bg-[#CC0000] text-white shadow-lg hover:shadow-[#FF0000]/25"
-                      : "bg-muted text-foreground hover:bg-muted/80"
-                      }`}
-                  >
-                    {plan.cta}
-                  </Button>
+                  <Link href={plan.ctaLink || "#"}>
+                    <Button
+                      size="lg"
+                      className={`w-full rounded-xl font-bold transition-all ${plan.popular
+                        ? "bg-[#FF0000] hover:bg-[#CC0000] text-white shadow-lg hover:shadow-[#FF0000]/25"
+                        : "bg-muted text-foreground hover:bg-muted/80"
+                        }`}
+                    >
+                      {plan.cta}
+                    </Button>
+                  </Link>
                 </div>
               </ScrollReveal>
             ))}

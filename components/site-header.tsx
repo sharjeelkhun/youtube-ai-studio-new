@@ -16,7 +16,8 @@ export function SiteHeader() {
                             height={32}
                             className="h-8 w-8"
                         />
-                        <span className="text-lg font-bold">YouTube AI Studio</span>
+                        <span className="text-lg font-bold hidden sm:inline">YouTube AI Studio</span>
+                        <span className="text-lg font-bold sm:hidden">AI Studio</span>
                     </Link>
                 </div>
                 <nav className="hidden gap-6 md:flex">
