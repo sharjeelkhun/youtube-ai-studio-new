@@ -79,7 +79,7 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
 
   useEffect(() => {
     if (channelData?.id) {
-    fetchVideos()
+      fetchVideos()
     }
   }, [channelData?.id])
 
@@ -241,7 +241,7 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
                 <div className="mt-4">
                   <p className="text-xs text-muted-foreground mb-4">
                     Click "Sync Videos" to fetch your videos from YouTube
-                </p>
+                  </p>
                   <Button onClick={handleSync} disabled={loading}>
                     {loading ? (
                       <>
@@ -292,13 +292,12 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
                     <TableCell className="font-medium">{video.title}</TableCell>
                     <TableCell className="hidden md:table-cell">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          video.status === "public"
+                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${video.status === "public"
                             ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
                             : video.status === "private"
                               ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400"
                               : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400"
-                        }`}
+                          }`}
                       >
                         {video.status === "public" ? "Published" : video.status === "private" ? "Draft" : "Unlisted"}
                       </span>

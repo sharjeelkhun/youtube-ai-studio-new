@@ -82,22 +82,22 @@ export function VideoCard({ video, onVideoUpdated }: VideoCardProps) {
                 <span className="text-sm font-medium">{formatDuration(video.duration)}</span>
               </div>
               <div className="flex items-center gap-2 flex-wrap justify-start w-full">
-                <Button 
-                  variant="secondary" 
-                  size="sm" 
+                <Button
+                  variant="secondary"
+                  size="sm"
                   className="bg-white/90 hover:bg-white text-black flex-shrink-0 text-xs"
                   onClick={() => router.push(`/videos/${video.id}`)}
                 >
                   <Edit2 className="h-3 w-3 mr-1.5" />
                   View Details
                 </Button>
-                <Button 
-                  variant="destructive" 
+                <Button
+                  variant="destructive"
                   size="sm"
                   className="bg-red-600 hover:bg-red-700 text-white flex-shrink-0 text-xs whitespace-nowrap"
                   onClick={() => window.open(`https://youtube.com/watch?v=${video.id}`, '_blank')}
                 >
-                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -115,7 +115,7 @@ export function VideoCard({ video, onVideoUpdated }: VideoCardProps) {
       </CardHeader>
       <CardContent className="p-4 space-y-3">
         <div>
-          <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-primary transition-colors">
+          <h3 className="font-semibold text-lg line-clamp-2 group-hover:text-[#FF0000] transition-colors">
             {video.title}
           </h3>
           <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
@@ -137,11 +137,11 @@ export function VideoCard({ video, onVideoUpdated }: VideoCardProps) {
           </div>
         </div>
         <div className="text-sm text-muted-foreground">
-          {video.published_at ? 
-            (video.published_at === "Invalid Date" || video.published_at === "Unknown date" ? 
-              "Unknown date" : 
+          {video.published_at ?
+            (video.published_at === "Invalid Date" || video.published_at === "Unknown date" ?
+              "Unknown date" :
               video.published_at
-            ) : 
+            ) :
             "Unknown date"
           }
         </div>

@@ -66,7 +66,7 @@ export function SettingsTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-    <div className="space-y-4">
+          <div className="space-y-4">
             <div>
               <h3 className="text-lg font-medium">Connected Channel</h3>
               <p className="text-sm text-muted-foreground">

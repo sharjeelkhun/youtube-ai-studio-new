@@ -24,27 +24,27 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
   useEffect(() => {
     if (channelData) {
       setStats({
-    subscribers: {
+        subscribers: {
           current: channelData.subscriber_count || 0,
           growth: calculateGrowth(channelData.subscriber_count, channelData.previous_subscribers)
-    },
-    videos: {
+        },
+        videos: {
           current: channelData.video_count || 0,
           growth: 0 // This would need to be calculated from historical data
-    },
-    views: {
+        },
+        views: {
           current: channelData.view_count || 0,
           growth: 0 // This would need to be calculated from historical data
-    },
-    watchTime: {
+        },
+        watchTime: {
           current: channelData.watch_time || 0,
           growth: calculateGrowth(channelData.watch_time, channelData.previous_watch_time)
-    },
-    likes: {
+        },
+        likes: {
           current: channelData.likes || 0,
           growth: calculateGrowth(channelData.likes, channelData.previous_likes)
-    },
-    comments: {
+        },
+        comments: {
           current: channelData.comments || 0,
           growth: calculateGrowth(channelData.comments, channelData.previous_comments)
         }

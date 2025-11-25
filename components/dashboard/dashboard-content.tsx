@@ -149,7 +149,7 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
         </TabsContent>
 
         <TabsContent value="videos">
-            <VideosTab channelData={channel} isLoading={loading} />
+          <VideosTab channelData={channel} isLoading={loading} />
         </TabsContent>
 
         <TabsContent value="analytics">

@@ -51,9 +51,9 @@ interface VideoHistory {
 }
 
 const handleApiResponse = async (
-  response: Response, 
-  profile: { ai_provider: string | undefined | null } | null, 
-  setBillingErrorProvider: (provider: string) => void, 
+  response: Response,
+  profile: { ai_provider: string | undefined | null } | null,
+  setBillingErrorProvider: (provider: string) => void,
   router: { push: (path: string) => void }
 ) => {
   if (response.status === 429) {
@@ -61,7 +61,7 @@ const handleApiResponse = async (
   }
 
   const data = await response.json().catch(() => null);
-  
+
   if (!response.ok) {
     if (data?.errorCode === 'billing_error' && profile?.ai_provider) {
       setBillingErrorProvider(profile.ai_provider);
@@ -102,7 +102,7 @@ export default function VideoPage() {
   const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const countdownUpdateCounterRef = useRef<number>(0)
   const retryNowInFlightRef = useRef<boolean>(false)
-  
+
   // Debounce and concurrency control state
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const [activeOperation, setActiveOperation] = useState<'title' | 'description' | 'tags' | 'all' | null>(null)
@@ -112,32 +112,32 @@ export default function VideoPage() {
   // ============================================================================
   // CONSTANTS: Rate Limiter and Retry Configuration
   // ============================================================================
-  
+
   /**
    * Maximum number of retry attempts before giving up.
    * Chosen to balance user patience with reasonable failure recovery.
    */
   const MAX_RETRY_ATTEMPTS = 5
-  
+
   /**
    * Maximum acceptable queue depth before aborting retries.
    * Prevents cascading failures when the rate limiter is overwhelmed.
    * Set to 10 to allow some queuing but prevent excessive backup.
    */
   const MAX_QUEUE_DEPTH = 10
-  
+
   /**
    * Minimum delay between retries (5 seconds).
    * Ensures we don't hammer the API too quickly.
    */
   const MIN_BACKOFF_DELAY_MS = 5000
-  
+
   /**
    * Maximum delay between retries (60 seconds).
    * Caps exponential backoff to prevent excessively long waits.
    */
   const MAX_BACKOFF_DELAY_MS = 60000
-  
+
   /**
    * Timeout for rate limiter status checks (5 seconds).
    * Pre-flight checks should be fast; if they time out, we proceed anyway.
@@ -151,7 +151,7 @@ export default function VideoPage() {
     profile.ai_settings.apiKeys[profile.ai_provider]
 
   const canGenerateImages = profile?.ai_provider === 'openai' || profile?.ai_provider === 'gemini'
-  
+
   const isMountedRef = useRef(true)
 
   // ============================================================================
@@ -186,7 +186,7 @@ export default function VideoPage() {
     console.log(`[CONCURRENCY] Acquiring lock for operation: ${operation}`)
     setActiveOperation(operation)
     activeOperationStartTime.current = new Date()
-    
+
     // Safety timeout: automatically clear lock after 5 minutes
     if (operationLockTimeoutRef.current) {
       clearTimeout(operationLockTimeoutRef.current)
@@ -223,7 +223,7 @@ export default function VideoPage() {
    */
   const calculateBackoffDelay = (attempt: number, serverResetIn?: number): number => {
     let baseDelay: number
-    
+
     if (serverResetIn && serverResetIn > 0) {
       // Use server-informed reset time as base delay
       baseDelay = serverResetIn * 1000
@@ -231,13 +231,13 @@ export default function VideoPage() {
       // Use exponential backoff: MIN * 2^(attempt-1), capped at MAX
       baseDelay = Math.min(MIN_BACKOFF_DELAY_MS * Math.pow(2, attempt - 1), MAX_BACKOFF_DELAY_MS)
     }
-    
+
     // Apply jitter: ±20% randomization to prevent thundering herd
     const jitter = baseDelay * (0.8 + Math.random() * 0.4)
     const finalDelay = Math.max(MIN_BACKOFF_DELAY_MS, Math.floor(jitter))
-    
+
     console.log(`[BACKOFF] Attempt ${attempt}, base: ${baseDelay}ms, with jitter: ${finalDelay}ms`)
-    
+
     return finalDelay
   }
 
@@ -318,17 +318,17 @@ export default function VideoPage() {
    */
   const cancelScheduledRetry = (reason: string) => {
     console.log(`[RETRY-CANCEL] ${reason}`)
-    
+
     if (retryTimeoutRef.current) {
       clearTimeout(retryTimeoutRef.current)
       retryTimeoutRef.current = null
     }
-    
+
     setRetryAttempt(0)
     setRetryCountdown(0)
     setRetryScheduledFor(null)
     setIsGenerating(false)
-    
+
     if (activeToastId) {
       toast.dismiss(activeToastId)
       setActiveToastId(null)
@@ -428,7 +428,7 @@ export default function VideoPage() {
       const interval = setInterval(async () => {
         const remaining = Math.max(0, Math.ceil((retryScheduledFor.getTime() - Date.now()) / 1000))
         setRetryCountdown(remaining)
-        
+
         // Fetch rate limiter status every 5 seconds (not every second to avoid spam)
         if (countdownUpdateCounterRef.current % 5 === 0 && profile?.ai_provider && session?.user?.id) {
           try {
@@ -444,14 +444,14 @@ export default function VideoPage() {
           }
         }
         countdownUpdateCounterRef.current++
-        
+
         // Update toast with new countdown - use retryAttempt as it's already incremented
         if (remaining > 0) {
           toast.dismiss(activeToastId)
           const countdownQueueInfo = lastQueueStatus
             ? `Queue: ${lastQueueStatus.queueLength} requests, ${lastQueueStatus.percentAvailable}% capacity available`
             : 'Gemini free tier: 60 requests/minute'
-          
+
           const newToastId = toast.error('Rate Limit Reached', {
             description: `Attempt ${retryAttempt} of ${MAX_RETRY_ATTEMPTS}.\n\nRetrying in ${remaining} seconds...\n\n${countdownQueueInfo}\n\nClick X to cancel the retry.`,
             duration: Infinity,
@@ -464,9 +464,9 @@ export default function VideoPage() {
                 // Guard against double-clicks
                 if (retryNowInFlightRef.current) return
                 if (isGenerating) return
-                
+
                 retryNowInFlightRef.current = true
-                
+
                 try {
                   // Check rate limiter status before allowing manual retry
                   if (profile?.ai_provider && session?.user?.id) {
@@ -479,9 +479,9 @@ export default function VideoPage() {
                       return
                     }
                   }
-                  
+
                   console.log('[MANUAL-RETRY] User triggered manual retry')
-                  
+
                   if (retryTimeoutRef.current) {
                     clearTimeout(retryTimeoutRef.current)
                     retryTimeoutRef.current = null
@@ -754,12 +754,12 @@ export default function VideoPage() {
         }
         throw new Error(data?.error || 'Failed to optimize title');
       }
-      
+
       const newTitle = data.optimizedTitle;
       if (!newTitle) {
         throw new Error('No title received from AI');
       }
-      
+
       setEditedVideo(prev => ({ ...prev!, title: newTitle }));
       toast.success('Success!', { description: 'AI has optimized your video title.' });
     } catch (error) {
@@ -843,7 +843,7 @@ export default function VideoPage() {
       }
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         if (data?.errorCode === 'billing_error' && profile?.ai_provider) {
           setBillingErrorProvider(profile.ai_provider);
@@ -851,7 +851,7 @@ export default function VideoPage() {
         }
         throw new Error(data?.error || 'Failed to optimize tags');
       }
-      
+
       // Clean up the tags - remove any JSON artifacts and format properly
       let tags = data.tags;
       if (typeof tags === 'string') {
@@ -861,9 +861,9 @@ export default function VideoPage() {
           tags = tags.split(',');
         }
       }
-      
+
       let newTags = Array.isArray(tags) ? tags : [];
-      
+
       // Clean up any JSON formatting or special characters and remove metadata
       newTags = newTags
         .map((tag: string) => {
@@ -876,7 +876,7 @@ export default function VideoPage() {
             .replace(/\s+/g, ' ')
             .trim();
         })
-        .filter((tag: string) => 
+        .filter((tag: string) =>
           tag && // Remove empty tags
           !/^(json|tag)$/i.test(tag) && // Remove standalone 'json' or 'tag'
           !tag.includes('Remove') && // Remove 'Remove' indicators
@@ -885,11 +885,11 @@ export default function VideoPage() {
           tag.length >= 2 // Ensure tag is at least 2 chars
         )
         // Remove duplicates and limit to 10 tags
-        .filter((tag, index, self) => 
+        .filter((tag, index, self) =>
           self.findIndex(t => t.toLowerCase() === tag.toLowerCase()) === index
         )
         .slice(0, 10);
-      
+
       setEditedVideo(prev => ({ ...prev!, tags: newTags }));
       toast.success('Success!', { description: 'AI has optimized your video tags.' });
     } catch (error) {
@@ -928,15 +928,15 @@ export default function VideoPage() {
     if (retryAttempt > 0 && profile.ai_provider && session?.user?.id) {
       try {
         const status = await checkRateLimiterStatus(profile.ai_provider, session.user.id)
-        
+
         if (status && shouldAbortDueToQueueDepth(status.queueLength)) {
           console.log(`[RETRY-ABORT] Queue depth ${status.queueLength} exceeds maximum ${MAX_QUEUE_DEPTH}`)
-          
+
           toast.error('Rate Limiter Queue Full', {
             description: `The rate limiter queue is currently full (${status.queueLength} requests waiting). Please wait a few moments and try again manually. The queue should clear in approximately ${status.resetIn} seconds.`,
             duration: 10000
           })
-          
+
           cancelScheduledRetry('Queue depth exceeded')
           return
         }
@@ -1005,7 +1005,7 @@ export default function VideoPage() {
         // Fetch rate limiter status for server-informed backoff
         let rateLimiterStatus: Awaited<ReturnType<typeof checkRateLimiterStatus>> = null
         let serverResetIn: number | undefined = undefined
-        
+
         if (profile.ai_provider && session?.user?.id) {
           try {
             rateLimiterStatus = await checkRateLimiterStatus(profile.ai_provider, session.user.id)
@@ -1021,7 +1021,7 @@ export default function VideoPage() {
         // Check for Retry-After header first (honors server's reset time)
         const retryAfterHeader = response.headers.get('retry-after')
         let waitSeconds: number
-        
+
         if (retryAfterHeader) {
           // Retry-After can be in seconds or HTTP date
           const retryAfterNum = parseInt(retryAfterHeader, 10)
@@ -1049,7 +1049,7 @@ export default function VideoPage() {
             description: `The rate limiter queue is currently full (${rateLimiterStatus.queueLength} requests waiting). Please wait a few moments and try again manually. The queue should clear in approximately ${rateLimiterStatus.resetIn} seconds.`,
             duration: 10000
           })
-          
+
           cancelScheduledRetry('Queue depth exceeded before scheduling retry')
           setIsGenerating(false)
           clearActiveOperationLock()
@@ -1096,9 +1096,9 @@ export default function VideoPage() {
               // Guard against double-clicks
               if (retryNowInFlightRef.current) return
               if (isGenerating) return
-              
+
               retryNowInFlightRef.current = true
-              
+
               try {
                 // Check rate limiter status before allowing manual retry
                 if (profile.ai_provider && session?.user?.id) {
@@ -1111,7 +1111,7 @@ export default function VideoPage() {
                     return
                   }
                 }
-                
+
                 console.log('[MANUAL-RETRY] User triggered manual retry')
 
                 // Clear scheduled retry and reset state
@@ -1146,7 +1146,7 @@ export default function VideoPage() {
             console.log('[RETRY-SKIP] Component unmounted, skipping retry')
             return
           }
-          
+
           retryTimeoutRef.current = null
           setRetryCountdown(0)
           setRetryScheduledFor(null)
@@ -1411,16 +1411,16 @@ export default function VideoPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 px-4 md:px-0">
       {/* Operation Progress Indicator */}
       {activeOperation && (
         <div className="fixed top-16 left-0 right-0 z-50 bg-blue-500/10 border-b border-blue-500/20 py-2">
-          <div className="container mx-auto flex items-center justify-center gap-3">
+          <div className="container mx-auto px-4 flex items-center justify-center gap-3">
             <Loader className="h-4 w-4 animate-spin text-blue-500" />
             <span className="text-sm font-medium">
               Optimizing {activeOperation}...
               {activeOperationStartTime.current && (
-                <span className="ml-2 text-xs text-muted-foreground">
+                <span className="ml-2 text-xs text-muted-foreground hidden sm:inline">
                   ({Math.round((Date.now() - activeOperationStartTime.current.getTime()) / 1000)}s elapsed)
                 </span>
               )}
@@ -1434,7 +1434,7 @@ export default function VideoPage() {
                   cancelScheduledRetry('User cancelled from banner')
                   clearActiveOperationLock()
                 }}
-                className="ml-4 h-7 text-xs"
+                className="ml-2 sm:ml-4 h-7 text-xs"
               >
                 <X className="mr-1 h-3 w-3" />
                 Cancel
@@ -1445,8 +1445,8 @@ export default function VideoPage() {
       )}
 
       <div className="flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <Button variant="ghost" onClick={() => router.back()}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
@@ -1468,7 +1468,7 @@ export default function VideoPage() {
               <span>Focus Tags</span>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -1476,13 +1476,15 @@ export default function VideoPage() {
                     variant={retryCountdown > 0 ? "secondary" : "outline"}
                     onClick={debouncedHandleAIGenerate}
                     disabled={isGenerating || !isAiConfigured || !!activeOperation}
+                    className={retryCountdown > 0 ? '' : 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]'}
                   >
                     {isGenerating ? (
                       <Loader className="mr-2 h-4 w-4 animate-spin" />
                     ) : (
                       <Wand2 className="mr-2 h-4 w-4" />
                     )}
-                    {retryCountdown > 0 ? `Retry in ${retryCountdown}s` : 'AI Generate All'}
+                    <span className="hidden sm:inline">{retryCountdown > 0 ? `Retry in ${retryCountdown}s` : 'AI Generate All'}</span>
+                    <span className="sm:hidden">{retryCountdown > 0 ? `Retry ${retryCountdown}s` : 'AI Generate'}</span>
                   </Button>
                 </TooltipTrigger>
                 {!isAiConfigured ? (
@@ -1499,65 +1501,71 @@ export default function VideoPage() {
               </Tooltip>
             </TooltipProvider>
 
+            <div className="hidden md:flex md:items-center md:gap-2">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex">
+                      <Button
+                        variant="outline"
+                        onClick={handleGetThumbnailIdeas}
+                        disabled={isGettingThumbnailIdeas || !isAiConfigured || !canGenerateImages}
+                      >
+                        {isGettingThumbnailIdeas ? (
+                          <Loader className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <ImageIcon className="mr-2 h-4 w-4" />
+                        )}
+                        Thumbnail Ideas
+                      </Button>
+                    </div>
+                  </TooltipTrigger>
+                  {(!isAiConfigured || !canGenerateImages) ? (
+                    <TooltipContent>
+                      <p>
+                        {!canGenerateImages
+                          ? "Image generation is only available for OpenAI and Gemini providers"
+                          : "Please configure your AI provider in the settings"}
+                      </p>
+                    </TooltipContent>
+                  ) : (
+                    <TooltipContent>Generate thumbnail suggestions with AI</TooltipContent>
+                  )}
+                </Tooltip>
+              </TooltipProvider>
+
+              <Button
+                variant="outline"
+                onClick={() => window.open(`https://studio.youtube.com/video/${video.id}/edit`, '_blank')}
+              >
+                <Youtube className="mr-2 h-4 w-4" />
+                <span className="hidden lg:inline">Edit in Studio</span>
+                <span className="lg:hidden">YT Studio</span>
+              </Button>
+            </div>
+
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex">
-                    <Button
-                      variant="outline"
-                      onClick={handleGetThumbnailIdeas}
-                      disabled={isGettingThumbnailIdeas || !isAiConfigured || !canGenerateImages}
-                    >
-                      {isGettingThumbnailIdeas ? (
-                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <ImageIcon className="mr-2 h-4 w-4" />
-                      )}
-                      Thumbnail Ideas
-                    </Button>
-                  </div>
-                </TooltipTrigger>
-                {(!isAiConfigured || !canGenerateImages) ? (
-                  <TooltipContent>
-                    <p>
-                      {!canGenerateImages
-                        ? "Image generation is only available for OpenAI and Gemini providers"
-                        : "Please configure your AI provider in the settings"}
-                    </p>
-                  </TooltipContent>
-                ) : (
-                  <TooltipContent>Generate thumbnail suggestions with AI</TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
-
-            <Button
-              variant="outline"
-              onClick={() => window.open(`https://studio.youtube.com/video/${video.id}/edit`, '_blank')}
-            >
-              <Youtube className="mr-2 h-4 w-4" />
-              Edit in Studio
-            </Button>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button 
+                  <Button
                     variant={hasChanges ? "default" : "outline"}
-                    onClick={handleSave} 
+                    onClick={handleSave}
                     disabled={isSaving || !hasChanges}
+                    className={hasChanges ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white' : ''}
                   >
                     {isSaving ? (
                       <>
                         <Loader className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
+                        <span className="hidden sm:inline">Saving...</span>
+                        <span className="sm:hidden">Saving</span>
                       </>
                     ) : (
                       <>
                         {hasChanges && (
                           <div className="mr-2 h-2 w-2 rounded-full bg-yellow-500" />
                         )}
-                        Save Changes
+                        <span className="hidden sm:inline">Save Changes</span>
+                        <span className="sm:hidden">Save</span>
                       </>
                     )}
                   </Button>
@@ -1571,7 +1579,7 @@ export default function VideoPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -1580,14 +1588,14 @@ export default function VideoPage() {
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                                      <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between">
                     <label className="text-sm font-medium">Title</label>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center mr-4">
                         <Button
                           variant="outline"
                           size="sm"
-                          className={`${isOptimizingTitle ? 'opacity-50' : ''} flex items-center gap-1.5 h-7 px-2 text-sm`}
+                          className={`${isOptimizingTitle ? 'opacity-50' : 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]'} flex items-center gap-1.5 h-7 px-2 text-sm`}
                           onClick={handleOptimizeTitle}
                           disabled={isOptimizingTitle || !isAiConfigured || !!activeOperation}
                         >
@@ -1607,7 +1615,7 @@ export default function VideoPage() {
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
-                                {activeOperation 
+                                {activeOperation
                                   ? `Wait for ${activeOperation} optimization to complete`
                                   : 'Configure AI provider in settings'}
                               </TooltipContent>
@@ -1619,8 +1627,8 @@ export default function VideoPage() {
                         <span className="text-xs text-muted-foreground">
                           {editedVideo?.title.length || 0}/100 characters
                         </span>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => handleCopy(editedVideo?.title || '')}
                         >
@@ -1642,14 +1650,14 @@ export default function VideoPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                                      <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between">
                     <label className="text-sm font-medium">Description</label>
                     <div className="flex items-center gap-2">
                       <div className="flex items-center mr-4">
                         <Button
                           variant="outline"
                           size="sm"
-                          className={`${isOptimizingDescription ? 'opacity-50' : ''} flex items-center gap-1.5 h-7 px-2 text-sm`}
+                          className={`${isOptimizingDescription ? 'opacity-50' : 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]'} flex items-center gap-1.5 h-7 px-2 text-sm`}
                           onClick={handleOptimizeDescription}
                           disabled={isOptimizingDescription || !isAiConfigured || !!activeOperation}
                         >
@@ -1669,7 +1677,7 @@ export default function VideoPage() {
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
-                                {activeOperation 
+                                {activeOperation
                                   ? `Wait for ${activeOperation} optimization to complete`
                                   : 'Configure AI provider in settings'}
                               </TooltipContent>
@@ -1681,8 +1689,8 @@ export default function VideoPage() {
                         <span className="text-xs text-muted-foreground">
                           {editedVideo?.description.length || 0}/5000 characters
                         </span>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => handleCopy(editedVideo?.description || '')}
                         >
@@ -1712,7 +1720,7 @@ export default function VideoPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className={`${isOptimizingTags ? 'opacity-50' : ''} flex items-center gap-1.5 h-7 px-2 text-sm`}
+                          className={`${isOptimizingTags ? 'opacity-50' : 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]'} flex items-center gap-1.5 h-7 px-2 text-sm`}
                           onClick={handleOptimizeTags}
                           disabled={isOptimizingTags || !isAiConfigured || !!activeOperation}
                         >
@@ -1732,7 +1740,7 @@ export default function VideoPage() {
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent>
-                                {activeOperation 
+                                {activeOperation
                                   ? `Wait for ${activeOperation} optimization to complete`
                                   : 'Configure AI provider in settings'}
                               </TooltipContent>
@@ -1821,9 +1829,9 @@ export default function VideoPage() {
                         Changed on {new Date(item.created_at).toLocaleString()}
                       </p>
                     </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => {
                         if (confirm('Are you sure you want to revert to this version? Any unsaved changes will be lost.')) {
                           handleRevert(item)
@@ -1877,10 +1885,10 @@ export default function VideoPage() {
               <CardTitle>Performance Metrics</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6">
-                                <div className="grid gap-6">
-                  {/* Core Stats Grid */}
-                  <div className="grid grid-cols-2 gap-6">
+              <div className="grid gap-4 md:gap-6">
+                <div className="grid gap-4 md:gap-6">
+                  {/* Core Stats Grid - Single Column on Mobile, 2 Columns on Tablet+ */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
                     <div className="space-y-4 bg-card p-4 rounded-lg border">
                       {/* Views */}
                       <div>

@@ -28,27 +28,27 @@ function Videos() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const initialPage = Number(searchParams?.get('page') || '1') || 1
-  const initialType = (searchParams?.get('type') as 'all'|'video'|'short'|'live') || 'all'
-  const initialStatus = (searchParams?.get('status') as 'all'|'public'|'private'|'unlisted') || 'all'
+  const initialType = (searchParams?.get('type') as 'all' | 'video' | 'short' | 'live') || 'all'
+  const initialStatus = (searchParams?.get('status') as 'all' | 'public' | 'private' | 'unlisted') || 'all'
   const [page, setPage] = useState(initialPage)
   const pageSize = 12
   const [totalCount, setTotalCount] = useState<number>(0)
   const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'short' | 'live'>(initialType)
-  const [statusFilter, setStatusFilter] = useState<'all'|'public'|'private'|'unlisted'>(initialStatus)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'public' | 'private' | 'unlisted'>(initialStatus)
 
   // keep state in sync if URL changes externally
   useEffect(() => {
     const sp = searchParams
     const p = Number(sp?.get('page') || '1') || 1
-    const t = (sp?.get('type') as 'all'|'video'|'short'|'live') || 'all'
-    const s = (sp?.get('status') as 'all'|'public'|'private'|'unlisted') || 'all'
+    const t = (sp?.get('type') as 'all' | 'video' | 'short' | 'live') || 'all'
+    const s = (sp?.get('status') as 'all' | 'public' | 'private' | 'unlisted') || 'all'
     if (p !== page) setPage(p)
     if (t !== typeFilter) setTypeFilter(t)
     if (s !== statusFilter) setStatusFilter(s)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams])
 
-  const updateUrl = (next: {page?: number, type?: 'all'|'video'|'short'|'live', status?: 'all'|'public'|'private'|'unlisted'}) => {
+  const updateUrl = (next: { page?: number, type?: 'all' | 'video' | 'short' | 'live', status?: 'all' | 'public' | 'private' | 'unlisted' }) => {
     const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
     const p = next.page ?? page
     const t = next.type ?? typeFilter
@@ -94,36 +94,36 @@ function Videos() {
           setShowSyncNotice(true)
           setTotalCount(0)
           setVideos([])
-      } else {
-        // Format the database videos to have better data
-        const formattedVideos = (data || []).map(video => ({
-          ...video,
-          title: video.title || "Untitled Video",
-          description: video.description ?
-            (video.description.length > 100 ? video.description.substring(0, 100) + "..." : video.description) :
-            "No description available",
-          published_at: video.published_at ?
-            (() => {
-              try {
-                const date = new Date(video.published_at)
-                return isNaN(date.getTime()) ? "Unknown date" : date.toLocaleDateString()
-              } catch (error) {
-                return "Unknown date"
-              }
-            })() : "Unknown date",
-          view_count: video.view_count || 0,
-          like_count: video.like_count || 0,
-          comment_count: video.comment_count || 0,
-          thumbnail_url: video.thumbnail_url || "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
-          // Add the fields that VideoCard expects
-          views: video.view_count || 0,
-          likes: video.like_count || 0,
-          comments: video.comment_count || 0,
-          publishedAt: video.published_at ? new Date(video.published_at).toLocaleDateString() : "Unknown date"
-        }))
-        setVideos(formattedVideos)
-        setTotalCount(count || 0)
-      }
+        } else {
+          // Format the database videos to have better data
+          const formattedVideos = (data || []).map(video => ({
+            ...video,
+            title: video.title || "Untitled Video",
+            description: video.description ?
+              (video.description.length > 100 ? video.description.substring(0, 100) + "..." : video.description) :
+              "No description available",
+            published_at: video.published_at ?
+              (() => {
+                try {
+                  const date = new Date(video.published_at)
+                  return isNaN(date.getTime()) ? "Unknown date" : date.toLocaleDateString()
+                } catch (error) {
+                  return "Unknown date"
+                }
+              })() : "Unknown date",
+            view_count: video.view_count || 0,
+            like_count: video.like_count || 0,
+            comment_count: video.comment_count || 0,
+            thumbnail_url: video.thumbnail_url || "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+            // Add the fields that VideoCard expects
+            views: video.view_count || 0,
+            likes: video.like_count || 0,
+            comments: video.comment_count || 0,
+            publishedAt: video.published_at ? new Date(video.published_at).toLocaleDateString() : "Unknown date"
+          }))
+          setVideos(formattedVideos)
+          setTotalCount(count || 0)
+        }
       } catch (error) {
         console.error('Error fetching videos:', error)
       } finally {
@@ -160,7 +160,7 @@ function Videos() {
         if (!res.ok) return
         const json = await res.json()
         if (!aborted) setNewCount(typeof json.newCount === 'number' ? json.newCount : 0)
-      } catch {}
+      } catch { }
     }
     if (!channelIsLoading) checkNew()
     return () => { aborted = true }
@@ -192,7 +192,7 @@ function Videos() {
   }
 
   return (
-    <div className="container py-6">
+    <div className="container py-4 px-4 md:py-6 md:px-6">
       {showSyncNotice && (
         <div className="mb-6">
           <Alert>
@@ -201,21 +201,62 @@ function Videos() {
               We couldn't find any saved videos for your connected channel. You can still explore with sample videos below, or sync your latest videos now.
             </AlertDescription>
             <div className="mt-4">
-              <Button onClick={handleSync}>Sync videos</Button>
+              <Button
+                onClick={handleSync}
+                className="bg-[#FF0000] hover:bg-[#CC0000] text-white"
+              >
+                Sync videos
+              </Button>
             </div>
           </Alert>
         </div>
       )}
-      <div className="mb-4 flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">Type:</span>
-        <Button variant={typeFilter === 'all' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('all'); updateUrl({page:1, type:'all'}) }}>All</Button>
-        <Button variant={typeFilter === 'video' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('video'); updateUrl({page:1, type:'video'}) }}>Videos</Button>
-        <Button variant={typeFilter === 'short' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('short'); updateUrl({page:1, type:'short'}) }}>Shorts</Button>
-        <Button variant={typeFilter === 'live' ? 'default' : 'outline'} size="sm" onClick={() => { setPage(1); setTypeFilter('live'); updateUrl({page:1, type:'live'}) }}>Live</Button>
-        <div className="ml-4 flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Status:</span>
-          <Select value={statusFilter} onValueChange={(v) => { const val = v as 'all'|'public'|'private'|'unlisted'; setPage(1); setStatusFilter(val); updateUrl({page:1, status: val}) }}>
-            <SelectTrigger className="w-[160px]">
+      {/* Filters - Premium horizontal layout on desktop, stacked on mobile */}
+      <div className="mb-6 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+        {/* Type Filters */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <span className="text-sm font-semibold text-foreground">Type:</span>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant={typeFilter === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setPage(1); setTypeFilter('all'); updateUrl({ page: 1, type: 'all' }) }}
+              className={typeFilter === 'all' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]' : 'hover:border-[#FF0000]/30'}
+            >
+              All
+            </Button>
+            <Button
+              variant={typeFilter === 'video' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setPage(1); setTypeFilter('video'); updateUrl({ page: 1, type: 'video' }) }}
+              className={typeFilter === 'video' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]' : 'hover:border-[#FF0000]/30'}
+            >
+              Videos
+            </Button>
+            <Button
+              variant={typeFilter === 'short' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setPage(1); setTypeFilter('short'); updateUrl({ page: 1, type: 'short' }) }}
+              className={typeFilter === 'short' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]' : 'hover:border-[#FF0000]/30'}
+            >
+              Shorts
+            </Button>
+            <Button
+              variant={typeFilter === 'live' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => { setPage(1); setTypeFilter('live'); updateUrl({ page: 1, type: 'live' }) }}
+              className={typeFilter === 'live' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]' : 'hover:border-[#FF0000]/30'}
+            >
+              Live
+            </Button>
+          </div>
+        </div>
+
+        {/* Status Filter */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <span className="text-sm font-semibold text-foreground">Status:</span>
+          <Select value={statusFilter} onValueChange={(v) => { const val = v as 'all' | 'public' | 'private' | 'unlisted'; setPage(1); setStatusFilter(val); updateUrl({ page: 1, status: val }) }}>
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="All Status" />
             </SelectTrigger>
             <SelectContent>
@@ -235,12 +276,17 @@ function Videos() {
               We detected new uploads on your channel. Sync to pull them into your workspace.
             </AlertDescription>
             <div className="mt-4">
-              <Button onClick={handleSync}>Sync now</Button>
+              <Button
+                onClick={handleSync}
+                className="bg-[#FF0000] hover:bg-[#CC0000] text-white"
+              >
+                Sync now
+              </Button>
             </div>
           </Alert>
         </div>
       )}
-      
+
       <VideoGrid videos={videos.map(video => ({
         id: video.id,
         thumbnail_url: video.thumbnail_url || '',

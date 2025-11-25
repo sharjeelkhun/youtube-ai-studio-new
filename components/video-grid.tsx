@@ -79,7 +79,7 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
       if (result.success) {
         // Refresh the videos list
         if (onVideoDeleted) {
-        onVideoDeleted()
+          onVideoDeleted()
         }
         toast.success(`Successfully synced ${result.videos.length} videos`)
       } else {
@@ -122,6 +122,7 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
 
   return (
     <div className="space-y-6">
+      {/* Search, Filter, and Sync - Single Row on Desktop */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <div className="relative">
@@ -147,7 +148,11 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
             </SelectContent>
           </Select>
         </div>
-        <Button onClick={handleSync} disabled={isSyncing} className="w-full sm:w-auto">
+        <Button
+          onClick={handleSync}
+          disabled={isSyncing}
+          className="w-full sm:w-auto bg-[#FF0000] hover:bg-[#CC0000] text-white shadow-sm transition-all hover:scale-105"
+        >
           {isSyncing ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -176,13 +181,13 @@ export function VideoGrid({ videos, onVideoDeleted }: VideoGridProps) {
         <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
           <h2 className="text-2xl font-bold">No videos found</h2>
           <p className="text-muted-foreground">
-            {searchQuery || statusFilter !== 'all' 
+            {searchQuery || statusFilter !== 'all'
               ? 'Try adjusting your search or filters'
               : 'Start by syncing your YouTube videos'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
           {filteredVideos.map((video) => (
             <VideoCard
               key={video.id}
