@@ -106,7 +106,7 @@ export function AIProviderSwitcher() {
 
     return (
         <>
-            {/* Edge Tab Trigger - Slides out from right edge */}
+            {/* Nano Edge Tab - Ultra compact, expands on hover */}
             <motion.div
                 className="fixed top-1/2 right-0 -translate-y-1/2 z-50"
                 initial={{ x: '100%' }}
@@ -115,30 +115,33 @@ export function AIProviderSwitcher() {
             >
                 <motion.button
                     onClick={() => setIsOpen(true)}
-                    className="group relative flex items-center gap-2 bg-gradient-to-l from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-lg hover:shadow-xl transition-all duration-300 rounded-l-2xl pr-4 pl-3 py-4"
-                    whileHover={{ x: -8 }}
+                    className="group relative flex items-center justify-start bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border border-r-0 border-red-200 dark:border-red-900/30 shadow-[0_0_20px_rgba(239,68,68,0.15)] hover:shadow-[0_0_30px_rgba(239,68,68,0.3)] transition-all duration-500 rounded-l-full py-2 pl-2 pr-1 overflow-hidden w-10 hover:w-32"
+                    whileHover={{ x: -4 }}
                     whileTap={{ scale: 0.95 }}
                 >
-                    {/* Glow effect */}
-                    <div className="absolute inset-0 bg-gradient-to-l from-red-400/50 to-red-500/50 rounded-l-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {/* Animated Gradient Border/Glow */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-                    <div className="relative flex items-center gap-2">
-                        {/* Vertical Text */}
-                        <div className="flex flex-col items-center gap-1">
-                            <Zap className="w-5 h-5" />
-                            <div className="writing-mode-vertical text-sm font-bold tracking-wider whitespace-nowrap">
-                                AI ENGINE
-                            </div>
-                        </div>
+                    {/* Icon Container */}
+                    <div className="relative z-10 w-8 h-8 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                        <Zap className="w-4 h-4 text-white fill-white" />
 
-                        {/* Arrow Indicator */}
-                        <motion.div
-                            animate={{ x: [0, -4, 0] }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
-                        >
-                            <ChevronRight className="w-5 h-5 rotate-180" />
-                        </motion.div>
+                        {/* Pulse Effect */}
+                        <div className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-20" />
                     </div>
+
+                    {/* Text Label - Reveals on Hover */}
+                    <div className="relative z-10 flex flex-col items-start ml-3 opacity-0 group-hover:opacity-100 transition-all duration-300 delay-75 whitespace-nowrap">
+                        <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider leading-none mb-0.5">
+                            AI Engine
+                        </span>
+                        <span className="text-[10px] font-medium text-gray-500 dark:text-gray-400 leading-none">
+                            Switch
+                        </span>
+                    </div>
+
+                    {/* Active Indicator Dot */}
+                    <div className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] opacity-100 group-hover:opacity-0 transition-opacity duration-300" />
                 </motion.button>
             </motion.div>
 
