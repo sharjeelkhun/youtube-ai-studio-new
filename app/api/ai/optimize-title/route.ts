@@ -1,14 +1,8 @@
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import { optimizeTitlePrompt } from "@/lib/prompts";
-import { trackUsage } from '@/lib/track-usage';
-
-type SupportedProviders = 'mistral';
-
-const allowedModels: Record<SupportedProviders, string> = {
-  mistral: "mistral-medium"
-};
+import { handleOpenAI, handleGemini, handleAnthropic, handleMistral } from "@/lib/ai-title-handlers";
+import { RateLimitTimeoutError } from '@/lib/rate-limiter';
 
 export async function POST(request: Request) {
   try {
@@ -22,20 +16,14 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title, description, provider } = await request.json() as {
-      title: string;
-      description: string;
-      provider: SupportedProviders;
-    };
+    const { title, description } = await request.json();
 
-    if (!title || !description || !provider) {
+    if (!title || !description) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
       );
     }
-
-    let optimizedTitle;
 
     // Get the profile with AI settings
     const { data: profile } = await supabase
@@ -51,6 +39,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const provider = profile.ai_provider;
+    if (!provider) {
+      return NextResponse.json(
+        { error: "No AI provider selected" },
+        { status: 400 }
+      );
+    }
+
     const apiKey = profile.ai_settings.apiKeys[provider];
     if (!apiKey) {
       return NextResponse.json(
@@ -59,61 +55,40 @@ export async function POST(request: Request) {
       );
     }
 
+    // Extract userId for rate limiting
+    const userId = session.user.id;
+    let optimizedTitle;
+
     try {
-      const { Mistral } = await import("@mistralai/mistralai");
-      const client = new Mistral({ apiKey });
-
-      await trackUsage('mistral', 'api_calls')
-
-      const response = await client.chat.complete({
-        model: allowedModels[provider] || "mistral-medium",
-        messages: [
-          {
-            role: "system",
-            content: "You are a YouTube title optimization expert. Your task is to create engaging, click-worthy titles while maintaining accuracy and clarity. Return only the optimized title with no additional formatting."
-          },
-          {
-            role: "user",
-            content: optimizeTitlePrompt(title, description)
-          }
-        ]
-      });
-
-      const content = response.choices[0]?.message?.content;
-      optimizedTitle = typeof content === 'string' ? content.trim() : '';
-
-      if (!optimizedTitle) {
-        throw new Error("Failed to generate optimized title");
+      switch (provider) {
+        case 'openai':
+          optimizedTitle = await handleOpenAI(apiKey, title, description, profile.ai_settings, userId);
+          break;
+        case 'anthropic':
+          optimizedTitle = await handleAnthropic(apiKey, title, description, profile.ai_settings, userId);
+          break;
+        case 'mistral':
+          optimizedTitle = await handleMistral(apiKey, title, description, profile.ai_settings, userId);
+          break;
+        case 'gemini':
+          optimizedTitle = await handleGemini(apiKey, title, description, profile.ai_settings, userId);
+          break;
+        default:
+          return NextResponse.json({ error: 'Unsupported AI provider' }, { status: 400 });
       }
-
-      if (response.usage) {
-        await trackUsage('mistral', 'content_generation', {
-          inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
-          outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
-          totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens || 
-            (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) + 
-            (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
-        })
-      } else {
-        const estimatedTokens = Math.ceil(optimizedTitle.length / 4)
-        await trackUsage('mistral', 'content_generation', {
-          totalTokens: estimatedTokens
-        })
-      }
-
-      // Clean up the response
-      optimizedTitle = optimizedTitle
-        .replace(/^["'`]+|["'`]+$/g, '') // Remove quotes
-        .replace(/\\n/g, '') // Remove newlines
-        .replace(/\*+/g, '') // Remove asterisks
-        .replace(/#+/g, '') // Remove hashtags
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .trim();
 
       return NextResponse.json({ optimizedTitle });
     } catch (error: any) {
       console.error("Error with AI provider:", error);
-      
+
+      // Handle rate limit timeout errors from centralized limiter
+      if (error instanceof RateLimitTimeoutError) {
+        return NextResponse.json({
+          error: error.message,
+          errorCode: 'rate_limit_timeout'
+        }, { status: 429 });
+      }
+
       const errorMessage = error?.message || String(error);
 
       // Handle rate limit errors (429)

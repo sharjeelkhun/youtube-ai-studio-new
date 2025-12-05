@@ -186,8 +186,14 @@ export default function VideoPage() {
     console.log(`[CONCURRENCY] Acquiring lock for operation: ${operation}`)
     setActiveOperation(operation)
     activeOperationStartTime.current = new Date()
+    refreshOperationLockTimeout(operation)
+  }
 
-    // Safety timeout: automatically clear lock after 5 minutes
+  /**
+   * Refreshes the safety timeout for the active operation lock.
+   * Call this when an operation is known to be still active (e.g. retrying).
+   */
+  const refreshOperationLockTimeout = (operation: string) => {
     if (operationLockTimeoutRef.current) {
       clearTimeout(operationLockTimeoutRef.current)
     }
@@ -1154,6 +1160,9 @@ export default function VideoPage() {
           setActiveToastId(null)
           handleAIGenerate()
         }, delayMs)
+
+        // Refresh the operation lock so it doesn't expire during the wait
+        refreshOperationLockTimeout('all')
 
         return
       }

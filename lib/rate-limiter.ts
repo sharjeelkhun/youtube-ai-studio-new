@@ -90,13 +90,13 @@ export class RateLimitTimeoutError extends Error {
  */
 export const PROVIDER_LIMITS: Record<string, ProviderLimits> = {
   gemini: {
-    capacity: 60,      // 60 requests per minute
-    refillRate: 1,     // 1 token per second
-    timeout: 15000,    // 15 seconds - longer timeout for higher capacity free tier
+    capacity: 15,      // 15 requests per minute (Free Tier limit)
+    refillRate: 15 / 60, // 0.25 tokens per second
+    timeout: 20000,    // 20 seconds - longer timeout to accommodate slower queue processing
   },
   anthropic: {
     capacity: 5,       // 5 requests per minute (free tier)
-    refillRate: 5/60,  // ~0.0833 tokens per second (5 per minute)
+    refillRate: 5 / 60,  // ~0.0833 tokens per second (5 per minute)
     timeout: 10000,    // 10 seconds - reasonable for restrictive free tier
   },
   openai: {
@@ -200,7 +200,7 @@ class RateLimiter {
       this.buckets.set(userId, new Map())
     }
     const userBuckets = this.buckets.get(userId)!
-    
+
     // Get or create the provider bucket
     if (!userBuckets.has(provider)) {
       const limits = PROVIDER_LIMITS[provider]
@@ -221,7 +221,7 @@ class RateLimiter {
       this.queues.set(userId, new Map())
     }
     const userQueues = this.queues.get(userId)!
-    
+
     // Get or create the provider queue
     if (!userQueues.has(provider)) {
       userQueues.set(provider, [])
@@ -238,14 +238,14 @@ class RateLimiter {
 
     while (queue.length > 0) {
       const canConsume = bucket.tryConsume()
-      
+
       if (!canConsume) {
         // No tokens available, schedule next check
         const nextDelay = Math.max(50, bucket.getWaitTime())
         const timeoutId = setTimeout(() => {
           this.processQueue(provider, userId)
         }, nextDelay)
-        
+
         // Get or create processor map for user
         if (!this.queueProcessors.has(userId)) {
           this.queueProcessors.set(userId, new Map())
@@ -285,7 +285,7 @@ class RateLimiter {
       const timeoutId = setTimeout(() => {
         this.processQueue(provider, userId)
       }, nextDelay)
-      
+
       // Get or create processor map for user
       if (!this.queueProcessors.has(userId)) {
         this.queueProcessors.set(userId, new Map())
@@ -303,7 +303,7 @@ class RateLimiter {
    */
   async acquireRateLimit(provider: string, userId: string, timeoutMs?: number): Promise<void> {
     const bucket = this.getBucket(provider, userId)
-    
+
     // Get provider-specific timeout configuration
     const defaultTimeout = PROVIDER_LIMITS[provider]?.timeout ?? 15000
     const effectiveTimeout = timeoutMs ?? defaultTimeout
@@ -380,10 +380,10 @@ class RateLimiter {
     const availableTokens = bucket.getAvailableTokens()
     const jobsNeeded = Math.max(0, queue.length + (availableTokens >= 1 ? 0 : 1) - availableTokens)
     const estimatedWaitMs = Math.ceil((jobsNeeded / limits.refillRate) * 1000)
-    
+
     // Calculate percentage available
     const percentAvailable = (availableTokens / limits.capacity) * 100
-    
+
     // Determine status
     let status: 'available' | 'limited' | 'exhausted'
     if (availableTokens > limits.capacity * 0.5) {
@@ -410,12 +410,12 @@ class RateLimiter {
    */
   getAllStatus(userId: string): Map<string, RateLimitStatus> {
     const statusMap = new Map<string, RateLimitStatus>()
-    
+
     // Check all known providers
     for (const provider of Object.keys(PROVIDER_LIMITS)) {
       statusMap.set(provider, this.getStatus(provider, userId))
     }
-    
+
     return statusMap
   }
 
@@ -439,11 +439,11 @@ class RateLimiter {
   getTimeUntilNextToken(provider: string, userId: string): number {
     const bucket = this.getBucket(provider, userId)
     const availableTokens = bucket.getAvailableTokens()
-    
+
     if (availableTokens >= 1) {
       return 0
     }
-    
+
     const limits = PROVIDER_LIMITS[provider]
     const tokensNeeded = 1 - availableTokens
     return Math.ceil((tokensNeeded / limits.refillRate) * 1000)
@@ -459,7 +459,7 @@ class RateLimiter {
       if (userBuckets) {
         userBuckets.delete(provider)
       }
-      
+
       const userQueues = this.queues.get(userId)
       if (userQueues) {
         const queue = userQueues.get(provider)
@@ -480,7 +480,7 @@ class RateLimiter {
     } else if (userId) {
       // Reset all providers for specific user
       this.buckets.delete(userId)
-      
+
       const userQueues = this.queues.get(userId)
       if (userQueues) {
         userQueues.forEach(queue => {
@@ -499,7 +499,7 @@ class RateLimiter {
       this.buckets.forEach(userBuckets => {
         userBuckets.delete(provider)
       })
-      
+
       this.queues.forEach(userQueues => {
         const queue = userQueues.get(provider)
         if (queue) {

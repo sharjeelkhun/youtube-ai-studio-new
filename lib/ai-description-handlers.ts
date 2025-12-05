@@ -40,6 +40,12 @@ export async function handleOpenAI(
   userId: string
 ): Promise<OptimizedContent> {
   const openai = new OpenAI({ apiKey })
+
+  // Dynamically get the best available model
+  const { getBestOpenAIModel } = await import('@/lib/openai-models')
+  const modelToUse = await getBestOpenAIModel(apiKey, settings.model)
+  console.log('[OPENAI-DESCRIPTION] Using model:', modelToUse, '(requested:', settings.model, ')')
+
   const prompt = OPTIMIZE_PROMPT
     .replace('{title}', title)
     .replace('{description}', description)
@@ -50,7 +56,7 @@ export async function handleOpenAI(
   await trackUsage('openai', 'api_calls')
 
   const response = await openai.chat.completions.create({
-    model: settings.model || 'gpt-4',
+    model: modelToUse,
     temperature: settings.temperature || 0.7,
     max_tokens: settings.maxTokens || 1000,
     messages: [{ role: 'user', content: prompt }]
@@ -88,6 +94,12 @@ export async function handleAnthropic(
   userId: string
 ): Promise<OptimizedContent> {
   const anthropic = new Anthropic({ apiKey })
+
+  // Dynamically get the best available model
+  const { getBestAnthropicModel } = await import('@/lib/anthropic-models')
+  const modelToUse = await getBestAnthropicModel(apiKey, settings.model)
+  console.log('[ANTHROPIC-DESCRIPTION] Using model:', modelToUse, '(requested:', settings.model, ')')
+
   const prompt = OPTIMIZE_PROMPT
     .replace('{title}', title)
     .replace('{description}', description)
@@ -98,7 +110,7 @@ export async function handleAnthropic(
   await trackUsage('anthropic', 'api_calls')
 
   const response = await anthropic.messages.create({
-    model: settings.model || 'claude-3-opus-20240229',
+    model: modelToUse,
     max_tokens: settings.maxTokens || 1000,
     temperature: settings.temperature || 0.7,
     messages: [{ role: 'user', content: prompt }]
@@ -158,8 +170,8 @@ export async function handleMistral(
     await trackUsage('mistral', 'content_generation', {
       inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
       outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
-      totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens || 
-        (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) + 
+      totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens ||
+        (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) +
         (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
     })
   } else {
@@ -189,28 +201,13 @@ export async function handleGemini(
   userId: string
 ): Promise<OptimizedContent> {
   const genAI = new GoogleGenerativeAI(apiKey)
-  
-  let modelToUse = settings.model
-  
-  // Validate model if provided
-  if (modelToUse && !isValidModel('gemini', modelToUse)) {
-    const fallback = getFallbackModel('gemini')
-    if (!fallback) {
-      throw new Error('No Gemini fallback model configured')
-    }
-    console.warn(`[GEMINI-DESCRIPTION] Invalid model '${modelToUse}', falling back to '${fallback}'`)
-    modelToUse = fallback
-  }
-  
-  // Use validated model or fallback
-  if (!modelToUse) {
-    const fallback = getFallbackModel('gemini')
-    if (!fallback) {
-      throw new Error('No Gemini fallback model configured')
-    }
-    modelToUse = fallback
-  }
-  
+
+  // Dynamically get the best available model for this API key
+  const { getBestGeminiModel } = await import('@/lib/gemini-models')
+  const modelToUse = await getBestGeminiModel(apiKey, settings.model)
+
+  console.log('[GEMINI-DESCRIPTION] Using model:', modelToUse, '(requested:', settings.model, ')')
+
   const model = genAI.getGenerativeModel({ model: modelToUse })
   const prompt = OPTIMIZE_PROMPT
     .replace('{title}', title)

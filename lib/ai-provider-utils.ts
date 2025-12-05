@@ -33,11 +33,11 @@ export async function getAIProvider(supabase: SupabaseClient) {
 
   // Extract API keys from ai_settings JSONB
   const apiKeys = profile.ai_settings?.apiKeys || {};
-  
+
   return {
     ai_provider: profile.ai_provider,
     openai_api_key: apiKeys.openai || null,
-    google_api_key: apiKeys.google || null,
+    google_api_key: apiKeys.gemini || apiKeys.google || null, // Support both 'gemini' and 'google'
     anthropic_api_key: apiKeys.anthropic || null,
     mistral_api_key: apiKeys.mistral || null,
   };
@@ -114,21 +114,21 @@ export async function getAiClient(supabase: SupabaseClient) {
 }
 
 export function getModel(provider: string): string {
-    switch (provider) {
-      case "openai":
-        return "gpt-4-turbo";
-      case "gemini":
-      case "google": // Support legacy "google" for backward compatibility
-        const geminiModel = getFallbackModel('gemini');
-        if (!geminiModel) {
-          throw new Error('No fallback model configured for Gemini');
-        }
-        return geminiModel;
-      case "anthropic":
-        return "claude-3-haiku-20240307";
-      case "mistral":
-        return "mistral-large-latest";
-      default:
-        throw new Error(`Unsupported AI provider: ${provider}`);
-    }
+  switch (provider) {
+    case "openai":
+      return "gpt-4-turbo";
+    case "gemini":
+    case "google": // Support legacy "google" for backward compatibility
+      const geminiModel = getFallbackModel('gemini');
+      if (!geminiModel) {
+        throw new Error('No fallback model configured for Gemini');
+      }
+      return geminiModel;
+    case "anthropic":
+      return "claude-3-haiku-20240307";
+    case "mistral":
+      return "mistral-large-latest";
+    default:
+      throw new Error(`Unsupported AI provider: ${provider}`);
+  }
 }

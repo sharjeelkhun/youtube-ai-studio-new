@@ -4,6 +4,7 @@ import type React from "react"
 import { DashboardProvider } from "@/components/dashboard-provider"
 import { DashboardSidebar as Sidebar } from "@/components/dashboard/sidebar"
 import { TopBar } from "@/components/dashboard/top-bar"
+import { AIProviderSwitcher } from "@/components/ai-provider-switcher"
 import {
   Sidebar as AppSidebar,
   SidebarInset,
@@ -92,6 +93,7 @@ export default function DashboardLayout({
             </main>
           </div>
           <Toaster />
+          <AIProviderSwitcher />
         </SidebarInset>
       </div>
     </DashboardProvider>

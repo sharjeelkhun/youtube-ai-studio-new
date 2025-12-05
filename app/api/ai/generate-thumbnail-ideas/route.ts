@@ -52,14 +52,21 @@ const parseJsonResponse = (text: string) => {
 // Helper function for Gemini
 const handleGemini = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: settings.defaultModel })
+
+  // Dynamically get the best available model for this API key
+  const { getBestGeminiModel } = await import('@/lib/gemini-models')
+  const modelToUse = await getBestGeminiModel(apiKey, settings.defaultModel)
+
+  console.log('[GEMINI-THUMBNAIL-IDEAS] Using model:', modelToUse, '(requested:', settings.defaultModel, ')')
+
+  const model = genAI.getGenerativeModel({ model: modelToUse })
   const prompt = getPrompt(title, description)
-  
+
   // Acquire rate limit token before making API call
   await acquireRateLimit('gemini', userId)
-  
+
   await trackUsage('gemini', 'api_calls')
-  
+
   const result = await model.generateContent({
     contents: [{ role: 'user', parts: [{ text: prompt }] }],
     generationConfig: {
@@ -68,26 +75,31 @@ const handleGemini = async (apiKey: string, title: string, description: string, 
   })
   const response = await result.response
   const text = response.text()
-  
+
   const estimatedTokens = Math.ceil(text.length / 4)
   await trackUsage('gemini', 'content_generation', {
     totalTokens: estimatedTokens
   })
-  
+
   return parseJsonResponse(text)
 }
 
 // Helper function for OpenAI
 const handleOpenAI = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const openai = new OpenAI({ apiKey })
-  
+
+  // Dynamically get the best available model
+  const { getBestOpenAIModel } = await import('@/lib/openai-models')
+  const modelToUse = await getBestOpenAIModel(apiKey, settings.defaultModel)
+  console.log('[OPENAI-THUMBNAIL-IDEAS] Using model:', modelToUse, '(requested:', settings.defaultModel, ')')
+
   // Acquire rate limit token before making API call
   await acquireRateLimit('openai', userId)
-  
+
   await trackUsage('openai', 'api_calls')
-  
+
   const completion = await openai.chat.completions.create({
-    model: settings.defaultModel,
+    model: modelToUse,
     temperature: temperatureMap[settings.temperature],
     messages: [
       {
@@ -101,7 +113,7 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
     ],
     response_format: { type: 'json_object' }
   })
-  
+
   if (completion.usage) {
     await trackUsage('openai', 'content_generation', {
       inputTokens: completion.usage.prompt_tokens,
@@ -111,7 +123,7 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
   } else {
     await trackUsage('openai', 'content_generation')
   }
-  
+
   const text = completion.choices[0].message.content
   if (!text) {
     throw new Error('OpenAI returned an empty response.')
@@ -122,14 +134,19 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
 // Helper function for Anthropic
 const handleAnthropic = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const anthropic = new Anthropic({ apiKey })
-  
+
+  // Dynamically get the best available model
+  const { getBestAnthropicModel } = await import('@/lib/anthropic-models')
+  const modelToUse = await getBestAnthropicModel(apiKey, settings.defaultModel)
+  console.log('[ANTHROPIC-THUMBNAIL-IDEAS] Using model:', modelToUse, '(requested:', settings.defaultModel, ')')
+
   // Acquire rate limit token before making API call
   await acquireRateLimit('anthropic', userId)
-  
+
   await trackUsage('anthropic', 'api_calls')
-  
+
   const msg = await anthropic.messages.create({
-    model: settings.defaultModel,
+    model: modelToUse,
     temperature: temperatureMap[settings.temperature],
     max_tokens: 1024,
     messages: [
@@ -164,14 +181,19 @@ const handleAnthropic = async (apiKey: string, title: string, description: strin
 // Helper function for Mistral
 const handleMistral = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const mistral = new Mistral({ apiKey })
-  
+
+  // Dynamically get the best available model
+  const { getBestMistralModel } = await import('@/lib/mistral-models')
+  const modelToUse = await getBestMistralModel(apiKey, settings.defaultModel)
+  console.log('[MISTRAL-THUMBNAIL-IDEAS] Using model:', modelToUse, '(requested:', settings.defaultModel, ')')
+
   // Acquire rate limit token before making API call
   await acquireRateLimit('mistral', userId)
-  
+
   await trackUsage('mistral', 'api_calls')
-  
+
   const response = await mistral.chat.complete({
-    model: settings.defaultModel,
+    model: modelToUse,
     temperature: temperatureMap[settings.temperature],
     messages: [
       {
@@ -190,8 +212,8 @@ const handleMistral = async (apiKey: string, title: string, description: string,
     await trackUsage('mistral', 'content_generation', {
       inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
       outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
-      totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens || 
-        (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) + 
+      totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens ||
+        (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) +
         (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
     })
   } else {

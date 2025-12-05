@@ -28,7 +28,7 @@ const parseTags = (response: string): string[] => {
     if (Array.isArray(parsed)) {
       return parsed.map(tag => tag.trim()).filter(tag => tag.length > 0)
     }
-  } catch {}
+  } catch { }
 
   // Try extracting array-like content
   const match = response.match(/\[(.*)\]/)
@@ -48,7 +48,14 @@ const parseTags = (response: string): string[] => {
 
 const handleGemini = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const genAI = new GoogleGenerativeAI(apiKey)
-  const model = genAI.getGenerativeModel({ model: settings.defaultModel })
+
+  // Dynamically get the best available model for this API key
+  const { getBestGeminiModel } = await import('@/lib/gemini-models')
+  const modelToUse = await getBestGeminiModel(apiKey, settings.defaultModel)
+
+  console.log('[GEMINI-TAGS] Using model:', modelToUse, '(requested:', settings.defaultModel, ')')
+
+  const model = genAI.getGenerativeModel({ model: modelToUse })
   const prompt = `You are a YouTube SEO expert. Generate optimized tags for this video to maximize discoverability.
   Video Title: "${title}"
   Video Description: "${description}"
@@ -61,34 +68,39 @@ const handleGemini = async (apiKey: string, title: string, description: string, 
   5. Total character count under 500
   
   Return only a JSON array of tags, like this format: ["tag1", "tag2", "tag3"]`
-  
+
   // Acquire rate limit token before making API call
   await acquireRateLimit('gemini', userId)
-  
+
   await trackUsage('gemini', 'api_calls')
-  
+
   const result = await model.generateContent(prompt)
   const response = await result.response
   const tags = parseTags(response.text())
-  
+
   const estimatedTokens = Math.ceil(response.text().length / 4)
   await trackUsage('gemini', 'content_generation', {
     totalTokens: estimatedTokens
   })
-  
+
   return { tags }
 }
 
 const handleOpenAI = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const openai = new OpenAI({ apiKey })
-  
+
+  // Dynamically get the best available model
+  const { getBestOpenAIModel } = await import('@/lib/openai-models')
+  const modelToUse = await getBestOpenAIModel(apiKey, settings.defaultModel)
+  console.log('[OPENAI-TAGS] Using model:', modelToUse, '(requested:', settings.defaultModel, ')')
+
   // Acquire rate limit token before making API call
   await acquireRateLimit('openai', userId)
-  
+
   await trackUsage('openai', 'api_calls')
-  
+
   const completion = await openai.chat.completions.create({
-    model: settings.defaultModel,
+    model: modelToUse,
     temperature: temperatureMap[settings.temperature],
     messages: [
       {
@@ -136,14 +148,19 @@ const handleOpenAI = async (apiKey: string, title: string, description: string, 
 
 const handleAnthropic = async (apiKey: string, title: string, description: string, settings: AiSettings, userId: string) => {
   const anthropic = new Anthropic({ apiKey })
-  
+
+  // Dynamically get the best available model
+  const { getBestAnthropicModel } = await import('@/lib/anthropic-models')
+  const modelToUse = await getBestAnthropicModel(apiKey, settings.defaultModel)
+  console.log('[ANTHROPIC-TAGS] Using model:', modelToUse, '(requested:', settings.defaultModel, ')')
+
   // Acquire rate limit token before making API call
   await acquireRateLimit('anthropic', userId)
-  
+
   await trackUsage('anthropic', 'api_calls')
-  
+
   const msg = await anthropic.messages.create({
-    model: settings.defaultModel,
+    model: modelToUse,
     temperature: temperatureMap[settings.temperature],
     max_tokens: 200,
     messages: [
@@ -191,13 +208,18 @@ const handleMistral = async (apiKey: string, title: string, description: string,
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
+      // Dynamically get the best available model
+      const { getBestMistralModel } = await import('@/lib/mistral-models')
+      const modelToUse = await getBestMistralModel(apiKey, settings.defaultModel)
+      console.log('[MISTRAL-TAGS] Using model:', modelToUse, '(requested:', settings.defaultModel, ')')
+
       // Acquire rate limit token before making API call
       await acquireRateLimit('mistral', userId)
-      
+
       await trackUsage('mistral', 'api_calls')
-      
+
       const response = await mistral.chat.complete({
-        model: settings.defaultModel,
+        model: modelToUse,
         temperature: temperatureMap[settings.temperature],
         messages: [
           {
@@ -224,13 +246,13 @@ const handleMistral = async (apiKey: string, title: string, description: string,
       if (typeof text !== 'string') {
         throw new Error('Mistral AI returned a response in an unexpected format.')
       }
-      
+
       if (response.usage) {
         await trackUsage('mistral', 'content_generation', {
           inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
           outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
-          totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens || 
-            (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) + 
+          totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens ||
+            (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) +
             (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
         })
       } else {
@@ -239,17 +261,17 @@ const handleMistral = async (apiKey: string, title: string, description: string,
           totalTokens: estimatedTokens
         })
       }
-      
+
       return { tags: parseTags(text) }
     } catch (error: any) {
       lastError = error;
-      if (error.type === 'service_tier_capacity_exceeded' || 
-          error.code === '3505' || 
-          error.response?.status === 429 || 
-          /rate.*limit|quota|capacity/i.test(error.message)) {
+      if (error.type === 'service_tier_capacity_exceeded' ||
+        error.code === '3505' ||
+        error.response?.status === 429 ||
+        /rate.*limit|quota|capacity/i.test(error.message)) {
         // If this is the last attempt, throw the error
         if (attempt === maxRetries - 1) throw error;
-        
+
         // Wait for 5 seconds before retrying
         await delay(5000 * (attempt + 1));
         continue;
@@ -257,7 +279,7 @@ const handleMistral = async (apiKey: string, title: string, description: string,
       throw error;
     }
   }
-  
+
   throw lastError;
 }
 
@@ -297,8 +319,8 @@ export async function POST(req: Request) {
 
     const apiKey = profile.settings.apiKeys[profile.provider]
     if (!apiKey) {
-      return NextResponse.json({ 
-        error: `API key for ${profile.provider} not found. Please add your ${profile.provider} API key in settings.` 
+      return NextResponse.json({
+        error: `API key for ${profile.provider} not found. Please add your ${profile.provider} API key in settings.`
       }, { status: 400 })
     }
 
@@ -353,9 +375,9 @@ export async function POST(req: Request) {
 
     // Handle rate limit errors (429)
     if (/429|rate.?limit|too many requests|quota exceeded|capacity/i.test(errorMessage) ||
-        error.type === 'service_tier_capacity_exceeded' || 
-        error.code === '3505' ||
-        error.response?.status === 429) {
+      error.type === 'service_tier_capacity_exceeded' ||
+      error.code === '3505' ||
+      error.response?.status === 429) {
       return NextResponse.json({
         error: `Your AI provider is currently rate limited. Please wait a moment and try again.`,
         errorCode: 'rate_limit_error'
@@ -379,8 +401,8 @@ export async function POST(req: Request) {
 
       // Handle JSON parsing errors more gracefully
       if (/JSON/.test(errorMsg)) {
-        return NextResponse.json({ 
-          error: 'Failed to parse AI response. Please try again.' 
+        return NextResponse.json({
+          error: 'Failed to parse AI response. Please try again.'
         }, { status: 500 })
       }
 

@@ -100,14 +100,14 @@ export function AISettings() {
   // Handle countdown timer for Gemini rate limit reset
   useEffect(() => {
     if (
-      selectedProvider === 'gemini' && 
-      providerUsage && 
-      (providerUsage as any).error && 
+      selectedProvider === 'gemini' &&
+      providerUsage &&
+      (providerUsage as any).error &&
       /rate.?limit/i.test((providerUsage as any).error)
     ) {
       // Start with a 60 second countdown
       setRemainingResetTime(60)
-      
+
       // Update countdown every second
       const interval = setInterval(() => {
         setRemainingResetTime(prev => {
@@ -120,7 +120,7 @@ export function AISettings() {
           return prev - 1
         })
       }, 1000)
-      
+
       return () => clearInterval(interval)
     } else {
       setRemainingResetTime(null)
@@ -135,69 +135,69 @@ export function AISettings() {
    */
   const validateApiKeyFormat = (provider: string, apiKey: string): { valid: boolean; error?: string } => {
     const trimmedKey = apiKey.trim()
-    
-    console.log('[AI-SETTINGS] Validating API key format:', { 
-      provider, 
-      keyLength: trimmedKey.length, 
-      keyPrefix: trimmedKey.substring(0, 4) + '...' 
+
+    console.log('[AI-SETTINGS] Validating API key format:', {
+      provider,
+      keyLength: trimmedKey.length,
+      keyPrefix: trimmedKey.substring(0, 4) + '...'
     })
 
     switch (provider) {
       case 'openai':
         if (!trimmedKey.startsWith('sk-') || trimmedKey.length < 40) {
-          console.error('[AI-SETTINGS] API key validation failed:', { 
-            provider, 
-            hasPrefix: trimmedKey.startsWith('sk-'), 
-            length: trimmedKey.length, 
-            required: 40 
+          console.error('[AI-SETTINGS] API key validation failed:', {
+            provider,
+            hasPrefix: trimmedKey.startsWith('sk-'),
+            length: trimmedKey.length,
+            required: 40
           })
-          return { 
-            valid: false, 
-            error: 'Invalid OpenAI API key format. Key must start with "sk-" and be at least 40 characters long.' 
+          return {
+            valid: false,
+            error: 'Invalid OpenAI API key format. Key must start with "sk-" and be at least 40 characters long.'
           }
         }
         break
-      
+
       case 'anthropic':
         if (!trimmedKey.startsWith('sk-ant-') || trimmedKey.length < 40) {
-          console.error('[AI-SETTINGS] API key validation failed:', { 
-            provider, 
-            hasPrefix: trimmedKey.startsWith('sk-ant-'), 
-            length: trimmedKey.length, 
-            required: 40 
+          console.error('[AI-SETTINGS] API key validation failed:', {
+            provider,
+            hasPrefix: trimmedKey.startsWith('sk-ant-'),
+            length: trimmedKey.length,
+            required: 40
           })
-          return { 
-            valid: false, 
-            error: 'Invalid Anthropic API key format. Key must start with "sk-ant-" and be at least 40 characters long.' 
+          return {
+            valid: false,
+            error: 'Invalid Anthropic API key format. Key must start with "sk-ant-" and be at least 40 characters long.'
           }
         }
         break
-      
+
       case 'gemini':
         if (!trimmedKey.startsWith('AIza') || trimmedKey.length < 30) {
-          console.error('[AI-SETTINGS] API key validation failed:', { 
-            provider, 
-            hasPrefix: trimmedKey.startsWith('AIza'), 
-            length: trimmedKey.length, 
-            required: 30 
+          console.error('[AI-SETTINGS] API key validation failed:', {
+            provider,
+            hasPrefix: trimmedKey.startsWith('AIza'),
+            length: trimmedKey.length,
+            required: 30
           })
-          return { 
-            valid: false, 
-            error: 'Invalid Gemini API key format. Key must start with "AIza" and be at least 30 characters long.' 
+          return {
+            valid: false,
+            error: 'Invalid Gemini API key format. Key must start with "AIza" and be at least 30 characters long.'
           }
         }
         break
-      
+
       case 'mistral':
         if (trimmedKey.length < 32) {
-          console.error('[AI-SETTINGS] API key validation failed:', { 
-            provider, 
-            length: trimmedKey.length, 
-            required: 32 
+          console.error('[AI-SETTINGS] API key validation failed:', {
+            provider,
+            length: trimmedKey.length,
+            required: 32
           })
-          return { 
-            valid: false, 
-            error: 'Invalid Mistral API key format. Key must be at least 32 characters long.' 
+          return {
+            valid: false,
+            error: 'Invalid Mistral API key format. Key must be at least 32 characters long.'
           }
         }
         break
@@ -267,15 +267,15 @@ export function AISettings() {
 
       // Check data.ok first, before checking response.ok
       if (!data.ok) {
-        console.error('[AI-SETTINGS] Provider change validation error:', { 
-          provider: providerId, 
-          errorCode: data.errorCode, 
-          error: data.error 
+        console.error('[AI-SETTINGS] Provider change validation error:', {
+          provider: providerId,
+          errorCode: data.errorCode,
+          error: data.error
         })
-        
+
         // Handle error based on errorCode
         const providerConfig2 = aiProviders.find(p => p.id === providerId)
-        
+
         if (data.errorCode === 'rate_limit') {
           toast.error(data.error || `${providerConfig2?.name} API rate limit exceeded`)
           setBillingErrorProvider(providerId)
@@ -301,10 +301,10 @@ export function AISettings() {
           setBillingErrorProvider(providerId)
           toast.error(data.error || `Billing error with ${providerConfig2?.name}`)
         } else {
-          console.error('[AI-SETTINGS] Validation error:', { 
-            errorCode: data.errorCode, 
-            error: data.error, 
-            suggestion: data.suggestion 
+          console.error('[AI-SETTINGS] Validation error:', {
+            errorCode: data.errorCode,
+            error: data.error,
+            suggestion: data.suggestion
           })
           toast.error(data.error || 'Validation failed')
           if (data.suggestion) {
@@ -317,7 +317,7 @@ export function AISettings() {
       // Success case - both response.ok and data.ok are true
       // Show detailed success message with model and remaining requests
       const providerConfig3 = aiProviders.find(p => p.id === providerId)
-      const successMessage = data.message || 
+      const successMessage = data.message ||
         `Successfully validated ${providerConfig3?.name || providerId}${data.model ? ` with model '${data.model}'` : ''}. ${data.rateLimitStatus?.available || 0} requests remaining.`
       toast.success(successMessage)
     } catch (error) {
@@ -334,18 +334,18 @@ export function AISettings() {
     }
 
     console.log('[AI-SETTINGS] Testing connection for provider:', selectedProvider)
-    console.log('[AI-SETTINGS] API key metadata:', { 
-      provider: selectedProvider, 
-      keyLength: apiKey.length, 
-      keyPrefix: apiKey.substring(0, 4) + '...' 
+    console.log('[AI-SETTINGS] API key metadata:', {
+      provider: selectedProvider,
+      keyLength: apiKey.length,
+      keyPrefix: apiKey.substring(0, 4) + '...'
     })
-    console.log('[AI-SETTINGS] Using settings:', { 
-      model: aiSettings.defaultModel, 
-      temperature: aiSettings.temperature 
+    console.log('[AI-SETTINGS] Using settings:', {
+      model: aiSettings.defaultModel,
+      temperature: aiSettings.temperature
     })
 
     setIsTesting(true)
-    
+
     try {
       const provider = aiProviders.find(p => p.id === selectedProvider)
       if (!provider) {
@@ -380,12 +380,12 @@ export function AISettings() {
 
       // Check data.ok first
       if (!data.ok) {
-        console.error('[AI-SETTINGS] Test connection failed:', { 
-          errorCode: data.errorCode, 
-          error: data.error, 
-          provider: selectedProvider 
+        console.error('[AI-SETTINGS] Test connection failed:', {
+          errorCode: data.errorCode,
+          error: data.error,
+          provider: selectedProvider
         })
-        
+
         // Handle error based on errorCode
         if (data.errorCode === 'rate_limit') {
           toast.error(data.error || `${provider.name} API rate limit exceeded`)
@@ -411,10 +411,10 @@ export function AISettings() {
             toast.info(data.suggestion)
           }
         } else {
-          console.error('[AI-SETTINGS] Validation error:', { 
-            errorCode: data.errorCode, 
-            error: data.error, 
-            suggestion: data.suggestion 
+          console.error('[AI-SETTINGS] Validation error:', {
+            errorCode: data.errorCode,
+            error: data.error,
+            suggestion: data.suggestion
           })
           toast.error(data.error || 'Validation failed')
           if (data.suggestion) {
@@ -425,19 +425,19 @@ export function AISettings() {
       }
 
       // Success case
-      console.log('[AI-SETTINGS] Test connection successful:', { 
-        provider: selectedProvider, 
-        model: data.model, 
-        available: data.rateLimitStatus?.available 
+      console.log('[AI-SETTINGS] Test connection successful:', {
+        provider: selectedProvider,
+        model: data.model,
+        available: data.rateLimitStatus?.available
       })
-      const successMessage = data.message || 
+      const successMessage = data.message ||
         `Successfully validated ${provider.name}${data.model ? ` with model '${data.model}'` : ''}. ${data.rateLimitStatus?.available || 0} requests remaining.`
       toast.success(successMessage)
     } catch (error) {
-      console.error('[AI-SETTINGS] Network or unexpected error during test:', { 
-        error: error instanceof Error ? error.message : String(error), 
-        stack: error instanceof Error ? error.stack : undefined, 
-        provider: selectedProvider 
+      console.error('[AI-SETTINGS] Network or unexpected error during test:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        provider: selectedProvider
       })
       toast.error('Failed to test connection. Please check your internet connection and try again.')
       toast.info('If the problem persists, verify your API key format and check the browser console for details.', { duration: 7000 })
@@ -451,8 +451,21 @@ export function AISettings() {
     try {
       await updateProfile({
         ai_provider: selectedProvider,
-        ai_settings: { ...profile?.ai_settings, apiKeys },
+        ai_settings: {
+          ...profile?.ai_settings,
+          apiKeys,
+          features: aiSettings  // Save model and temperature settings
+        },
       })
+
+      // Notify other components about provider change
+      window.dispatchEvent(new CustomEvent('ai-provider-changed', {
+        detail: { provider: selectedProvider }
+      }))
+
+      // Set storage flag for cross-tab sync
+      localStorage.setItem('ai_provider_changed', Date.now().toString())
+
       toast.success("API settings saved successfully!")
     } catch (error) {
       toast.error("Failed to save API settings.")
@@ -554,8 +567,8 @@ export function AISettings() {
                       value={apiKeys[currentProviderConfig.id] || ""}
                       onChange={(e) => handleApiKeyChange(currentProviderConfig.id, e.target.value)}
                     />
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       onClick={handleTestConnection}
                       disabled={isTesting || !apiKeys[currentProviderConfig.id]}
                     >
@@ -616,16 +629,15 @@ export function AISettings() {
                       {rateLimiterStatus.available} / {rateLimiterStatus.capacity}
                     </span>
                   </div>
-                  
+
                   {/* Progress Bar */}
                   <div className="space-y-1">
                     <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                      <div 
-                        className={`h-full transition-all ${
-                          rateLimiterStatus.status === 'available' ? 'bg-green-500' :
+                      <div
+                        className={`h-full transition-all ${rateLimiterStatus.status === 'available' ? 'bg-green-500' :
                           rateLimiterStatus.status === 'limited' ? 'bg-yellow-500' :
-                          'bg-red-500'
-                        }`}
+                            'bg-red-500'
+                          }`}
                         style={{ width: `${rateLimiterStatus.percentAvailable}%` }}
                       />
                     </div>
@@ -633,8 +645,8 @@ export function AISettings() {
                       <span>{rateLimiterStatus.percentAvailable}% available</span>
                       <Badge variant={
                         rateLimiterStatus.status === 'available' ? 'default' :
-                        rateLimiterStatus.status === 'limited' ? 'secondary' :
-                        'destructive'
+                          rateLimiterStatus.status === 'limited' ? 'secondary' :
+                            'destructive'
                       }>
                         {rateLimiterStatus.status}
                       </Badge>
@@ -692,7 +704,7 @@ export function AISettings() {
               <Button variant="link" className="p-0 h-auto mt-2" onClick={() => setBillingErrorProvider(null)}>Dismiss</Button>
             </Alert>
           )}
-          
+
           {/* Show loader only on first load when no data exists */}
           {providerLoading && !providerUsage ? (
             <div className="flex justify-center items-center h-24">
@@ -704,8 +716,8 @@ export function AISettings() {
               <AlertTitle>Error</AlertTitle>
               <AlertDescription>
                 <div>
-                  {typeof providerError === 'string' ? providerError : 
-                   (providerUsage as any)?.error || 'API key not configured'}
+                  {typeof providerError === 'string' ? providerError :
+                    (providerUsage as any)?.error || 'API key not configured'}
                 </div>
               </AlertDescription>
               <Button variant="outline" size="sm" className="mt-2" onClick={() => refetchProvider()}>
@@ -716,36 +728,35 @@ export function AISettings() {
             <div className="space-y-6">
               {/* Show error message if provider has error */}
               {(providerUsage as any).error && (
-                <Alert 
-                  variant="destructive" 
-                  className={`mb-4 ${
-                    /rate.?limit/i.test((providerUsage as any).error) 
-                      ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950" 
-                      : /credit|balance|billing/i.test((providerUsage as any).error)
+                <Alert
+                  variant="destructive"
+                  className={`mb-4 ${/rate.?limit/i.test((providerUsage as any).error)
+                    ? "border-yellow-500 bg-yellow-50 dark:bg-yellow-950"
+                    : /credit|balance|billing/i.test((providerUsage as any).error)
                       ? "border-orange-500 bg-orange-50 dark:bg-orange-950"
                       : ""
-                  }`}
+                    }`}
                 >
                   <Info className="h-4 w-4" />
                   <AlertTitle>
-                    {/rate.?limit/i.test((providerUsage as any).error) 
-                      ? "Rate Limited" 
+                    {/rate.?limit/i.test((providerUsage as any).error)
+                      ? "Rate Limited"
                       : /credit|balance|billing/i.test((providerUsage as any).error)
-                      ? "Billing Issue"
-                      : "Provider Status"}
+                        ? "Billing Issue"
+                        : "Provider Status"}
                   </AlertTitle>
                   <AlertDescription>
                     {(providerUsage as any).error}
-                    
+
                     {/rate.?limit/i.test((providerUsage as any).error) && selectedProvider === 'gemini' && (
                       <p className="mt-1 text-sm">Gemini's free tier resets every 60 seconds.</p>
                     )}
-                    
+
                     {/credit|balance|billing/i.test((providerUsage as any).error) && selectedProvider === 'anthropic' && (
                       <p className="mt-1 text-sm">
-                        <a 
-                          href="https://console.anthropic.com/settings/billing" 
-                          target="_blank" 
+                        <a
+                          href="https://console.anthropic.com/settings/billing"
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="underline"
                         >
@@ -777,17 +788,17 @@ export function AISettings() {
                 <div className="space-y-4">
                   {/* Debug logging for troubleshooting */}
                   {(() => {
-                    console.log('[AI-SETTINGS] Provider usage data:', { 
-                      provider: selectedProvider, 
-                      error: (providerUsage as any)?.error, 
-                      quota: (providerUsage as any)?.quota, 
+                    console.log('[AI-SETTINGS] Provider usage data:', {
+                      provider: selectedProvider,
+                      error: (providerUsage as any)?.error,
+                      quota: (providerUsage as any)?.quota,
                       isStatic: (providerUsage as any)?.isStatic,
                       trackingAvailable: (providerUsage as any)?.trackingAvailable,
                       errorIsInformational: isInformationalMessage((providerUsage as any)?.error)
                     });
                     return null;
                   })()}
-                  
+
                   {/* Check if provider has usage tracking unavailable using trackingAvailable flag or informational error */}
                   {(providerUsage as any).trackingAvailable === false || isInformationalMessage((providerUsage as any)?.error) ? (
                     <div className="space-y-3">
@@ -798,9 +809,9 @@ export function AISettings() {
                           {selectedProvider === 'gemini' && (
                             <>
                               Gemini API does not provide programmatic usage data. Monitor your usage in{' '}
-                              <a 
-                                href="https://aistudio.google.com/" 
-                                target="_blank" 
+                              <a
+                                href="https://aistudio.google.com/"
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="font-medium underline"
                               >
@@ -811,9 +822,9 @@ export function AISettings() {
                           {selectedProvider === 'mistral' && (
                             <>
                               Mistral API does not provide programmatic usage data. Monitor your usage in{' '}
-                              <a 
-                                href="https://console.mistral.ai/usage" 
-                                target="_blank" 
+                              <a
+                                href="https://console.mistral.ai/usage"
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="font-medium underline"
                               >
@@ -824,9 +835,9 @@ export function AISettings() {
                           {selectedProvider === 'anthropic' && (
                             <>
                               Usage tracking may not be available via API. Monitor your usage in{' '}
-                              <a 
-                                href="https://console.anthropic.com/settings/billing" 
-                                target="_blank" 
+                              <a
+                                href="https://console.anthropic.com/settings/billing"
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="font-medium underline"
                               >
@@ -850,54 +861,52 @@ export function AISettings() {
                         <span>{selectedProvider === 'gemini' ? 'Requests Today' : 'Tokens Used'}</span>
                         <span className="font-medium">
                           {/* For providers with static limits or billing/auth issues, show appropriate message */}
-                          {(providerUsage as any).error && /credit|balance|billing|unauthorized|invalid/i.test((providerUsage as any).error) 
-                            ? "0" 
+                          {(providerUsage as any).error && /credit|balance|billing|unauthorized|invalid/i.test((providerUsage as any).error)
+                            ? "0"
                             : selectedProvider === 'gemini'
-                            ? `${(providerUsage as any).usage?.used || 0} requests`
-                            : `${(providerUsage as any).quota?.usedTokens ?? 0} / ${(providerUsage as any).quota?.totalTokens ?? (
-                                selectedProvider === 'mistral' ? 50000 : 
-                                selectedProvider === 'anthropic' ? 10000 : 0
+                              ? `${(providerUsage as any).usage?.used || 0} requests`
+                              : `${(providerUsage as any).quota?.usedTokens ?? 0} / ${(providerUsage as any).quota?.totalTokens ?? (
+                                selectedProvider === 'mistral' ? 50000 :
+                                  selectedProvider === 'anthropic' ? 10000 : 0
                               )}`
                           }
                         </span>
                       </div>
                       <div className="h-2 rounded-full bg-muted overflow-hidden">
                         <div
-                          className={`h-2 rounded-full transition-all ${
-                            (providerUsage as any).error && /rate.?limit/i.test((providerUsage as any).error) 
-                              ? 'bg-yellow-500' 
-                              : (providerUsage as any).error && /credit|balance|billing/i.test((providerUsage as any).error)
+                          className={`h-2 rounded-full transition-all ${(providerUsage as any).error && /rate.?limit/i.test((providerUsage as any).error)
+                            ? 'bg-yellow-500'
+                            : (providerUsage as any).error && /credit|balance|billing/i.test((providerUsage as any).error)
                               ? 'bg-orange-500'
                               : 'bg-primary'
-                          }`}
+                            }`}
                           style={{
                             width: `${
                               // If billing error, show empty bar
                               (providerUsage as any).error && /credit|balance|billing|unauthorized|invalid/i.test((providerUsage as any).error)
-                              ? 0
-                              // If rate limited, show full bar
-                              : (providerUsage as any).error && /rate.?limit/i.test((providerUsage as any).error)
-                              ? 100
-                              // For Gemini, show minimal indicator based on usage
-                              : selectedProvider === 'gemini'
-                              ? Math.min(100, ((providerUsage as any).usage?.used || 0) / 10 * 100) // Visual indicator only
-                              // For static providers, return 0% to avoid showing false usage
-                              : (providerUsage as any).isStatic
-                              ? 0
-                              // Otherwise show actual usage percentage
-                              : ((providerUsage as any).quota?.usedTokens ?? 0) / ((providerUsage as any).quota?.totalTokens ?? (
-                                selectedProvider === 'mistral' ? 50000 : 
-                                selectedProvider === 'anthropic' ? 10000 : 1
-                              )) * 100
-                            }%`
+                                ? 0
+                                // If rate limited, show full bar
+                                : (providerUsage as any).error && /rate.?limit/i.test((providerUsage as any).error)
+                                  ? 100
+                                  // For Gemini, show minimal indicator based on usage
+                                  : selectedProvider === 'gemini'
+                                    ? Math.min(100, ((providerUsage as any).usage?.used || 0) / 10 * 100) // Visual indicator only
+                                    // For static providers, return 0% to avoid showing false usage
+                                    : (providerUsage as any).isStatic
+                                      ? 0
+                                      // Otherwise show actual usage percentage
+                                      : ((providerUsage as any).quota?.usedTokens ?? 0) / ((providerUsage as any).quota?.totalTokens ?? (
+                                        selectedProvider === 'mistral' ? 50000 :
+                                          selectedProvider === 'anthropic' ? 10000 : 1
+                                      )) * 100
+                              }%`
                           }}
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        <span className={`font-medium ${
-                          (providerUsage as any).error && /rate.?limit/i.test((providerUsage as any).error)
-                            ? "text-yellow-600"
-                            : (providerUsage as any).error && /credit|balance|billing/i.test((providerUsage as any).error)
+                        <span className={`font-medium ${(providerUsage as any).error && /rate.?limit/i.test((providerUsage as any).error)
+                          ? "text-yellow-600"
+                          : (providerUsage as any).error && /credit|balance|billing/i.test((providerUsage as any).error)
                             ? "text-orange-600"
                             : "text-green-600"
                           }`}>
@@ -906,7 +915,7 @@ export function AISettings() {
                           ) : (providerUsage as any).error && /rate.?limit/i.test((providerUsage as any).error) ? (
                             "Rate limited"
                           ) : (providerUsage as any).error && /credit|balance|billing/i.test((providerUsage as any).error) ? (
-                            "Billing required" 
+                            "Billing required"
                           ) : selectedProvider === 'gemini' ? (
                             "Rate limit: 60 requests/minute"
                           ) : (providerUsage as any).isStatic ? (
@@ -929,9 +938,9 @@ export function AISettings() {
                           'N/A - Account setup required'
                         ) : selectedProvider === 'gemini' ? (
                           (providerUsage as any).error && /rate.?limit/i.test((providerUsage as any).error) ?
-                          `Resets in ${remainingResetTime || '< 60'} seconds` : 'Every 60 seconds'
+                            `Resets in ${remainingResetTime || '< 60'} seconds` : 'Every 60 seconds'
                         ) : (providerUsage as any).quota?.resetDate && (
-                          new Date((providerUsage as any).quota.resetDate) > new Date() ? 
+                          new Date((providerUsage as any).quota.resetDate) > new Date() ?
                             `In ${Math.ceil((new Date((providerUsage as any).quota.resetDate).getTime() - new Date().getTime()) / 1000)} seconds` :
                             `${(providerUsage as any).quota?.daysUntilReset || 1} day${(providerUsage as any).quota?.daysUntilReset !== 1 ? 's' : ''}`
                         )}

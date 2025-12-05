@@ -6,7 +6,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { Mistral } from '@mistralai/mistralai'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { getRateLimitStatus } from '@/lib/rate-limiter'
-import { aiProviders, getFallbackModel } from '@/lib/ai-providers'
+import { aiProviders, getFallbackModel, isValidModel } from '@/lib/ai-providers'
 
 // Temperature mapping (same as optimize route)
 const temperatureMap: Record<string, number> = {
@@ -15,7 +15,7 @@ const temperatureMap: Record<string, number> = {
   creative: 1.0,
 }
 
-async function checkOpenAI(apiKey: string, userId: string, userModel?: string) {
+async function checkOpenAI(apiKey: string, userId: string, userModel?: string, temperature: number = 0.7) {
   try {
     // Check rate limiter status first
     const rateLimitStatus = getRateLimitStatus('openai', userId)
@@ -24,17 +24,23 @@ async function checkOpenAI(apiKey: string, userId: string, userModel?: string) {
     }
 
     const openai = new OpenAI({ apiKey })
-    const modelsList = await openai.models.list()
-    
-    // Validate user's configured model
-    if (userModel) {
-      const modelExists = modelsList.data.some(m => m.id === userModel)
-      if (!modelExists) {
-        const availableModels = modelsList.data.map(m => m.id).slice(0, 5).join(', ')
-        throw new Error(`Model '${userModel}' not found. Available models: ${availableModels}...`)
-      }
-    }
-    
+
+    // Dynamically get the best available model
+    const { getBestOpenAIModel } = await import('@/lib/openai-models')
+    const modelToUse = await getBestOpenAIModel(apiKey, userModel)
+    console.log('[CHECK-STATUS-OPENAI] Using model:', modelToUse, '(requested:', userModel, ')')
+
+    // Perform realistic test with minimal optimization prompt
+    await openai.chat.completions.create({
+      model: modelToUse,
+      max_tokens: 100,
+      temperature,
+      messages: [{
+        role: 'user',
+        content: 'Optimize this YouTube title: "Test Video". Return JSON: {"title": "string"}'
+      }]
+    })
+
     return rateLimitStatus
   } catch (error: any) {
     if (error.response?.status === 401) {
@@ -56,21 +62,23 @@ async function checkAnthropic(apiKey: string, userId: string, userModel?: string
     }
 
     const anthropic = new Anthropic({ apiKey })
-    
-    // Use user's configured model or fallback
-    const model = userModel || getFallbackModel('anthropic') || 'claude-3-haiku-20240307'
-    
+
+    // Dynamically get the best available model
+    const { getBestAnthropicModel } = await import('@/lib/anthropic-models')
+    const modelToUse = await getBestAnthropicModel(apiKey, userModel)
+    console.log('[CHECK-STATUS-ANTHROPIC] Using model:', modelToUse, '(requested:', userModel, ')')
+
     // Perform realistic test with minimal optimization prompt
     await anthropic.messages.create({
-      model,
+      model: modelToUse,
       max_tokens: 100,
       temperature,
-      messages: [{ 
-        role: 'user', 
-        content: 'Optimize this YouTube title: "Test Video". Return JSON: {"title": "string"}' 
+      messages: [{
+        role: 'user',
+        content: 'Optimize this YouTube title: "Test Video". Return JSON: {"title": "string"}'
       }]
     })
-    
+
     return rateLimitStatus
   } catch (error: any) {
     if (error.status === 401 || error.status === 403) {
@@ -90,7 +98,7 @@ async function checkAnthropic(apiKey: string, userId: string, userModel?: string
   }
 }
 
-async function checkMistral(apiKey: string, userId: string, userModel?: string) {
+async function checkMistral(apiKey: string, userId: string, userModel?: string, temperature: number = 0.7) {
   try {
     // Check rate limiter status first
     const rateLimitStatus = getRateLimitStatus('mistral', userId)
@@ -99,17 +107,23 @@ async function checkMistral(apiKey: string, userId: string, userModel?: string) 
     }
 
     const mistral = new Mistral({ apiKey })
-    const modelsList = await mistral.models.list()
-    
-    // Validate user's configured model
-    if (userModel) {
-      const modelExists = modelsList.data?.some((m: any) => m.id === userModel)
-      if (!modelExists) {
-        const availableModels = modelsList.data?.map((m: any) => m.id).slice(0, 5).join(', ') || ''
-        throw new Error(`Model '${userModel}' not found. Available models: ${availableModels}`)
-      }
-    }
-    
+
+    // Dynamically get the best available model
+    const { getBestMistralModel } = await import('@/lib/mistral-models')
+    const modelToUse = await getBestMistralModel(apiKey, userModel)
+    console.log('[CHECK-STATUS-MISTRAL] Using model:', modelToUse, '(requested:', userModel, ')')
+
+    // Perform realistic test with minimal optimization prompt
+    await mistral.chat.complete({
+      model: modelToUse,
+      maxTokens: 100,
+      temperature,
+      messages: [{
+        role: 'user',
+        content: 'Optimize this YouTube title: "Test Video". Return JSON: {"title": "string"}'
+      }]
+    })
+
     return rateLimitStatus
   } catch (error: any) {
     if (error.response?.status === 401) {
@@ -126,65 +140,124 @@ async function checkGemini(apiKey: string, userId: string, userModel?: string, t
   try {
     // Check rate limiter status first
     const rateLimitStatus = getRateLimitStatus('gemini', userId)
-    console.log('[CHECK-STATUS-GEMINI] Rate limiter status:', { 
-      available: rateLimitStatus.availableTokens, 
-      capacity: 60 
+    console.log('[CHECK-STATUS-GEMINI] Rate limiter status:', {
+      available: rateLimitStatus.availableTokens,
+      capacity: 60
     })
-    
+
     if (rateLimitStatus.availableTokens < 1) {
       throw new Error(`Rate limiter exhausted. Please wait ${Math.ceil(rateLimitStatus.estimatedWaitMs / 1000)} seconds.`)
     }
 
     console.log('[CHECK-STATUS-GEMINI] Initializing GoogleGenerativeAI client')
     const genAI = new GoogleGenerativeAI(apiKey)
-    
-    // Use user's configured model or fallback
-    const fallback = getFallbackModel('gemini')
-    if (!fallback) {
-      throw new Error('No Gemini fallback model configured')
+
+    // Query Google's API for actual available models
+    console.log('[CHECK-STATUS-GEMINI] Fetching available models from Google API')
+    let availableModels: string[] = []
+    let modelsListError: string | null = null
+    try {
+      const modelsResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey)
+      console.log('[CHECK-STATUS-GEMINI] Models API response status:', modelsResponse.status)
+
+      if (!modelsResponse.ok) {
+        const errorText = await modelsResponse.text()
+        console.error('[CHECK-STATUS-GEMINI] Models API error:', {
+          status: modelsResponse.status,
+          statusText: modelsResponse.statusText,
+          error: errorText
+        })
+        modelsListError = errorText
+
+        // If 401 or 403, the API key is invalid
+        if (modelsResponse.status === 401 || modelsResponse.status === 403) {
+          throw new Error('Invalid or expired Google API key. Please create a new API key at https://aistudio.google.com/app/apikey')
+        }
+      } else {
+        const modelsData = await modelsResponse.json()
+        availableModels = modelsData.models
+          ?.filter((m: any) => m.supportedGenerationMethods?.includes('generateContent'))
+          ?.map((m: any) => m.name.replace('models/', '')) || []
+        console.log('[CHECK-STATUS-GEMINI] Available models from API:', availableModels.slice(0, 10))
+        console.log('[CHECK-STATUS-GEMINI] Total models available:', availableModels.length)
+      }
+    } catch (error: any) {
+      console.error('[CHECK-STATUS-GEMINI] Error fetching models list:', {
+        message: error.message,
+        stack: error.stack
+      })
+      // If this is an API key error, rethrow it
+      if (error.message?.includes('API key')) {
+        throw error
+      }
+      modelsListError = error.message
     }
-    const model = userModel || fallback
-    console.log('[CHECK-STATUS-GEMINI] Using model:', model)
-    const geminiModel = genAI.getGenerativeModel({ model })
-    
+
+    // Determine which model to use
+    let modelToUse = userModel
+
+    // If user specified a model, validate it against actual available models
+    if (userModel && availableModels.length > 0) {
+      if (!availableModels.includes(userModel)) {
+        console.warn(`[CHECK-STATUS-GEMINI] User model '${userModel}' not in available models`)
+        // Try to find a suitable fallback
+        const fallbackCandidates = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro']
+        modelToUse = fallbackCandidates.find(m => availableModels.includes(m)) || availableModels[0]
+        console.log(`[CHECK-STATUS-GEMINI] Using fallback model: ${modelToUse}`)
+      }
+    } else if (!userModel && availableModels.length > 0) {
+      // No user model specified, use first available
+      modelToUse = availableModels[0]
+      console.log(`[CHECK-STATUS-GEMINI] No user model, using first available: ${modelToUse}`)
+    } else if (!userModel) {
+      // No models list and no user model, use hardcoded fallback
+      modelToUse = getFallbackModel('gemini') || 'gemini-pro'
+      console.log(`[CHECK-STATUS-GEMINI] Using hardcoded fallback: ${modelToUse}`)
+    }
+
+    // Ensure we have a model
+    if (!modelToUse) {
+      modelToUse = 'gemini-pro'
+      console.warn('[CHECK-STATUS-GEMINI] No model determined, using gemini-pro as last resort')
+    }
+
+    console.log('[CHECK-STATUS-GEMINI] Using model:', modelToUse)
+    const geminiModel = genAI.getGenerativeModel({ model: modelToUse })
+
     console.log('[CHECK-STATUS-GEMINI] Making test API call to Gemini')
     // Perform realistic test with minimal optimization prompt
     const result = await geminiModel.generateContent({
-      contents: [{ 
-        role: 'user', 
-        parts: [{ text: 'Optimize this YouTube title: "Test Video". Return JSON: {"title": "string"}' }] 
+      contents: [{
+        role: 'user',
+        parts: [{ text: 'Optimize this YouTube title: "Test Video". Return JSON: {"title": "string"}' }]
       }],
       generationConfig: {
         temperature,
       },
     })
-    
+
     if (!result || !result.response) {
       throw new Error('Failed to connect to Gemini API')
     }
-    
+
     console.log('[CHECK-STATUS-GEMINI] Successfully validated Gemini API key')
-    return rateLimitStatus
+    return { ...rateLimitStatus, availableModels }
   } catch (error: any) {
-    console.error('[CHECK-STATUS-GEMINI] Validation error:', { 
-      status: error.status, 
-      message: error.message, 
-      type: error.constructor.name 
+    console.error('[CHECK-STATUS-GEMINI] Validation error:', {
+      status: error.status,
+      message: error.message,
+      type: error.constructor.name
     })
-    
+
     if (error.status === 401 || error.message?.includes('API key')) {
       throw new Error('Invalid Google API key. Please verify your key starts with "AIza", is at least 30 characters, and is active. Get a key at https://aistudio.google.com/app/apikey')
     }
     if (error.status === 404 || error.message?.includes('models/') || error.message?.includes('not found')) {
-      console.error('[CHECK-STATUS-GEMINI] Model not available:', { 
-        requestedModel: userModel, 
-        fallback: getFallbackModel('gemini') 
+      console.error('[CHECK-STATUS-GEMINI] Model not available:', {
+        requestedModel: userModel,
+        fallback: getFallbackModel('gemini')
       })
-      const fallback = getFallbackModel('gemini')
-      const geminiProvider = aiProviders.find(p => p.id === 'gemini')
-      const availableModels = geminiProvider?.models.map(m => m.id).slice(0, 5) || []
-      const modelsList = availableModels.length > 0 ? availableModels.join(', ') : 'available models'
-      throw new Error(`Model '${userModel}' not available. Try '${fallback}' instead. Available models: ${modelsList}. Update your selection in Settings.`)
+      throw new Error(`Model '${userModel}' not available with your API key. Please go to https://aistudio.google.com to check which models are available for your account, then update your selection in Settings.`)
     }
     if (error.status === 429) {
       console.error('[CHECK-STATUS-GEMINI] Rate limit exceeded from Gemini API')
@@ -201,11 +274,11 @@ export async function POST(req: Request) {
     // Add validation logging at entry point
     console.log('[CHECK-STATUS] Validating provider:', provider)
     if (apiKey) {
-      console.log('[CHECK-STATUS] API key metadata:', { 
-        provider, 
-        hasKey: !!apiKey, 
-        keyLength: apiKey?.length, 
-        keyPrefix: apiKey?.substring(0, 4) 
+      console.log('[CHECK-STATUS] API key metadata:', {
+        provider,
+        hasKey: !!apiKey,
+        keyLength: apiKey?.length,
+        keyPrefix: apiKey?.substring(0, 4)
       })
     }
 
@@ -227,7 +300,7 @@ export async function POST(req: Request) {
     }
 
     if (!provider) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: 'Provider is required',
         errorCode: 'missing_provider'
@@ -237,9 +310,9 @@ export async function POST(req: Request) {
     // Get user session and settings
     const supabase = createRouteHandlerClient({ cookies })
     const { data: { session } } = await supabase.auth.getSession()
-    
+
     if (!session) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: 'Unauthorized',
         errorCode: 'no_session'
@@ -251,7 +324,7 @@ export async function POST(req: Request) {
     // Fetch user's AI settings from Supabase
     let userModel: string | undefined
     let temperature: number = 0.7
-    
+
     try {
       const { data, error } = await supabase.rpc('get_ai_settings')
       if (!error && data && data.length > 0) {
@@ -281,12 +354,12 @@ export async function POST(req: Request) {
 
     // Validate the API key format based on provider
     const trimmedKey = apiKey.trim()
-    
+
     switch (provider) {
       case 'openai':
         if (!trimmedKey.startsWith('sk-')) {
-          return NextResponse.json({ 
-            ok: false, 
+          return NextResponse.json({
+            ok: false,
             error: 'Invalid OpenAI API key format. Keys should start with "sk-"',
             errorCode: 'invalid_format',
             suggestion: 'Check your API key at https://platform.openai.com/api-keys'
@@ -295,8 +368,8 @@ export async function POST(req: Request) {
         break
       case 'anthropic':
         if (!trimmedKey.startsWith('sk-ant-')) {
-          return NextResponse.json({ 
-            ok: false, 
+          return NextResponse.json({
+            ok: false,
             error: 'Invalid Anthropic API key format. Keys should start with "sk-ant-"',
             errorCode: 'invalid_format',
             suggestion: 'Check your API key at https://console.anthropic.com/settings/keys'
@@ -304,14 +377,22 @@ export async function POST(req: Request) {
         }
         break
       case 'gemini':
+        console.log('[CHECK-STATUS-GEMINI] Validating API key:', {
+          hasKey: !!trimmedKey,
+          keyLength: trimmedKey.length,
+          keyPrefix: trimmedKey.substring(0, 4),
+          startsWithAIza: trimmedKey.startsWith('AIza'),
+          meetsLengthRequirement: trimmedKey.length >= 30
+        })
         if (!trimmedKey.startsWith('AIza') || trimmedKey.length < 30) {
-          console.error('[CHECK-STATUS] Gemini API key validation failed:', { 
-            startsWithAIza: trimmedKey.startsWith('AIza'), 
-            length: trimmedKey.length, 
-            required: 30 
+          console.error('[CHECK-STATUS] Gemini API key validation failed:', {
+            startsWithAIza: trimmedKey.startsWith('AIza'),
+            length: trimmedKey.length,
+            required: 30,
+            keyPrefix: trimmedKey.substring(0, 10)
           })
-          return NextResponse.json({ 
-            ok: false, 
+          return NextResponse.json({
+            ok: false,
             error: 'Invalid Google API key format. Keys must start with "AIza" and be at least 30 characters long.',
             errorCode: 'invalid_format',
             suggestion: 'Get a key at https://aistudio.google.com/app/apikey'
@@ -320,8 +401,8 @@ export async function POST(req: Request) {
         break
       case 'mistral':
         if (trimmedKey.length < 32) {
-          return NextResponse.json({ 
-            ok: false, 
+          return NextResponse.json({
+            ok: false,
             error: 'Invalid Mistral API key format. Keys should be at least 32 characters',
             errorCode: 'invalid_format',
             suggestion: 'Check your API key at https://console.mistral.ai/'
@@ -329,7 +410,7 @@ export async function POST(req: Request) {
         }
         break
       default:
-        return NextResponse.json({ 
+        return NextResponse.json({
           ok: false,
           error: `Unsupported AI provider: ${provider}`,
           errorCode: 'unsupported_provider'
@@ -337,25 +418,25 @@ export async function POST(req: Request) {
     }
 
     // Validation summary logging
-    console.log('[CHECK-STATUS] Pre-flight validation passed:', { 
-      provider, 
-      formatValid: true, 
-      sessionValid: true 
+    console.log('[CHECK-STATUS] Pre-flight validation passed:', {
+      provider,
+      formatValid: true,
+      sessionValid: true
     })
 
     // Perform realistic validation with user's configuration
     try {
       let rateLimitStatus
-      
+
       switch (provider) {
         case 'openai':
           rateLimitStatus = await checkOpenAI(apiKey, userId, userModel)
-          console.log('[CHECK-STATUS] Validation successful:', { 
-            provider, 
-            model: userModel || 'default', 
-            available: Math.floor(rateLimitStatus.availableTokens) 
+          console.log('[CHECK-STATUS] Validation successful:', {
+            provider,
+            model: userModel || 'default',
+            available: Math.floor(rateLimitStatus.availableTokens)
           })
-          return NextResponse.json({ 
+          return NextResponse.json({
             ok: true,
             provider,
             model: userModel || 'default',
@@ -366,15 +447,15 @@ export async function POST(req: Request) {
             },
             message: `Successfully validated OpenAI${userModel ? ` with model '${userModel}'` : ''}. ${Math.floor(rateLimitStatus.availableTokens)} requests remaining.`
           })
-        
+
         case 'anthropic':
           rateLimitStatus = await checkAnthropic(apiKey, userId, userModel, temperature)
-          console.log('[CHECK-STATUS] Validation successful:', { 
-            provider, 
-            model: userModel || 'default', 
-            available: Math.floor(rateLimitStatus.availableTokens) 
+          console.log('[CHECK-STATUS] Validation successful:', {
+            provider,
+            model: userModel || 'default',
+            available: Math.floor(rateLimitStatus.availableTokens)
           })
-          return NextResponse.json({ 
+          return NextResponse.json({
             ok: true,
             provider,
             model: userModel || 'default',
@@ -385,15 +466,15 @@ export async function POST(req: Request) {
             },
             message: `Successfully validated Anthropic${userModel ? ` with model '${userModel}'` : ''}. ${Math.floor(rateLimitStatus.availableTokens)} requests remaining.`
           })
-        
+
         case 'gemini':
           rateLimitStatus = await checkGemini(apiKey, userId, userModel, temperature)
-          console.log('[CHECK-STATUS] Validation successful:', { 
-            provider, 
-            model: userModel || 'default', 
-            available: Math.floor(rateLimitStatus.availableTokens) 
+          console.log('[CHECK-STATUS] Validation successful:', {
+            provider,
+            model: userModel || 'default',
+            available: Math.floor(rateLimitStatus.availableTokens)
           })
-          return NextResponse.json({ 
+          return NextResponse.json({
             ok: true,
             provider,
             model: userModel || 'default',
@@ -404,13 +485,13 @@ export async function POST(req: Request) {
             },
             message: `Successfully validated Gemini${userModel ? ` with model '${userModel}'` : ''}. ${Math.floor(rateLimitStatus.availableTokens)} requests remaining.`
           })
-        
+
         case 'mistral':
           rateLimitStatus = await checkMistral(apiKey, userId, userModel)
-          console.log('[CHECK-STATUS] Validation successful:', { 
-            provider, 
-            model: userModel || 'default', 
-            available: Math.floor(rateLimitStatus.availableTokens) 
+          console.log('[CHECK-STATUS] Validation successful:', {
+            provider,
+            model: userModel || 'default',
+            available: Math.floor(rateLimitStatus.availableTokens)
           })
           return NextResponse.json({
             ok: true,
@@ -424,39 +505,39 @@ export async function POST(req: Request) {
             message: `Successfully validated Mistral${userModel ? ` with model '${userModel}'` : ''}. ${Math.floor(rateLimitStatus.availableTokens)} requests remaining.`
           })
       }
-      
+
       // If we reach here without returning, something went wrong
-      return NextResponse.json({ 
-        ok: false, 
+      return NextResponse.json({
+        ok: false,
         error: 'Validation failed unexpectedly',
         errorCode: 'unknown_error'
       }, { status: 500 })
-      
+
     } catch (error: any) {
-      console.error('[CHECK-STATUS] Validation failed:', { 
-        provider, 
-        errorMessage: error.message, 
-        errorType: error.constructor.name, 
-        stack: error.stack?.split('\n').slice(0, 3).join('\n') 
+      console.error('[CHECK-STATUS] Validation failed:', {
+        provider,
+        errorMessage: error.message,
+        errorType: error.constructor.name,
+        stack: error.stack?.split('\n').slice(0, 3).join('\n')
       })
-      
+
       // Parse error message for specific codes
       const errorMessage = error.message || 'Invalid API key'
       let errorCode = 'validation_failed'
       let suggestion = ''
       let statusCode = 500
-      
+
       if (errorMessage.includes('Rate limiter exhausted')) {
         errorCode = 'rate_limit'
         statusCode = 429
         const match = errorMessage.match(/wait (\d+) seconds/)
         const resetIn = match ? parseInt(match[1]) : 60
-        console.log('[CHECK-STATUS] Returning rate limit error response:', { 
-          resetIn, 
-          available: 0 
+        console.log('[CHECK-STATUS] Returning rate limit error response:', {
+          resetIn,
+          available: 0
         })
-        return NextResponse.json({ 
-          ok: false, 
+        return NextResponse.json({
+          ok: false,
           error: errorMessage,
           errorCode,
           rateLimitStatus: {
@@ -466,25 +547,25 @@ export async function POST(req: Request) {
           suggestion: `Wait ${resetIn} seconds for the rate limit to reset, then try again.`
         }, { status: statusCode })
       }
-      
+
       if (errorMessage.includes('Model') && errorMessage.includes('not')) {
         errorCode = 'invalid_model'
         statusCode = 400
         // Extract suggestion from error message if present
         const fallback = getFallbackModel(provider)
         suggestion = `Change your model to '${fallback}' in settings and try again.`
-        console.log('[CHECK-STATUS] Returning invalid model error response:', { 
-          provider, 
-          fallback: getFallbackModel(provider) 
+        console.log('[CHECK-STATUS] Returning invalid model error response:', {
+          provider,
+          fallback: getFallbackModel(provider)
         })
       }
-      
+
       if (errorMessage.includes('Insufficient') || errorMessage.includes('credits')) {
         errorCode = 'insufficient_credits'
         statusCode = 402
         suggestion = 'Add credits to your account and try again.'
       }
-      
+
       if (errorMessage.includes('Invalid') && errorMessage.includes('key')) {
         errorCode = 'invalid_key'
         statusCode = 401
@@ -496,9 +577,9 @@ export async function POST(req: Request) {
         }
         console.log('[CHECK-STATUS] Returning invalid key error response:', { provider })
       }
-      
-      return NextResponse.json({ 
-        ok: false, 
+
+      return NextResponse.json({
+        ok: false,
         error: errorMessage,
         errorCode,
         ...(suggestion && { suggestion })
@@ -521,7 +602,7 @@ export async function POST(req: Request) {
       }
 
       if (/api key/i.test(errorMessage) || /authentication/i.test(errorMessage)) {
-        return NextResponse.json({ 
+        return NextResponse.json({
           ok: false,
           error: 'The provided API key is invalid or has been rejected by the provider.',
           errorCode: 'invalid_key',
@@ -529,14 +610,14 @@ export async function POST(req: Request) {
         }, { status: 400 })
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         ok: false,
         error: errorMessage,
         errorCode: 'unknown_error'
       }, { status: 500 })
     }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       ok: false,
       error: 'An unexpected error occurred.',
       errorCode: 'unknown_error'

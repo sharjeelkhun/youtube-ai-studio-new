@@ -20,12 +20,18 @@ async function generate(
       // Acquire rate limit token before making API call
       await acquireRateLimit('openai', userId)
       await trackUsage('openai', 'api_calls')
-      
+
+      // Dynamically get the best available model
+      const apiKey = (client as any).apiKey
+      const { getBestOpenAIModel } = await import('@/lib/openai-models')
+      const modelToUse = await getBestOpenAIModel(apiKey, model)
+      console.log('[OPENAI-SUGGESTIONS] Using model:', modelToUse, '(requested:', model, ')')
+
       const response = await client.chat.completions.create({
-        model,
+        model: modelToUse,
         messages: [{ role: "user", content: prompt }],
       });
-      
+
       if (response.usage) {
         await trackUsage('openai', 'content_generation', {
           inputTokens: response.usage.prompt_tokens,
@@ -35,71 +41,91 @@ async function generate(
       } else {
         await trackUsage('openai', 'content_generation')
       }
-      
+
       return response.choices[0].message.content;
     } else if (client instanceof GoogleGenerativeAI) {
       // Acquire rate limit token before making API call
       await acquireRateLimit('gemini', userId)
       await trackUsage('gemini', 'api_calls')
-      
-      const generativeModel = client.getGenerativeModel({ model });
+
+      // Dynamically get the best available model for this API key
+      // Extract API key from the client (it's stored internally)
+      const apiKey = (client as any).apiKey
+      const { getBestGeminiModel } = await import('@/lib/gemini-models')
+      const modelToUse = await getBestGeminiModel(apiKey, model)
+
+      console.log('[GEMINI-SUGGESTIONS] Using model:', modelToUse, '(requested:', model, ')')
+
+      const generativeModel = client.getGenerativeModel({ model: modelToUse });
       const result = await generativeModel.generateContent(prompt);
       const response = await result.response;
       const text = response.text()
-      
+
       const estimatedTokens = Math.ceil((prompt.length + text.length) / 4)
       await trackUsage('gemini', 'content_generation', {
         totalTokens: estimatedTokens
       })
-      
+
       return text;
     } else if (client instanceof Anthropic) {
       await trackUsage('anthropic', 'api_calls')
-      
+
       // Acquire rate limit token before making API call
       await acquireRateLimit('anthropic', userId)
-      
+
+      // Dynamically get the best available model
+      const apiKey = (client as any).apiKey
+      const { getBestAnthropicModel } = await import('@/lib/anthropic-models')
+      const modelToUse = await getBestAnthropicModel(apiKey, model)
+      console.log('[ANTHROPIC-SUGGESTIONS] Using model:', modelToUse, '(requested:', model, ')')
+
       const response = await client.messages.create({
-        model,
+        model: modelToUse,
         max_tokens: 1024,
         messages: [{ role: "user", content: prompt }],
       });
-      
+
       await trackUsage('anthropic', 'content_generation', {
         inputTokens: response.usage.input_tokens,
         outputTokens: response.usage.output_tokens,
         totalTokens: response.usage.input_tokens + response.usage.output_tokens
       })
-      
+
       // @ts-ignore
       return response.content[0].text;
     } else if (client instanceof Mistral) {
-        // Acquire rate limit token before making API call
-        await acquireRateLimit('mistral', userId)
-        await trackUsage('mistral', 'api_calls')
-        
-        const response = await client.chat.complete({
-            model,
-            messages: [{ role: "user", content: prompt }],
-        });
-        
-        if (response.usage) {
-          await trackUsage('mistral', 'content_generation', {
-            inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
-            outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
-            totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens || 
-              (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) + 
-              (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
-          })
-        } else {
-          const content = response.choices[0].message.content
-          const estimatedTokens = typeof content === 'string' ? Math.ceil(content.length / 4) : 0
-          await trackUsage('mistral', 'content_generation', {
-            totalTokens: estimatedTokens
-          })
-        }
-        
-        return response.choices[0].message.content;
+      // Acquire rate limit token before making API call
+      await acquireRateLimit('mistral', userId)
+      await trackUsage('mistral', 'api_calls')
+
+      // Dynamically get the best available model
+      const apiKey = (client as any).apiKey
+      const { getBestMistralModel } = await import('@/lib/mistral-models')
+      const modelToUse = await getBestMistralModel(apiKey, model)
+      console.log('[MISTRAL-SUGGESTIONS] Using model:', modelToUse, '(requested:', model, ')')
+
+      const response = await client.chat.complete({
+        model: modelToUse,
+        messages: [{ role: "user", content: prompt }],
+      });
+
+      if (response.usage) {
+        await trackUsage('mistral', 'content_generation', {
+          inputTokens: response.usage.promptTokens || (response.usage as any).prompt_tokens || 0,
+          outputTokens: response.usage.completionTokens || (response.usage as any).completion_tokens || 0,
+          totalTokens: response.usage.totalTokens || (response.usage as any).total_tokens ||
+            (response.usage.promptTokens || (response.usage as any).prompt_tokens || 0) +
+            (response.usage.completionTokens || (response.usage as any).completion_tokens || 0)
+        })
+      } else {
+        const content = response.choices[0].message.content
+        const estimatedTokens = typeof content === 'string' ? Math.ceil(content.length / 4) : 0
+        await trackUsage('mistral', 'content_generation', {
+          totalTokens: estimatedTokens
+        })
+      }
+
+      return response.choices[0].message.content;
     }
     throw new Error("Unsupported AI client");
   } catch (error) {
@@ -113,7 +139,7 @@ export async function generateContentSuggestions(supabase: SupabaseClient, userP
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Unauthorized - No active session')
   const userId = session.user.id
-  
+
   let ai_provider: string
   let client: any
   try {
@@ -138,7 +164,7 @@ export async function generateContentSuggestions(supabase: SupabaseClient, userP
       const { Mistral } = await import('@mistralai/mistralai')
       client = new Mistral({ apiKey: String(fb.mistral_api_key) })
     }
-    
+
   }
   const model = getModel(ai_provider);
   const prompt = `Generate YouTube video ideas based on the following request. Make each idea specific, actionable, and valuable to viewers.
@@ -208,7 +234,7 @@ export async function generateVideoImprovements(
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Unauthorized - No active session')
   const userId = session.user.id
-  
+
   let ai_provider: string
   let client: any
   try {
@@ -256,7 +282,7 @@ IMPORTANT: Return ONLY valid JSON: an array of objects where each object has vid
         const substr = improvementsRaw.substring(start, end + 1)
         try {
           parsed = JSON.parse(substr)
-        } catch (e2) {}
+        } catch (e2) { }
       }
     }
   }
@@ -273,7 +299,7 @@ export async function generateTrendingTopics(supabase: SupabaseClient) {
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Unauthorized - No active session')
   const userId = session.user.id
-  
+
   let ai_provider: string
   let client: any
   try {
@@ -314,7 +340,7 @@ export async function generateTrendingTopics(supabase: SupabaseClient) {
         const substr = topicsRaw.substring(start, end + 1)
         try {
           parsed = JSON.parse(substr)
-        } catch (e2) {}
+        } catch (e2) { }
       }
     }
   }
@@ -327,38 +353,38 @@ export async function generateTrendingTopics(supabase: SupabaseClient) {
 }
 
 export async function generateText(supabase: SupabaseClient, prompt: string) {
-    // Get userId for rate limiting
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) throw new Error('Unauthorized - No active session')
-    const userId = session.user.id
-    
-    let ai_provider: string
-    let client: any
-    try {
-      const settings = await getAIProvider(supabase)
-      ai_provider = settings.ai_provider
-      client = await getAiClient(supabase)
-    } catch (err) {
-      const fb = getServerProviderFallback()
-      if (!fb) throw err
-      ai_provider = fb.ai_provider
-      if (ai_provider === 'openai') {
-        client = new (await import('openai')).default({ apiKey: String(fb.openai_api_key) })
-      } else if (ai_provider === 'google') {
-        const { GoogleGenerativeAI } = await import('@google/generative-ai')
-        client = new GoogleGenerativeAI(String(fb.google_api_key))
-      } else if (ai_provider === 'anthropic') {
-        const Anthropic = (await import('@anthropic-ai/sdk')).default
-        client = new Anthropic({ apiKey: String(fb.anthropic_api_key) })
-      } else if (ai_provider === 'mistral') {
-        const { Mistral } = await import('@mistralai/mistralai')
-        client = new Mistral({ apiKey: String(fb.mistral_api_key) })
-      }
-    }
-    const model = getModel(ai_provider);
+  // Get userId for rate limiting
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) throw new Error('Unauthorized - No active session')
+  const userId = session.user.id
 
-    // Enhance prompt to request structured output
-    const enhancedPrompt = `Generate creative and engaging content for the following request. Return the response in a structured JSON format with relevant fields like title, description, and type where appropriate.
+  let ai_provider: string
+  let client: any
+  try {
+    const settings = await getAIProvider(supabase)
+    ai_provider = settings.ai_provider
+    client = await getAiClient(supabase)
+  } catch (err) {
+    const fb = getServerProviderFallback()
+    if (!fb) throw err
+    ai_provider = fb.ai_provider
+    if (ai_provider === 'openai') {
+      client = new (await import('openai')).default({ apiKey: String(fb.openai_api_key) })
+    } else if (ai_provider === 'google') {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai')
+      client = new GoogleGenerativeAI(String(fb.google_api_key))
+    } else if (ai_provider === 'anthropic') {
+      const Anthropic = (await import('@anthropic-ai/sdk')).default
+      client = new Anthropic({ apiKey: String(fb.anthropic_api_key) })
+    } else if (ai_provider === 'mistral') {
+      const { Mistral } = await import('@mistralai/mistralai')
+      client = new Mistral({ apiKey: String(fb.mistral_api_key) })
+    }
+  }
+  const model = getModel(ai_provider);
+
+  // Enhance prompt to request structured output
+  const enhancedPrompt = `Generate creative and engaging content for the following request. Return the response in a structured JSON format with relevant fields like title, description, and type where appropriate.
     
 Request: ${prompt}
 
@@ -367,7 +393,7 @@ Example format for video ideas: [{"title": "...", "description": "...", "type": 
 Example format for a single content piece: {"title": "...", "content": "...", "type": "content"}
 
 Your response:`;
-    
-    const text = await generate(client, model, enhancedPrompt, ai_provider, userId);
-    return text;
+
+  const text = await generate(client, model, enhancedPrompt, ai_provider, userId);
+  return text;
 }

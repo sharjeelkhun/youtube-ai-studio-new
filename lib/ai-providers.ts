@@ -62,16 +62,15 @@ export const aiProviders = [
   {
     id: "gemini",
     name: "Google Gemini",
-    description: "Gemini 2.5 and 2.0 models",
+    description: "Gemini 2.0 and 1.5 models",
     logo: GeminiLogo,
     models: [
-      { id: "gemini-2.5-pro", name: "Gemini 2.5 Pro (Recommended)" },
-      { id: "gemini-2.5-flash", name: "Gemini 2.5 Flash (Fastest)" },
-      { id: "gemini-2.5-flash-lite", name: "Gemini 2.5 Flash Lite (Most Efficient)" },
-      { id: "gemini-2.0-flash", name: "Gemini 2.0 Flash" },
-      { id: "gemini-2.0-flash-lite", name: "Gemini 2.0 Flash Lite" },
+      { id: "gemini-1.5-flash", name: "Gemini 1.5 Flash (Recommended)" },
+      { id: "gemini-1.5-flash-8b", name: "Gemini 1.5 Flash-8B (Fastest)" },
+      { id: "gemini-1.5-pro", name: "Gemini 1.5 Pro (Best Quality)" },
+      { id: "gemini-pro", name: "Gemini Pro (Legacy)" },
     ],
-    fallbackModel: "gemini-2.5-flash",
+    fallbackModel: "gemini-1.5-flash",
     apiKeyPlaceholder: "AIza...",
     apiKeyHelpText: "Get your API key from the Google AI Studio.",
     apiKeyUrl: "https://aistudio.google.com/app/apikey",
@@ -138,7 +137,7 @@ export const aiProviders = [
 export function isValidModel(providerId: string, modelId: string): boolean {
   const provider = aiProviders.find(p => p.id === providerId)
   if (!provider) return false
-  
+
   return provider.models.some(m => m.id === modelId)
 }
 
