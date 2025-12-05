@@ -51,6 +51,29 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetchProfile()
+
+    // Listen for provider changes from other components
+    const handleProviderChange = (event: CustomEvent) => {
+      if (event.detail?.provider) {
+        // Optimistically update or just refetch
+        fetchProfile()
+      }
+    }
+
+    // Listen for cross-tab changes
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'ai_provider_changed') {
+        fetchProfile()
+      }
+    }
+
+    window.addEventListener('ai-provider-changed' as any, handleProviderChange)
+    window.addEventListener('storage', handleStorageChange)
+
+    return () => {
+      window.removeEventListener('ai-provider-changed' as any, handleProviderChange)
+      window.removeEventListener('storage', handleStorageChange)
+    }
   }, [session, fetchProfile])
 
   const updateProfile = async (newProfileData: Partial<Profile>) => {
@@ -78,10 +101,10 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         throw error
       }
     } catch (error) {
-        console.error("Error updating profile:", error)
-        // Revert optimistic update
-        fetchProfile()
-        throw error
+      console.error("Error updating profile:", error)
+      // Revert optimistic update
+      fetchProfile()
+      throw error
     }
   }
 
