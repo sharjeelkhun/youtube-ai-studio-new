@@ -4,7 +4,7 @@ export interface Video {
   thumbnail_url?: string
   thumbnail?: string
   title: string
-  status: "Published" | "Draft" | "Scheduled"
+  status: "Published" | "Draft" | "Scheduled" | "Private" | "Unlisted"
   view_count?: number
   views?: number
   like_count?: number

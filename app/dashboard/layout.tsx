@@ -56,8 +56,7 @@ export default function DashboardLayout({
                 </div>
               </div>
             </div>
-            <main className="flex-1 overflow-y-auto bg-gray-50 p-4 dark:bg-gray-
-900 md:p-6 lg:p-8">
+            <main className="flex-1 overflow-y-auto overflow-x-hidden bg-muted/40 p-4 md:p-6 lg:p-8 w-full max-w-full">
               <div className="space-y-4">
                 <Skeleton className="h-8 w-48" />
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -86,8 +85,7 @@ export default function DashboardLayout({
         <SidebarInset>
           <div className="flex flex-1 flex-col">
             <TopBar />
-            <main className="flex-1 overflow-y-auto bg-gray-50 p-4 dark:bg-gray-
-900 md:p-6 lg:p-8">
+            <main className="flex-1 overflow-y-auto overflow-x-hidden bg-muted/40 p-4 md:p-6 lg:p-8 w-full max-w-full">
               {children}
             </main>
           </div>

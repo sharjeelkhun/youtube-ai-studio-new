@@ -6,7 +6,6 @@ import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase'
 import VideosLoading from './loading'
-import { set } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -18,23 +17,96 @@ import {
 } from '@/components/ui/pagination'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { LayoutGrid, AlertCircle, RefreshCw, Loader2, Video, List } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Card } from '@/components/ui/card'
+import { calculateSeoScore } from "@/lib/seo-utils"
 
 function Videos() {
-  const [videos, setVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
   const { channel, isLoading: channelIsLoading } = useYouTubeChannel()
   const [videosLoading, setVideosLoading] = useState(true);
   const [showSyncNotice, setShowSyncNotice] = useState(false);
   const [newCount, setNewCount] = useState<number | null>(null)
+
   const searchParams = useSearchParams()
   const router = useRouter()
+
   const initialPage = Number(searchParams?.get('page') || '1') || 1
   const initialType = (searchParams?.get('type') as 'all' | 'video' | 'short' | 'live') || 'all'
   const initialStatus = (searchParams?.get('status') as 'all' | 'public' | 'private' | 'unlisted') || 'all'
+
   const [page, setPage] = useState(initialPage)
   const pageSize = 12
   const [totalCount, setTotalCount] = useState<number>(0)
+
   const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'short' | 'live'>(initialType)
   const [statusFilter, setStatusFilter] = useState<'all' | 'public' | 'private' | 'unlisted'>(initialStatus)
+  const [seoFilter, setSeoFilter] = useState<'all' | 'good' | 'average' | 'poor'>('all')
+
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [sortBy, setSortBy] = useState<'date' | 'views' | 'likes' | 'seo_high' | 'seo_low'>('date')
+
+  const [allVideos, setAllVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
+  // We don't use 'videos' state for the source anymore, 'allVideos' is the source.
+  // We can derive 'videos' (displayed videos) from the processed list.
+
+  useEffect(() => {
+    const fetchVideos = async () => {
+      if (!channel?.id) {
+        setVideosLoading(false);
+        return
+      }
+
+      setVideosLoading(true)
+
+      try {
+        // Fetch ALL videos for the channel to enable accurate client-side filtering/sorting/pagination
+        // especially for simulated fields like "SEO Score" which don't exist in DB.
+        const { data, error, count } = await supabase
+          .from('youtube_videos')
+          .select('*', { count: 'exact' })
+          .eq('channel_id', channel.id)
+          .order('published_at', { ascending: false })
+        // No .range() here - we fetch all
+
+        if (error) throw error
+
+        if (!data || data.length === 0) {
+          if (channel.id) setShowSyncNotice(true) // Only show if we actually tried a channel
+          setAllVideos([])
+          setTotalCount(0)
+        } else {
+          setAllVideos(data)
+          setTotalCount(count || 0)
+        }
+      } catch (error) {
+        console.error('Error fetching videos:', error)
+      } finally {
+        setVideosLoading(false)
+      }
+    }
+
+    // Auto-sync logic remains...
+    const shouldAutoSync = (() => {
+      if (!channel?.last_synced) return true
+      try {
+        const last = new Date(channel.last_synced as unknown as string)
+        return Date.now() - last.getTime() > 60 * 60 * 1000 // > 1 hour
+      } catch {
+        return true
+      }
+    })()
+
+    if (!channelIsLoading) {
+      if (shouldAutoSync) {
+        fetch('/api/youtube/videos/sync', { method: 'POST' }).finally(fetchVideos)
+      } else {
+        fetchVideos()
+      }
+    }
+  }, [channel, channelIsLoading, supabase])
+  // Removed page/filters from dependency array because we fetch ONCE (or on sync) now.
 
   // keep state in sync if URL changes externally
   useEffect(() => {
@@ -61,97 +133,6 @@ function Videos() {
   }
 
   useEffect(() => {
-    const fetchVideos = async () => {
-      if (!channel?.id) {
-        setVideosLoading(false);
-        return
-      }
-
-      try {
-        let query = supabase
-          .from('youtube_videos')
-          .select('*', { count: 'exact' })
-          .eq('channel_id', channel.id)
-        if (typeFilter === 'short') {
-          query = query.contains('tags', ['short'])
-        } else if (typeFilter === 'live') {
-          query = query.contains('tags', ['live'])
-        } else if (typeFilter === 'video') {
-          // normal videos: not short, not live
-          query = query.not('tags', 'cs', '{short}').not('tags', 'cs', '{live}')
-        }
-        if (statusFilter !== 'all') {
-          query = query.eq('status', statusFilter)
-        }
-        const { data, error, count } = await query
-          .range((page - 1) * pageSize, page * pageSize - 1)
-          .order('published_at', { ascending: false })
-
-        if (error) throw error
-
-        // If no videos in database, show sync notice and no mock data
-        if (!data || data.length === 0) {
-          setShowSyncNotice(true)
-          setTotalCount(0)
-          setVideos([])
-        } else {
-          // Format the database videos to have better data
-          const formattedVideos = (data || []).map(video => ({
-            ...video,
-            title: video.title || "Untitled Video",
-            description: video.description ?
-              (video.description.length > 100 ? video.description.substring(0, 100) + "..." : video.description) :
-              "No description available",
-            published_at: video.published_at ?
-              (() => {
-                try {
-                  const date = new Date(video.published_at)
-                  return isNaN(date.getTime()) ? "Unknown date" : date.toLocaleDateString()
-                } catch (error) {
-                  return "Unknown date"
-                }
-              })() : "Unknown date",
-            view_count: video.view_count || 0,
-            like_count: video.like_count || 0,
-            comment_count: video.comment_count || 0,
-            thumbnail_url: video.thumbnail_url || "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
-            // Add the fields that VideoCard expects
-            views: video.view_count || 0,
-            likes: video.like_count || 0,
-            comments: video.comment_count || 0,
-            publishedAt: video.published_at ? new Date(video.published_at).toLocaleDateString() : "Unknown date"
-          }))
-          setVideos(formattedVideos)
-          setTotalCount(count || 0)
-        }
-      } catch (error) {
-        console.error('Error fetching videos:', error)
-      } finally {
-        setVideosLoading(false)
-      }
-    }
-
-    const shouldAutoSync = (() => {
-      if (!channel?.last_synced) return true
-      try {
-        const last = new Date(channel.last_synced as unknown as string)
-        return Date.now() - last.getTime() > 60 * 60 * 1000 // > 1 hour
-      } catch {
-        return true
-      }
-    })()
-
-    if (!channelIsLoading) {
-      if (shouldAutoSync) {
-        // fire-and-forget; we'll refetch list afterwards
-        fetch('/api/youtube/videos/sync', { method: 'POST' }).finally(fetchVideos)
-      } else {
-        fetchVideos()
-      }
-    }
-  }, [channel, channelIsLoading, supabase, page, typeFilter, statusFilter])
-
-  useEffect(() => {
     let aborted = false
     async function checkNew() {
       if (!channel?.id) return
@@ -166,14 +147,10 @@ function Videos() {
     return () => { aborted = true }
   }, [channel?.id, channelIsLoading])
 
-  if (videosLoading || channelIsLoading) {
-    return <VideosLoading />
-  }
-
   const handleSync = async () => {
     if (!channel?.id) return
+    setIsSyncing(true)
     try {
-      setVideosLoading(true)
       const res = await fetch('/api/youtube/videos/sync', { method: 'POST' })
       // ignore body; we refetch list
       await res.json().catch(() => null)
@@ -183,170 +160,243 @@ function Videos() {
       // refetch list
       setShowSyncNotice(false)
       // trigger effect by updating state via a no-op; simplest is to call fetchVideos again, but it's scoped.
-      // Easiest: force a reload of the page section
-      setTimeout(() => {
-        // Re-run the effect by toggling loading
-        setVideosLoading(false)
-      }, 50)
+      // We can force a reload via window or just simpler re-trigger logic.
+      // For now, simpler to reload page content
+      window.location.reload()
+      setIsSyncing(false)
     }
   }
 
+  // --- Client-Side Processing Pipeline ---
+
+  // 1. Pre-computation (SEO Scores)
+  const videosWithSeo = allVideos.map(video => {
+    const { score } = calculateSeoScore(video.title, video.description || "", video.tags || [])
+    return { ...video, seoScore: score }
+  })
+
+  // 2. Filter
+  const filteredVideos = videosWithSeo.filter(video => {
+    // Type Filter
+    if (typeFilter === 'short' && !video.tags?.includes('short')) return false
+    if (typeFilter === 'live' && !video.tags?.includes('live')) return false
+    if (typeFilter === 'video' && (video.tags?.includes('short') || video.tags?.includes('live'))) return false
+
+    // Status Filter
+    if (statusFilter !== 'all') {
+      const s = (video.status || '').toLowerCase()
+      if (s !== statusFilter) return false
+    }
+
+    // SEO Filter
+    if (seoFilter === 'good' && video.seoScore < 80) return false
+    if (seoFilter === 'average' && (video.seoScore < 50 || video.seoScore >= 80)) return false
+    if (seoFilter === 'poor' && video.seoScore >= 50) return false
+
+    return true
+  })
+
+  // 3. Sort
+  const sortedVideos = [...filteredVideos].sort((a, b) => {
+    switch (sortBy) {
+      case 'views':
+        return (b.view_count || 0) - (a.view_count || 0)
+      case 'likes':
+        return (b.like_count || 0) - (a.like_count || 0)
+      case 'seo_high':
+        return b.seoScore - a.seoScore
+      case 'seo_low':
+        return a.seoScore - b.seoScore
+      default: // date
+        return new Date(b.published_at || '').getTime() - new Date(a.published_at || '').getTime()
+    }
+  })
+
+  // 4. Paginate
+  const totalFilteredCount = sortedVideos.length
+  const totalPages = Math.ceil(totalFilteredCount / pageSize)
+  const paginatedVideos = sortedVideos.slice((page - 1) * pageSize, page * pageSize)
+
+  // Use 'paginatedVideos' for display mapping
+
+  // Helper for status display
+  const getDisplayStatus = (status: string | null) => {
+    if (!status) return 'Published'
+    const s = status.toLowerCase()
+    if (s === 'public') return 'Published'
+    if (s === 'private') return 'Private'
+    if (s === 'unlisted') return 'Unlisted'
+    return status.charAt(0).toUpperCase() + status.slice(1)
+  }
+
   return (
-    <div className="container py-4 px-4 md:py-6 md:px-6">
-      {showSyncNotice && (
-        <div className="mb-6">
-          <Alert>
-            <AlertTitle>No videos found in your workspace</AlertTitle>
-            <AlertDescription>
-              We couldn't find any saved videos for your connected channel. You can still explore with sample videos below, or sync your latest videos now.
-            </AlertDescription>
-            <div className="mt-4">
-              <Button
-                onClick={handleSync}
-                className="bg-[#FF0000] hover:bg-[#CC0000] text-white"
-              >
-                Sync videos
-              </Button>
-            </div>
-          </Alert>
+    <div className="container py-8 px-4 md:px-6 space-y-8">
+      {/* ... Header ... */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* ... buttons ... */}
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">Videos</h1>
+          <p className="text-muted-foreground">Manage and optimize your YouTube content library</p>
         </div>
+        <Button onClick={handleSync} disabled={isSyncing} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:scale-105">
+          {isSyncing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Syncing...</> : <><RefreshCw className="mr-2 h-4 w-4" />Sync from YouTube</>}
+        </Button>
+      </div>
+
+      {/* Alerts - Logic update: check if ALL videos are empty, vs filtered */}
+      {showSyncNotice && allVideos.length === 0 && (
+        <Alert className="bg-primary/5 border-primary/20">
+          <AlertCircle className="h-4 w-4 text-primary" />
+          <AlertTitle>No videos found</AlertTitle>
+          <AlertDescription>We couldn't find any videos for your channel. Sync now to import them.</AlertDescription>
+        </Alert>
       )}
-      {/* Filters - Premium horizontal layout on desktop, stacked on mobile */}
-      <div className="mb-6 flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-        {/* Type Filters */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-          <span className="text-sm font-semibold text-foreground">Type:</span>
+      {/* ... newCount alert ... */}
+
+      {/* Filters and Controls */}
+      <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm">
+        <div className="p-4 flex flex-col xl:flex-row gap-4 justify-between xl:items-center">
+          {/* ... Filters JSX (keep exactly as is, state updater handles it) ... */}
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant={typeFilter === 'all' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => { setPage(1); setTypeFilter('all'); updateUrl({ page: 1, type: 'all' }) }}
-              className={typeFilter === 'all' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]' : 'hover:border-[#FF0000]/30'}
-            >
-              All
-            </Button>
-            <Button
-              variant={typeFilter === 'video' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => { setPage(1); setTypeFilter('video'); updateUrl({ page: 1, type: 'video' }) }}
-              className={typeFilter === 'video' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]' : 'hover:border-[#FF0000]/30'}
-            >
-              Videos
-            </Button>
-            <Button
-              variant={typeFilter === 'short' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => { setPage(1); setTypeFilter('short'); updateUrl({ page: 1, type: 'short' }) }}
-              className={typeFilter === 'short' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]' : 'hover:border-[#FF0000]/30'}
-            >
-              Shorts
-            </Button>
-            <Button
-              variant={typeFilter === 'live' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => { setPage(1); setTypeFilter('live'); updateUrl({ page: 1, type: 'live' }) }}
-              className={typeFilter === 'live' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]' : 'hover:border-[#FF0000]/30'}
-            >
-              Live
-            </Button>
+            {['all', 'video', 'short', 'live'].map((type) => (
+              <Button
+                key={type}
+                variant={typeFilter === type ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => { setPage(1); setTypeFilter(type as any); updateUrl({ page: 1, type: type as any }) }}
+                className={cn(
+                  "capitalize rounded-full px-4",
+                  typeFilter === type ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md" : "hover:bg-primary/5"
+                )}
+              >
+                {type}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap hidden sm:inline-block">Status:</span>
+              <Select value={statusFilter} onValueChange={(v) => { const val = v as 'all' | 'public' | 'private' | 'unlisted'; setPage(1); setStatusFilter(val); updateUrl({ page: 1, status: val }) }}>
+                <SelectTrigger className="w-[140px] bg-background/50 border-border/60">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="public">Published</SelectItem>
+                  <SelectItem value="private">Private</SelectItem>
+                  <SelectItem value="unlisted">Unlisted</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-px h-6 bg-border/60 hidden sm:block" />
+
+            {/* SEO Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap hidden sm:inline-block">SEO:</span>
+              <Select value={seoFilter} onValueChange={(v: any) => { setPage(1); setSeoFilter(v) }}>
+                <SelectTrigger className="w-[130px] bg-background/50 border-border/60">
+                  <SelectValue placeholder="All Scores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Scores</SelectItem>
+                  <SelectItem value="good">Good (80+)</SelectItem>
+                  <SelectItem value="average">Average (50-79)</SelectItem>
+                  <SelectItem value="poor">Poor (&lt;50)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-px h-6 bg-border/60 hidden sm:block" />
+
+            {/* Sort */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap hidden sm:inline-block">Sort:</span>
+              <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                <SelectTrigger className="w-[140px] bg-background/50 border-border/60">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date">Newest</SelectItem>
+                  <SelectItem value="views">Most Viewed</SelectItem>
+                  <SelectItem value="likes">Most Liked</SelectItem>
+                  <SelectItem value="seo_high">Highest SEO</SelectItem>
+                  <SelectItem value="seo_low">Lowest SEO</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* ... View Toggle ... */}
+            <div className="w-px h-6 bg-border/60 hidden sm:block" />
+            <div className="flex items-center bg-muted/50 p-1 rounded-lg border border-border/50">
+              <Button variant="ghost" size="sm" onClick={() => setViewMode('grid')} className={cn("h-7 w-7 p-0 rounded-md", viewMode === 'grid' ? "bg-background shadow-sm" : "hover:bg-background/50")}> <LayoutGrid className="h-4 w-4" /> </Button>
+              <Button variant="ghost" size="sm" onClick={() => setViewMode('list')} className={cn("h-7 w-7 p-0 rounded-md", viewMode === 'list' ? "bg-background shadow-sm" : "hover:bg-background/50")}> <List className="h-4 w-4" /> </Button>
+            </div>
           </div>
         </div>
+      </Card>
 
-        {/* Status Filter */}
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-          <span className="text-sm font-semibold text-foreground">Status:</span>
-          <Select value={statusFilter} onValueChange={(v) => { const val = v as 'all' | 'public' | 'private' | 'unlisted'; setPage(1); setStatusFilter(val); updateUrl({ page: 1, status: val }) }}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="public">Published</SelectItem>
-              <SelectItem value="private">Private</SelectItem>
-              <SelectItem value="unlisted">Unlisted</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* Content Grid */}
+      {paginatedVideos.length === 0 && !videosLoading ? (
+        <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-border/40 rounded-3xl bg-muted/5">
+          {/* Empty State */}
+          <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
+            <Video className="h-8 w-8 text-muted-foreground/50" />
+          </div>
+          <h3 className="text-xl font-semibold mb-2">No videos found</h3>
+          <p className="text-muted-foreground max-w-sm mb-6">
+            Try adjusting your filters or sync your channel to see your content here.
+          </p>
+          <Button variant="outline" onClick={handleSync}>Sync Channel</Button>
         </div>
-      </div>
-      {!!newCount && newCount > 0 && (
-        <div className="mb-4">
-          <Alert>
-            <AlertTitle>{newCount} new {newCount === 1 ? 'video' : 'videos'} available</AlertTitle>
-            <AlertDescription>
-              We detected new uploads on your channel. Sync to pull them into your workspace.
-            </AlertDescription>
-            <div className="mt-4">
-              <Button
-                onClick={handleSync}
-                className="bg-[#FF0000] hover:bg-[#CC0000] text-white"
-              >
-                Sync now
-              </Button>
+      ) : (
+        <div className="space-y-6">
+          <VideoGrid
+            viewMode={viewMode}
+            videos={paginatedVideos.map(video => ({
+              id: video.id,
+              thumbnail_url: video.thumbnail_url || '',
+              title: video.title,
+              status: getDisplayStatus(video.status),
+              views: video.view_count,
+              likes: video.like_count,
+              comments: video.comment_count,
+              published_at: video.published_at || 'Unknown date',
+              publishedAt: video.published_at || 'Unknown date',
+              description: video.description || '',
+              tags: video.tags || [],
+              url: undefined,
+              duration: video.duration || '0'
+            }))} />
+
+          {/* Pagination */}
+          {totalFilteredCount > pageSize && (
+            <div className="border-t border-border/40 pt-6">
+              <Pagination>
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      className={cn(page <= 1 && 'pointer-events-none opacity-50')}
+                      onClick={() => { if (page > 1) { setPage(page - 1); updateUrl({ page: page - 1 }); } }}
+                    />
+                  </PaginationItem>
+                  <PaginationItem>
+                    <span className="px-4 text-sm font-medium text-muted-foreground">
+                      Page {page} of {totalPages}
+                    </span>
+                  </PaginationItem>
+                  <PaginationItem>
+                    <PaginationNext
+                      className={cn(page >= totalPages && 'pointer-events-none opacity-50')}
+                      onClick={() => { if (page < totalPages) { setPage(page + 1); updateUrl({ page: page + 1 }); } }}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
             </div>
-          </Alert>
+          )}
         </div>
       )}
-
-      <VideoGrid videos={videos.map(video => ({
-        id: video.id,
-        thumbnail_url: video.thumbnail_url || '',
-        title: video.title,
-        status: (video.status === 'Published' || video.status === 'Draft' || video.status === 'Scheduled') ? video.status : 'Published',
-        views: video.view_count,
-        likes: video.like_count,
-        comments: video.comment_count,
-        published_at: video.published_at || 'Unknown date',
-        publishedAt: video.published_at || 'Unknown date',
-        description: video.description || '',
-        tags: video.tags || [],
-        url: undefined, // or construct a URL if needed
-        duration: video.duration || '0'
-      }))} />
-      <div className="mt-6">
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              {(() => {
-                const maxPage = Math.max(1, Math.ceil(totalCount / pageSize))
-                const isDisabled = page <= 1
-                return (
-                  <PaginationPrevious
-                    className={isDisabled ? 'pointer-events-none opacity-50' : undefined}
-                    onClick={(e) => {
-                      if (isDisabled) return
-                      e.preventDefault()
-                      setPage(page - 1)
-                      updateUrl({ page: page - 1 })
-                    }}
-                    href={isDisabled ? undefined : '#'}
-                  />
-                )
-              })()}
-            </PaginationItem>
-            <PaginationItem>
-              <span className="px-3 py-2 text-sm text-muted-foreground">Page {page} of {Math.max(1, Math.ceil(totalCount / pageSize))}</span>
-            </PaginationItem>
-            <PaginationItem>
-              {(() => {
-                const maxPage = Math.max(1, Math.ceil(totalCount / pageSize))
-                const isDisabled = page >= maxPage
-                return (
-                  <PaginationNext
-                    className={isDisabled ? 'pointer-events-none opacity-50' : undefined}
-                    onClick={(e) => {
-                      if (isDisabled) return
-                      e.preventDefault()
-                      setPage(page + 1)
-                      updateUrl({ page: page + 1 })
-                    }}
-                    href={isDisabled ? undefined : '#'}
-                  />
-                )
-              })()}
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
     </div>
   )
 }

@@ -57,8 +57,7 @@ export default function DashboardLayout({
                 </div>
               </div>
             </div>
-            <main className="flex-1 overflow-y-auto bg-gray-50 p-4 dark:bg-gray-
-900 md:p-6 lg:p-8">
+            <main className="flex-1 overflow-y-auto bg-muted/40 p-4 md:p-6 lg:p-8">
               <div className="space-y-4">
                 <Skeleton className="h-8 w-48" />
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -80,19 +79,18 @@ export default function DashboardLayout({
 
   return (
     <DashboardProvider>
-      <div className="flex min-h-screen w-full">
+      <div className="flex h-screen w-full overflow-hidden">
         <AppSidebar>
           <Sidebar />
         </AppSidebar>
-        <SidebarInset>
-          <div className="flex flex-1 flex-col">
+        <SidebarInset className="overflow-hidden">
+          <div className="flex flex-1 flex-col h-full overflow-hidden">
             <TopBar />
-            <main className="flex-1 overflow-y-auto bg-gray-50 p-4 dark:bg-gray-
-900 md:p-6 lg:p-8">
+            <main className="flex-1 overflow-y-auto bg-muted/40 p-4 md:p-6 lg:p-8">
               {children}
             </main>
           </div>
-          <Toaster />
+          <Toaster position="bottom-center" richColors />
           <AIProviderSwitcher />
         </SidebarInset>
       </div>

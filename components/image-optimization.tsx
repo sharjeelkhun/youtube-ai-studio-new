@@ -7,13 +7,13 @@ import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
-import { 
-  Download, 
-  Upload, 
-  Image as ImageIcon, 
-  Settings, 
-  RotateCw, 
-  Crop, 
+import {
+  Download,
+  Upload,
+  Image as ImageIcon,
+  Settings,
+  RotateCw,
+  Crop,
   Palette,
   Zap,
   FileImage,
@@ -24,6 +24,12 @@ import {
   ArrowDown,
   RefreshCw
 } from 'lucide-react'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import { toast } from 'sonner'
 
 interface OptimizedImage {
@@ -64,18 +70,18 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
 
   const loadOriginalImage = useCallback(async () => {
     if (!thumbnailUrl) return
-    
+
     setIsLoading(true)
     try {
       const img = new Image()
       img.crossOrigin = 'anonymous'
-      
+
       await new Promise((resolve, reject) => {
         img.onload = resolve
         img.onerror = reject
         img.src = thumbnailUrl
       })
-      
+
       setOriginalImage(img)
       toast.success('Image loaded successfully')
     } catch (error) {
@@ -124,7 +130,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
 
       // Generate different formats
       const formats: Array<'webp' | 'jpeg' | 'png'> = ['webp', 'jpeg', 'png']
-      
+
       for (const format of formats) {
         const mimeType = `image/${format}`
         const qualityValue = format === 'png' ? undefined : quality[0] / 100
@@ -203,7 +209,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
       const response = await fetch(thumbnailUrl)
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
-      
+
       const link = document.createElement('a')
       link.href = url
       link.download = `${videoTitle.replace(/[^a-zA-Z0-9]/g, '_')}_thumbnail.jpg`
@@ -211,7 +217,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(url)
-      
+
       toast.success('Thumbnail downloaded successfully')
     } catch (error) {
       console.error('Error downloading thumbnail:', error)
@@ -247,7 +253,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
       }
 
       const data = await response.json()
-      
+
       // Convert base64 to blob
       const base64Data = data.optimizedImage.split(',')[1]
       const byteCharacters = atob(base64Data)
@@ -290,53 +296,24 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
   }
 
   return (
-    <Card data-image-optimization>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ImageIcon className="h-5 w-5" />
+    <Card data-image-optimization className="overflow-hidden border-border/50 bg-background/60 backdrop-blur-xl shadow-sm">
+      <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <div className="p-2 bg-primary/10 rounded-lg text-primary">
+            <ImageIcon className="h-4 w-4" />
+          </div>
           Thumbnail Optimization
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="p-6 space-y-6">
         {/* Current Thumbnail Preview */}
-        <div className="space-y-3">
-          <div className="flex items-start justify-between">
-            <Label className="text-sm font-medium">Current Thumbnail</Label>
-            <div className="flex items-center gap-2">
-              {/* Download and AI Optimize buttons moved above image */}
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={downloadCurrentThumbnail}
-                className="justify-center whitespace-nowrap font-medium transition-colors rounded-md flex items-center gap-1.5 h-7 px-2 text-sm"
-              >
-                <Download className="mr-2 h-3.5 w-3.5" />
-                Download
-              </Button>
-              {isAiConfigured && (
-                <Button
-                  size="sm"
-                  onClick={handleAiOptimize}
-                  disabled={isAiOptimizing}
-                  className="justify-center whitespace-nowrap font-medium transition-colors rounded-md flex items-center gap-1.5 h-7 px-2 text-sm"
-                >
-                  {isAiOptimizing ? (
-                    <Loader className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Wand2 className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  AI Optimize
-                </Button>
-              )}
-            </div>
-          </div>
-
-          <div className="relative">
-            <div className="aspect-video w-full overflow-hidden rounded-lg bg-muted">
+        <div className="space-y-4">
+          <div className="relative group overflow-hidden rounded-xl border border-border/40 shadow-sm bg-muted/10">
+            <div className="aspect-video w-full overflow-hidden">
               <img
                 src={currentImageUrl}
                 alt="Current thumbnail"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 onLoad={() => {
                   const img = new Image()
                   img.src = currentImageUrl
@@ -348,25 +325,50 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-1 gap-2">
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              onClick={downloadCurrentThumbnail}
+              className="h-9 text-xs sm:text-sm gap-2 font-medium transition-all hover:bg-primary/5 hover:text-primary hover:border-primary/20"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download
+            </Button>
+            {isAiConfigured ? (
+              <Button
+                onClick={handleAiOptimize}
+                disabled={isAiOptimizing}
+                className="h-9 text-xs sm:text-sm gap-2 font-medium bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary text-primary-foreground shadow-sm transition-all hover:shadow-md"
+              >
+                {isAiOptimizing ? (
+                  <Loader className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3.5 w-3.5" />
+                )}
+                AI Optimize
+              </Button>
+            ) : (
+              <Button
+                variant="secondary"
+                disabled
+                className="h-9 text-xs sm:text-sm gap-2 font-medium opacity-50 cursor-not-allowed"
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                AI Optimize
+              </Button>
+            )}
+          </div>
+
           <Button
             onClick={() => fileInputRef.current?.click()}
             variant="outline"
-            className="w-full"
+            className="w-full h-9 text-xs sm:text-sm gap-2 bg-muted/50 hover:bg-muted"
           >
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Your Image
+            <Upload className="h-3.5 w-3.5" />
+            Upload New Image
           </Button>
-          
-          {!isAiConfigured && (
-            <div className="flex items-center gap-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-              <span className="text-sm text-yellow-800 dark:text-yellow-200">
-                Configure AI provider in settings for AI optimization
-              </span>
-            </div>
-          )}
-          
+
           <input
             ref={fileInputRef}
             type="file"
@@ -374,6 +376,16 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
             onChange={handleFileUpload}
             className="hidden"
           />
+
+          {!isAiConfigured && (
+            <div className="flex items-start gap-3 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20 text-amber-600 dark:text-amber-400">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <div className="text-xs">
+                <span className="font-semibold block mb-0.5">AI Setup Required</span>
+                Configure your AI provider in settings to enable smart optimization.
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Manual Optimization Settings - Collapsed by default */}
@@ -389,7 +401,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
                 <Settings className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {showManualSettings && (
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -404,7 +416,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
                       className="w-full"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label className="text-sm">Max Height: {maxHeight[0]}px</Label>
                     <Slider
@@ -489,7 +501,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
                       </Button>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">Size:</span>
@@ -506,7 +518,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
                       <div className="font-medium">{quality[0]}%</div>
                     </div>
                   </div>
-                  
+
                   <div className="aspect-video w-full max-w-xs mx-auto rounded overflow-hidden">
                     <img
                       src={optimizedImage.url}

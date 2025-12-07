@@ -39,7 +39,7 @@ body {
     --radius: 0.5rem;
 
     /* Sidebar specific variables */
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 0 0% 45%;
     --sidebar-primary: 0 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;

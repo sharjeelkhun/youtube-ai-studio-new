@@ -12,9 +12,10 @@ import { useSession } from '@/contexts/session-context'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import { useProfile } from '@/contexts/profile-context'
 import { useAI } from '@/contexts/ai-context'
-import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader, AlertCircle, Image as ImageIcon, Download } from 'lucide-react'
+import { ArrowLeft, Eye, ThumbsUp, MessageSquare, History, Wand2, Clock, TrendingUp, Users, BarChart, X, Plus, Youtube, Loader, AlertCircle, Image as ImageIcon, Download, Edit2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import NextImage from 'next/image'
 import { ImageOptimization } from '@/components/image-optimization'
 import {
@@ -24,6 +25,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { getRateLimitStatus, RateLimitTimeoutError } from '@/lib/rate-limiter'
+import { cn } from "@/lib/utils"
+import { SeoScoreCard } from "@/components/video/seo-score-card"
+import { SearchPreviewCard } from "@/components/video/search-preview-card"
 
 interface Video {
   id: string
@@ -143,6 +147,27 @@ export default function VideoPage() {
    * Pre-flight checks should be fast; if they time out, we proceed anyway.
    */
   const RATE_LIMITER_CHECK_TIMEOUT_MS = 5000
+
+  // Scroll state for sticky header compression
+  const [isScrolled, setIsScrolled] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsScrolled(!entry.isIntersecting)
+      },
+      { threshold: 0, rootMargin: '-20px 0px 0px 0px' }
+    )
+
+    if (sentinelRef.current) {
+      observer.observe(sentinelRef.current)
+    }
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
 
   const isAiConfigured =
     profile?.ai_provider &&
@@ -1383,7 +1408,12 @@ export default function VideoPage() {
   }
 
   const handleOptimizedImage = (optimizedImage: any) => {
-    // Convert the optimized image blob to base64 for display
+    // Update local state with the new image URL
+    if (optimizedImage.url) {
+      setEditedVideo(prev => prev ? ({ ...prev, thumbnail_url: optimizedImage.url }) : null)
+    }
+
+    // Also store base64 if needed for upload
     const reader = new FileReader()
     reader.onload = () => {
       const base64 = reader.result as string
@@ -1420,21 +1450,24 @@ export default function VideoPage() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 px-4 md:px-0">
-      {/* Operation Progress Indicator */}
+    // "Breakout" wrapper to negate the main layout padding and achieve full-width sticky header
+    <div className="-m-4 md:-m-6 lg:-m-8 min-h-[calc(100vh-4rem)] flex flex-col">
+      {/* Operation Progress Banner - Bottom Floating */}
       {activeOperation && (
-        <div className="fixed top-16 left-0 right-0 z-50 bg-blue-500/10 border-b border-blue-500/20 py-2">
-          <div className="container mx-auto px-4 flex items-center justify-center gap-3">
-            <Loader className="h-4 w-4 animate-spin text-blue-500" />
-            <span className="text-sm font-medium">
-              Optimizing {activeOperation}...
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 w-full max-w-fit animate-in slide-in-from-bottom-4 fade-in duration-300">
+          <div className="bg-background/80 backdrop-blur-xl border border-primary/20 shadow-lg shadow-primary/5 rounded-full py-2 px-6 flex items-center gap-3">
+            <div className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+            </div>
+            <span className="text-sm font-medium pr-1">
+              Optimizing {activeOperation}
               {activeOperationStartTime.current && (
-                <span className="ml-2 text-xs text-muted-foreground hidden sm:inline">
-                  ({Math.round((Date.now() - activeOperationStartTime.current.getTime()) / 1000)}s elapsed)
+                <span className="ml-2 text-xs text-muted-foreground hidden sm:inline tabular-nums">
+                  {Math.round((Date.now() - activeOperationStartTime.current.getTime()) / 1000)}s
                 </span>
               )}
             </span>
-            {/* Cancel button - only shown if a retry is scheduled */}
             {retryTimeoutRef.current && (
               <Button
                 variant="ghost"
@@ -1443,553 +1476,439 @@ export default function VideoPage() {
                   cancelScheduledRetry('User cancelled from banner')
                   clearActiveOperationLock()
                 }}
-                className="ml-2 sm:ml-4 h-7 text-xs"
+                className="h-5 w-5 p-0 rounded-full hover:bg-destructive/10 hover:text-destructive -mr-1"
               >
-                <X className="mr-1 h-3 w-3" />
-                Cancel
+                <X className="h-3 w-3" />
               </Button>
             )}
           </div>
         </div>
       )}
 
-      <div className="flex flex-col space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button variant="ghost" onClick={() => router.back()}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back
-            </Button>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground d-none" style={{ display: 'none' }}>
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
-                <span className="text-xs">⌘</span>S
-              </kbd>
-              <span>Save</span>
-              <span className="mx-2">·</span>
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
-                <span className="text-xs">⌥</span>A
-              </kbd>
-              <span>AI Generate</span>
-              <span className="mx-2">·</span>
-              <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
-                <span className="text-xs">⌥</span>T
-              </kbd>
-              <span>Focus Tags</span>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={retryCountdown > 0 ? "secondary" : "outline"}
-                    onClick={debouncedHandleAIGenerate}
-                    disabled={isGenerating || !isAiConfigured || !!activeOperation}
-                    className={retryCountdown > 0 ? '' : 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]'}
-                  >
-                    {isGenerating ? (
-                      <Loader className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <Wand2 className="mr-2 h-4 w-4" />
-                    )}
-                    <span className="hidden sm:inline">{retryCountdown > 0 ? `Retry in ${retryCountdown}s` : 'AI Generate All'}</span>
-                    <span className="sm:hidden">{retryCountdown > 0 ? `Retry ${retryCountdown}s` : 'AI Generate'}</span>
-                  </Button>
-                </TooltipTrigger>
-                {!isAiConfigured ? (
-                  <TooltipContent>
-                    <p>Please configure your AI provider in the settings</p>
-                  </TooltipContent>
-                ) : activeOperation ? (
-                  <TooltipContent>
-                    <p>Please wait for the current {activeOperation} optimization to complete</p>
-                  </TooltipContent>
-                ) : (
-                  <TooltipContent>Generate title, description & tags with AI (⌥A)</TooltipContent>
-                )}
-              </Tooltip>
-            </TooltipProvider>
+      {/* Scroll Sentinel */}
+      <div ref={sentinelRef} className="absolute top-0 h-4 w-full -z-10" />
 
-            <div className="hidden md:flex md:items-center md:gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex">
-                      <Button
-                        variant="outline"
-                        onClick={handleGetThumbnailIdeas}
-                        disabled={isGettingThumbnailIdeas || !isAiConfigured || !canGenerateImages}
-                      >
-                        {isGettingThumbnailIdeas ? (
-                          <Loader className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <ImageIcon className="mr-2 h-4 w-4" />
-                        )}
-                        Thumbnail Ideas
-                      </Button>
-                    </div>
-                  </TooltipTrigger>
-                  {(!isAiConfigured || !canGenerateImages) ? (
-                    <TooltipContent>
-                      <p>
-                        {!canGenerateImages
-                          ? "Image generation is only available for OpenAI and Gemini providers"
-                          : "Please configure your AI provider in the settings"}
-                      </p>
-                    </TooltipContent>
-                  ) : (
-                    <TooltipContent>Generate thumbnail suggestions with AI</TooltipContent>
-                  )}
-                </Tooltip>
-              </TooltipProvider>
-
-              <Button
-                variant="outline"
-                onClick={() => window.open(`https://studio.youtube.com/video/${video.id}/edit`, '_blank')}
-              >
-                <Youtube className="mr-2 h-4 w-4" />
-                <span className="hidden lg:inline">Edit in Studio</span>
-                <span className="lg:hidden">YT Studio</span>
-              </Button>
-            </div>
-
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant={hasChanges ? "default" : "outline"}
-                    onClick={handleSave}
-                    disabled={isSaving || !hasChanges}
-                    className={hasChanges ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white' : ''}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader className="mr-2 h-4 w-4 animate-spin" />
-                        <span className="hidden sm:inline">Saving...</span>
-                        <span className="sm:hidden">Saving</span>
-                      </>
-                    ) : (
-                      <>
-                        {hasChanges && (
-                          <div className="mr-2 h-2 w-2 rounded-full bg-yellow-500" />
-                        )}
-                        <span className="hidden sm:inline">Save Changes</span>
-                        <span className="sm:hidden">Save</span>
-                      </>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {hasChanges ? 'Press ⌘S to save' : 'No changes to save'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+      {/* Page Header Area - Static */}
+      <div className="container max-w-7xl px-4 md:px-8 mx-auto flex flex-col xl:flex-row gap-4 xl:items-start justify-between mb-8 pt-4">
+        <div className="space-y-2 w-full">
+          <Button
+            variant="ghost"
+            onClick={() => router.back()}
+            className="pl-0 hover:bg-transparent hover:text-primary -ml-2 text-muted-foreground h-auto py-0 mb-1 group"
+          >
+            <ArrowLeft className="mr-2 h-3 w-3 group-hover:-translate-x-1 transition-transform" />
+            Back to Library
+          </Button>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent leading-tight line-clamp-2">
+            {editedVideo?.title || 'Untitled Video'}
+          </h1>
+          <div className="flex items-center gap-3 text-xs md:text-sm text-muted-foreground">
+            <Badge variant="outline" className={cn("capitalize px-2 py-0.5 text-[10px] md:text-xs",
+              video.status === 'public' ? 'border-green-500/30 text-green-600 bg-green-500/5' :
+                video.status === 'private' ? 'border-amber-500/30 text-amber-600 bg-amber-500/5' :
+                  'border-slate-500/30 text-slate-600 bg-slate-500/5'
+            )}>
+              {video.status}
+            </Badge>
+            <span>•</span>
+            <span>Published {new Date(video.published_at).toLocaleDateString()}</span>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Video Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Title</label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center mr-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={`${isOptimizingTitle ? 'opacity-50' : 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]'} flex items-center gap-1.5 h-7 px-2 text-sm`}
-                          onClick={handleOptimizeTitle}
-                          disabled={isOptimizingTitle || !isAiConfigured || !!activeOperation}
-                        >
-                          {isOptimizingTitle ? (
-                            <Loader className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Wand2 className="h-3.5 w-3.5" />
-                          )}
-                          <span>Optimize</span>
-                        </Button>
-                        {!isAiConfigured && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className="ml-2 text-yellow-500">
-                                  <AlertCircle className="h-4 w-4" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {activeOperation
-                                  ? `Wait for ${activeOperation} optimization to complete`
-                                  : 'Configure AI provider in settings'}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {editedVideo?.title.length || 0}/100 characters
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopy(editedVideo?.title || '')}
-                        >
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>Copy</TooltipTrigger>
-                              <TooltipContent>Copy title to clipboard</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </Button>
-                      </div>
-                    </div>
+      <div className="container max-w-7xl px-4 md:px-8 mx-auto grid grid-cols-1 xl:grid-cols-3 gap-8 pb-32">
+
+        {/* Main Editor Column (Left) */}
+        <div className="xl:col-span-2 space-y-6">
+
+          {/* Metadata Editor - Simplifed Layout */}
+          <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm overflow-hidden">
+            <CardContent className="p-6 space-y-8">
+
+              {/* Title Section */}
+              <div className="space-y-2 group relative">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors duration-300">Video Title</label>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-xs transition-colors duration-300", (editedVideo?.title?.length || 0) > 90 ? "text-amber-500" : "text-muted-foreground group-focus-within:text-foreground/70")}>
+                      {editedVideo?.title?.length || 0}/100
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs hover:bg-primary/5 hover:text-primary opacity-50 group-hover:opacity-100 transition-all duration-300"
+                      onClick={handleOptimizeTitle}
+                      disabled={isOptimizingTitle || !isAiConfigured}
+                    >
+                      {isOptimizingTitle ? <Loader className="mr-1.5 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1.5 h-3 w-3" />}
+                      AI Improve
+                    </Button>
                   </div>
+                </div>
+                <div className="relative">
                   <Input
                     value={editedVideo?.title || ''}
                     onChange={(e) => setEditedVideo({ ...editedVideo!, title: e.target.value })}
-                    placeholder="Enter video title"
+                    className="text-lg font-medium bg-muted/30 border-border/50 hover:border-border/80 focus-visible:border-primary/50 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/10 rounded-xl px-4 h-12 transition-all duration-300 placeholder:text-muted-foreground/30 shadow-sm"
+                    placeholder="Enter a catchy title..."
                     maxLength={100}
                   />
                 </div>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Description</label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center mr-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={`${isOptimizingDescription ? 'opacity-50' : 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]'} flex items-center gap-1.5 h-7 px-2 text-sm`}
-                          onClick={handleOptimizeDescription}
-                          disabled={isOptimizingDescription || !isAiConfigured || !!activeOperation}
-                        >
-                          {isOptimizingDescription ? (
-                            <Loader className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Wand2 className="h-3.5 w-3.5" />
-                          )}
-                          <span>Optimize</span>
-                        </Button>
-                        {!isAiConfigured && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className="ml-2 text-yellow-500">
-                                  <AlertCircle className="h-4 w-4" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {activeOperation
-                                  ? `Wait for ${activeOperation} optimization to complete`
-                                  : 'Configure AI provider in settings'}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {editedVideo?.description.length || 0}/5000 characters
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleCopy(editedVideo?.description || '')}
-                        >
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>Copy</TooltipTrigger>
-                              <TooltipContent>Copy description to clipboard</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        </Button>
-                      </div>
-                    </div>
+              </div>
+
+              {/* Description Section */}
+              <div className="space-y-2 group relative">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors duration-300">Description</label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground group-focus-within:text-foreground/70 transition-colors duration-300">
+                      {editedVideo?.description.length || 0}/5000
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 px-2 text-xs hover:bg-primary/5 hover:text-primary opacity-50 group-hover:opacity-100 transition-all duration-300"
+                      onClick={handleOptimizeDescription}
+                      disabled={isOptimizingDescription || !isAiConfigured}
+                    >
+                      {isOptimizingDescription ? <Loader className="mr-1.5 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1.5 h-3 w-3" />}
+                      AI Enhance
+                    </Button>
                   </div>
+                </div>
+                <div className="relative">
                   <Textarea
                     value={editedVideo?.description || ''}
                     onChange={(e) => setEditedVideo({ ...editedVideo!, description: e.target.value })}
-                    placeholder="Enter video description"
-                    rows={4}
+                    className="min-h-[200px] font-mono text-sm bg-muted/30 border-border/50 hover:border-border/80 focus-visible:border-primary/50 focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-primary/10 rounded-xl px-4 py-3 resize-y transition-all duration-300 placeholder:text-muted-foreground/30 leading-relaxed shadow-sm"
+                    placeholder="Describe your video..."
                     maxLength={5000}
                   />
                 </div>
+              </div>
+
+              {/* Tags Section */}
+              <div className="space-y-2 group">
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-sm font-medium text-muted-foreground group-focus-within:text-primary transition-colors duration-300">Tags</label>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-xs hover:bg-primary/5 hover:text-primary opacity-50 group-hover:opacity-100 transition-all duration-300"
+                    onClick={handleOptimizeTags}
+                    disabled={isOptimizingTags || !isAiConfigured}
+                  >
+                    {isOptimizingTags ? <Loader className="mr-1.5 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1.5 h-3 w-3" />}
+                    Generate Tags
+                  </Button>
+                </div>
+
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Tags</label>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center mr-4">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={`${isOptimizingTags ? 'opacity-50' : 'bg-[#FF0000] hover:bg-[#CC0000] text-white border-[#FF0000]'} flex items-center gap-1.5 h-7 px-2 text-sm`}
-                          onClick={handleOptimizeTags}
-                          disabled={isOptimizingTags || !isAiConfigured || !!activeOperation}
-                        >
-                          {isOptimizingTags ? (
-                            <Loader className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <Wand2 className="h-3.5 w-3.5" />
-                          )}
-                          <span>Generate</span>
-                        </Button>
-                        {!isAiConfigured && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger>
-                                <span className="ml-2 text-yellow-500">
-                                  <AlertCircle className="h-4 w-4" />
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {activeOperation
-                                  ? `Wait for ${activeOperation} optimization to complete`
-                                  : 'Configure AI provider in settings'}
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                      <div className="flex items-center">
-                        <span className="text-xs text-muted-foreground whitespace-nowrap">
-                          Press Alt + T to focus | Enter or comma to add
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Input
-                      id="tag-input"
-                      value={newTag}
-                      onChange={(e) => setNewTag(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder="Add tags (up to 500 characters total)"
-                    />
-                    <Button type="button" onClick={handleAddTag} disabled={!newTag.trim()}>
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 min-h-[40px] p-2 border border-border/20 rounded-xl bg-muted/5 transition-all duration-300 focus-within:bg-muted/10 focus-within:border-primary/20 hover:border-border/40">
                     {editedVideo?.tags?.map((tag) => (
-                      <Badge key={tag} variant="secondary" className="flex items-center gap-1">
+                      <Badge key={tag} variant="secondary" className="pl-2.5 pr-1.5 py-1 gap-1.5 text-xs font-normal tracking-wide bg-background border border-border/50 text-foreground/80 hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all duration-300 cursor-default">
                         {tag}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-4 w-4 p-0 hover:bg-transparent"
-                          onClick={() => handleRemoveTag(tag)}
+                        <button
+                          onClick={() => {
+                            const newTags = editedVideo.tags?.filter(t => t !== tag)
+                            setEditedVideo({ ...editedVideo, tags: newTags })
+                          }}
+                          className="opacity-40 hover:opacity-100 hover:text-destructive transition-all focus:outline-none"
                         >
                           <X className="h-3 w-3" />
-                          <span className="sr-only">Remove {tag} tag</span>
-                        </Button>
+                        </button>
                       </Badge>
                     ))}
-                    {(!editedVideo?.tags || editedVideo.tags.length === 0) && (
-                      <span className="text-sm text-muted-foreground">No tags added yet</span>
-                    )}
+                    <div className="flex-1 min-w-[120px]">
+                      <Input
+                        placeholder="Add tag..."
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            if (newTag.trim() && !editedVideo?.tags?.includes(newTag.trim())) {
+                              setEditedVideo({
+                                ...editedVideo!,
+                                tags: [...(editedVideo?.tags || []), newTag.trim()]
+                              })
+                              setNewTag('')
+                            }
+                          }
+                        }}
+                        className="h-7 border-0 bg-transparent hover:bg-transparent focus:bg-transparent focus:border-0 transition-all px-1 placeholder:text-muted-foreground/30 w-full shadow-none text-sm focus-visible:ring-0"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end items-center text-[10px] text-muted-foreground/50 px-1">
+                    <span>{editedVideo?.tags?.length || 0}/500</span>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Thumbnail Ideas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isGettingThumbnailIdeas ? (
-                <div className="flex justify-center items-center h-24">
-                  <Loader className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : thumbnailIdeas.length > 0 ? (
-                <ul className="space-y-2">
-                  {thumbnailIdeas.map((idea, index) => (
-                    <li key={index} className="text-sm cursor-pointer hover:underline" onClick={() => handleGenerateImage(idea)}>
-                      {idea}
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-center text-muted-foreground">No thumbnail ideas generated yet.</p>
-              )}
-            </CardContent>
-          </Card>
+          {/* AI Optimization Banner - Placed below main editor for better flow */}
+          {!isAiConfigured && !loading && (
+            <Alert className="bg-primary/5 border-primary/20">
+              <Wand2 className="h-4 w-4 text-primary" />
+              <AlertTitle>Unlock AI Optimization</AlertTitle>
+              <AlertDescription className="flex items-center justify-between">
+                <span>Configure your AI provider settings to enable auto-optimization for titles, descriptions, and tags.</span>
+                <Button variant="outline" size="sm" onClick={() => router.push('/settings')} className="ml-4">
+                  Configure AI
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
-          <Card>
+          {/* Search Preview */}
+          {editedVideo && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
+              <SearchPreviewCard
+                title={editedVideo.title}
+                description={editedVideo.description}
+                thumbnailUrl={editedVideo.thumbnail_url}
+                channelName={channel?.title || ""}
+                publishedAt={editedVideo.published_at}
+              />
+            </div>
+          )}
+
+          {/* Version History */}
+          <Card className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
             <CardHeader>
-              <CardTitle>Change History</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <History className="h-5 w-5 text-primary" />
+                Version History
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {history.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-1">
-                      <h4 className="font-medium">{item.title}</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Changed on {new Date(item.created_at).toLocaleString()}
-                      </p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        if (confirm('Are you sure you want to revert to this version? Any unsaved changes will be lost.')) {
-                          handleRevert(item)
-                        }
-                      }}
-                    >
-                      <History className="mr-2 h-4 w-4" />
-                      Revert
-                    </Button>
+                {history.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No history available yet.
                   </div>
-                ))}
-                {history.length === 0 && (
-                  <p className="text-center text-muted-foreground">No change history available</p>
+                ) : (
+                  history.map((item) => (
+                    <div key={item.id} className="flex items-start justify-between p-4 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors">
+                      <div className="space-y-1">
+                        <p className="font-medium text-sm">
+                          {new Date(item.created_at).toLocaleDateString()} at {new Date(item.created_at).toLocaleTimeString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">{item.title}</p>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => handleRevert(item)}>
+                        Revert
+                      </Button>
+                    </div>
+                  ))
                 )}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
-          <ImageOptimization
-            thumbnailUrl={video.thumbnail_url}
-            videoTitle={video.title}
-            onOptimizedImage={handleOptimizedImage}
-            isAiConfigured={isAiConfigured}
-            aiProvider={profile?.ai_provider || undefined}
-          />
+        {/* Sidebar Column (Right) */}
+        <div className="space-y-6 sticky top-36 h-fit">
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Video Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant="outline" className="capitalize">{video.status}</Badge>
+          {/* SEO Score - Top of Sidebar */}
+          {editedVideo && (
+            <div className="animate-in fade-in slide-in-from-right-8 duration-500">
+              <SeoScoreCard
+                title={editedVideo.title}
+                description={editedVideo.description}
+                tags={editedVideo.tags || []}
+              />
+            </div>
+          )}
+
+          {/* Thumbnail Optimization */}
+          <div className="rounded-xl border border-border/50 bg-background/60 backdrop-blur-xl shadow-sm overflow-hidden p-1 animate-in fade-in slide-in-from-right-8 duration-500 delay-100">
+            <ImageOptimization
+              thumbnailUrl={video.thumbnail_url}
+              videoTitle={video.title}
+              onOptimizedImage={handleOptimizedImage}
+              isAiConfigured={isAiConfigured}
+              aiProvider={profile?.ai_provider || undefined}
+            />
+          </div>
+          {/* Performance Card */}
+          <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm">
+            <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                  <BarChart className="h-4 w-4" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Published</span>
-                  <span className="font-medium">
-                    {new Date(video.published_at).toLocaleDateString()}
-                  </span>
-                </div>
+                <CardTitle className="text-base font-semibold">Performance</CardTitle>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance Metrics</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:gap-6">
-                <div className="grid gap-4 md:gap-6">
-                  {/* Core Stats Grid - Single Column on Mobile, 2 Columns on Tablet+ */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div className="space-y-4 bg-card p-4 rounded-lg border">
-                      {/* Views */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="rounded-md bg-blue-50 p-2 dark:bg-blue-900/20">
-                            <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{video.view_count.toLocaleString()}</p>
-                            <p className="text-sm text-muted-foreground">Views</p>
-                          </div>
-                        </div>
-                        <Progress className="h-2" value={Math.min((video.view_count || 0) / 100, 100)} />
-                      </div>
-
-                      {/* Likes */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="rounded-md bg-green-50 p-2 dark:bg-green-900/20">
-                            <ThumbsUp className="h-4 w-4 text-green-600 dark:text-green-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{video.like_count.toLocaleString()}</p>
-                            <p className="text-sm text-muted-foreground">Likes</p>
-                          </div>
-                        </div>
-                        <Progress className="h-2" value={Math.min((video.like_count || 0) / 10, 100)} />
-                      </div>
-
-                      {/* Watch Time */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="rounded-md bg-yellow-50 p-2 dark:bg-yellow-900/20">
-                            <Clock className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{video.watch_time} minutes</p>
-                            <p className="text-sm text-muted-foreground">Watch Time</p>
-                          </div>
-                        </div>
-                        <Progress className="h-2" value={Math.min((video.watch_time || 0) / 10, 100)} />
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 bg-card p-4 rounded-lg border">
-                      {/* Engagement Rate */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="rounded-md bg-purple-50 p-2 dark:bg-purple-900/20">
-                            <TrendingUp className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{video.engagement_rate?.toFixed(1)}%</p>
-                            <p className="text-sm text-muted-foreground">Engagement Rate</p>
-                          </div>
-                        </div>
-                        <Progress className="h-2" value={video.engagement_rate || 0} />
-                      </div>
-
-                      {/* Subscribers Gained */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="rounded-md bg-pink-50 p-2 dark:bg-pink-900/20">
-                            <Users className="h-4 w-4 text-pink-600 dark:text-pink-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">+{video.subscriber_gained}</p>
-                            <p className="text-sm text-muted-foreground">New Subscribers</p>
-                          </div>
-                        </div>
-                        <Progress className="h-2" value={Math.min((video.subscriber_gained || 0) * 2, 100)} />
-                      </div>
-
-                      {/* Retention Rate */}
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="rounded-md bg-orange-50 p-2 dark:bg-orange-900/20">
-                            <BarChart className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium">{video.retention_rate?.toFixed(1)}%</p>
-                            <p className="text-sm text-muted-foreground">Retention Rate</p>
-                          </div>
-                        </div>
-                        <Progress className="h-2" value={video.retention_rate || 0} />
-                      </div>
-                    </div>
+            <CardContent className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 p-3 rounded-lg bg-muted/5 border border-border/20 hover:border-border/40 transition-colors">
+                  <div className="flex items-center gap-2 text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">
+                    <Eye className="h-3 w-3 text-emerald-500" /> Views
+                  </div>
+                  <p className="text-2xl font-bold tracking-tight">{video.view_count.toLocaleString()}</p>
+                  <div className="h-1 w-full bg-muted/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-emerald-500/50 to-emerald-500 w-[var(--progress)] transition-all duration-1000" style={{ '--progress': `${Math.min((video.view_count / 100000) * 100, 100)}%` } as React.CSSProperties} />
+                  </div>
+                </div>
+                <div className="space-y-2 p-3 rounded-lg bg-muted/5 border border-border/20 hover:border-border/40 transition-colors">
+                  <div className="flex items-center gap-2 text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">
+                    <ThumbsUp className="h-3 w-3 text-blue-500" /> Likes
+                  </div>
+                  <p className="text-2xl font-bold tracking-tight">{video.like_count.toLocaleString()}</p>
+                  <div className="h-1 w-full bg-muted/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-blue-500/50 to-blue-500 w-[var(--progress)] transition-all duration-1000" style={{ '--progress': `${Math.min((video.like_count / 10000) * 100, 100)}%` } as React.CSSProperties} />
                   </div>
                 </div>
               </div>
+
+              <div className="space-y-4 pt-2">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Engagement Rate</span>
+                    <span className="font-medium">{video.engagement_rate?.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={video.engagement_rate || 0} className="h-1.5" />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Retention</span>
+                    <span className="font-medium">{video.retention_rate?.toFixed(1)}%</span>
+                  </div>
+                  <Progress value={video.retention_rate || 0} className="h-1.5" />
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Thumbnail Ideas */}
+          <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm">
+            <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                  <ImageIcon className="h-4 w-4" />
+                </div>
+                <CardTitle className="text-base font-semibold">AI Thumbnail Ideas</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6">
+              {isGettingThumbnailIdeas ? (
+                <div className="flex justify-center py-8"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+              ) : thumbnailIdeas.length > 0 ? (
+                <ul className="space-y-3">
+                  {thumbnailIdeas.map((idea, i) => (
+                    <li key={i} className="text-sm p-3 rounded-lg bg-muted/40 hover:bg-muted/80 cursor-pointer transition-colors border border-transparent hover:border-border/50 group" onClick={() => handleGenerateImage(idea)}>
+                      <p className="line-clamp-3 text-muted-foreground group-hover:text-foreground transition-colors">{idea}</p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  <ImageIcon className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p>Generate ideas to get started</p>
+                  <Button variant="outline" size="sm" onClick={handleGetThumbnailIdeas} className="mt-4">Generate</Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+        </div>
+      </div>
+      {/* Floating Bottom Action Bar */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-fit px-4 animate-in slide-in-from-bottom-10 fade-in duration-500">
+        <div className="flex items-center p-2 gap-2 bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl ring-1 ring-white/10 dark:ring-black/10">
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={retryCountdown > 0 ? "secondary" : "default"}
+                  onClick={debouncedHandleAIGenerate}
+                  disabled={isGenerating || !isAiConfigured || !!activeOperation}
+                  className={cn(
+                    "h-10 rounded-xl px-4 transition-all shadow-lg hover:shadow-primary/25",
+                    retryCountdown > 0 ? "" : "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white border-0"
+                  )}
+                >
+                  {isGenerating ? (
+                    <Loader className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Wand2 className="mr-2 h-4 w-4" />
+                  )}
+                  <span className="font-medium">{retryCountdown > 0 ? `Retry in ${retryCountdown}s` : 'AI Optmize All'}</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Generate title, description & tags (Alt+A)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <div className="h-5 w-px bg-border/60 mx-1" />
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-xl h-10 w-10 hover:bg-primary/5 hover:text-primary transition-all"
+                  onClick={handleGetThumbnailIdeas}
+                  disabled={isGettingThumbnailIdeas || !isAiConfigured}
+                >
+                  {isGettingThumbnailIdeas ? <Loader className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Generate Thumbnail Ideas</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-xl h-10 w-10 hover:bg-primary/5 hover:text-primary transition-all"
+                  onClick={() => window.open(`https://studio.youtube.com/video/${video.id}/edit`, '_blank')}
+                >
+                  <Youtube className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Open in YouTube Studio</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={hasChanges ? "default" : "ghost"}
+                  size={hasChanges ? "default" : "icon"}
+                  onClick={handleSave}
+                  disabled={isSaving || !hasChanges}
+                  className={cn(
+                    "rounded-xl transition-all h-10",
+                    hasChanges ? "px-5 bg-primary text-primary-foreground shadow-md" : "w-10 hover:bg-primary/5 hover:text-primary"
+                  )}
+                >
+                  {isSaving ? (
+                    <Loader className="h-4 w-4 animate-spin" />
+                  ) : hasChanges ? (
+                    <div className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      <span>Save Changes</span>
+                    </div>
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{hasChanges ? "Save Changes (Cmd+S)" : "No changes to save"}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
         </div>
       </div>
     </div>

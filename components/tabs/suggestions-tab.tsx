@@ -15,6 +15,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useProfile } from "@/contexts/profile-context"
 import { EditIdeaDialog } from "@/components/edit-idea-dialog"
+import { cn } from "@/lib/utils"
 
 export function SuggestionsTab() {
   const { profile } = useProfile()
@@ -63,8 +64,6 @@ export function SuggestionsTab() {
   const savedIdeas = filterIdeas(ideas.filter(idea => idea.status === 'saved'))
   const inProgressIdeas = filterIdeas(ideas.filter(idea => idea.status === 'in_progress'))
   const completedIdeas = filterIdeas(ideas.filter(idea => idea.status === 'completed'))
-
-  // Remove initial suggestions fetch since we'll generate them on demand
 
   const handleGenerateContent = async () => {
     if (!promptText.trim()) {
@@ -168,12 +167,6 @@ export function SuggestionsTab() {
       // Update suggestions state with new ideas
       setSuggestions(newSuggestions)
 
-      // Create formatted content for display
-      const formattedContent = newSuggestions.map(idea =>
-        `Title: ${idea.title}\nType: ${idea.type}\nDescription: ${idea.description}\nMetrics: ${JSON.stringify(idea.metrics, null, 2)
-        }\nTags: ${idea.metadata?.tags?.join(', ') || 'None'}\n`
-      ).join('\n---\n\n');
-
       // Only update suggestions if we actually got new ones
       if (newSuggestions.length > 0) {
         console.log('Setting suggestions:', newSuggestions)
@@ -190,7 +183,6 @@ export function SuggestionsTab() {
         return
       }
 
-      setGeneratedContent(formattedContent)
       toast.success("Ideas Generated", {
         description: "AI has generated new content ideas based on your prompt.",
       })
@@ -233,7 +225,7 @@ export function SuggestionsTab() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Edit Dialog */}
       {editingIdea && (
         <EditIdeaDialog
@@ -244,14 +236,14 @@ export function SuggestionsTab() {
         />
       )}
 
-      <Card className="border-2 shadow-lg">
+      <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm overflow-hidden">
         <CardHeader>
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-[#FF0000]/10">
-              <Sparkles className="h-5 w-5 text-[#FF0000]" />
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+              <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <CardTitle className="text-2xl">AI Content Assistant</CardTitle>
+              <CardTitle className="text-xl">AI Content Assistant</CardTitle>
               <CardDescription>Get AI-powered suggestions for your YouTube content</CardDescription>
             </div>
           </div>
@@ -260,19 +252,19 @@ export function SuggestionsTab() {
           <div className="flex flex-col gap-6">
             <Textarea
               placeholder="What kind of content would you like help with? E.g., 'Generate 5 video title ideas about AI in marketing'"
-              className="min-h-[120px] text-base focus:ring-2 focus:ring-[#FF0000]/20 transition-all"
+              className="min-h-[120px] text-base bg-background/50 resize-y p-4 border-border/50 focus-visible:ring-primary/20"
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
             />
             {!profile?.ai_provider && (
-              <Alert className="border-[#FF0000]/20 bg-[#FF0000]/5">
-                <Info className="h-4 w-4 text-[#FF0000]" />
+              <Alert variant="destructive" className="bg-destructive/5 border-destructive/20 text-destructive">
+                <Info className="h-4 w-4" />
                 <AlertTitle>AI Provider Not Configured</AlertTitle>
                 <AlertDescription>
                   To use AI features, please configure your AI provider in{' '}
                   <Button
                     variant="link"
-                    className="p-0 h-auto text-[#FF0000] underline hover:text-[#CC0000]"
+                    className="p-0 h-auto font-semibold underline"
                     onClick={() => router.push('/settings?tab=ai')}
                   >
                     Settings &gt; AI Providers
@@ -283,71 +275,36 @@ export function SuggestionsTab() {
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-3">Quick Prompts:</p>
               <div className="flex flex-wrap gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="group hover:border-[#FF0000] hover:text-[#FF0000] hover:bg-[#FF0000]/5 transition-all hover:scale-105"
-                  onClick={() =>
-                    handleQuickPrompt("Generate 5 catchy video title ideas about AI tools for content creators")
-                  }
-                >
-                  <Lightbulb className="mr-2 h-3.5 w-3.5 group-hover:text-[#FF0000]" />
-                  Title ideas
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="group hover:border-[#FF0000] hover:text-[#FF0000] hover:bg-[#FF0000]/5 transition-all hover:scale-105"
-                  onClick={() => handleQuickPrompt("Write a YouTube video description template for a tutorial video")}
-                >
-                  <FileText className="mr-2 h-3.5 w-3.5 group-hover:text-[#FF0000]" />
-                  Description template
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="group hover:border-[#FF0000] hover:text-[#FF0000] hover:bg-[#FF0000]/5 transition-all hover:scale-105"
-                  onClick={() =>
-                    handleQuickPrompt("Create a script outline for a 10-minute video about YouTube growth strategies")
-                  }
-                >
-                  <PenTool className="mr-2 h-3.5 w-3.5 group-hover:text-[#FF0000]" />
-                  Script outline
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="group hover:border-[#FF0000] hover:text-[#FF0000] hover:bg-[#FF0000]/5 transition-all hover:scale-105"
-                  onClick={() =>
-                    handleQuickPrompt("Suggest 3 thumbnail concepts for a video about AI in content creation")
-                  }
-                >
-                  <Image className="mr-2 h-3.5 w-3.5 group-hover:text-[#FF0000]" />
-                  Thumbnail concepts
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="group hover:border-[#FF0000] hover:text-[#FF0000] hover:bg-[#FF0000]/5 transition-all hover:scale-105"
-                  onClick={() =>
-                    handleQuickPrompt("Generate SEO-friendly tags for a YouTube video about video editing tips")
-                  }
-                >
-                  <Tag className="mr-2 h-3.5 w-3.5 group-hover:text-[#FF0000]" />
-                  Tag suggestions
-                </Button>
+                {[
+                  { text: "Generate 5 catchy video title ideas about AI tools for content creators", icon: Lightbulb, label: "Title ideas" },
+                  { text: "Write a YouTube video description template for a tutorial video", icon: FileText, label: "Description template" },
+                  { text: "Create a script outline for a 10-minute video about YouTube growth strategies", icon: PenTool, label: "Script outline" },
+                  { text: "Suggest 3 thumbnail concepts for a video about AI in content creation", icon: Image, label: "Thumbnail concepts" },
+                  { text: "Generate SEO-friendly tags for a YouTube video about video editing tips", icon: Tag, label: "Tag suggestions" },
+                ].map((item, i) => (
+                  <Button
+                    key={i}
+                    variant="outline"
+                    size="sm"
+                    className="group bg-background/50 hover:bg-primary/5 hover:text-primary hover:border-primary/20 transition-all active:scale-95"
+                    onClick={() => handleQuickPrompt(item.text)}
+                  >
+                    <item.icon className="mr-2 h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    {item.label}
+                  </Button>
+                ))}
               </div>
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between gap-3">
-          <Button variant="outline" onClick={handleClearPrompt} disabled={isGenerating || !promptText} className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50">
+        <CardFooter className="flex justify-between gap-3 border-t bg-muted/20 px-6 py-4">
+          <Button variant="ghost" onClick={handleClearPrompt} disabled={isGenerating || !promptText} className="hover:bg-destructive/10 hover:text-destructive">
             Clear
           </Button>
           <Button
             onClick={handleGenerateContent}
             disabled={isGenerating || !promptText || !profile?.ai_provider}
-            className="bg-[#FF0000] hover:bg-[#CC0000] text-white shadow-[0_0_20px_-5px_#ff000066] hover:shadow-[0_0_30px_-5px_#ff000099] transition-all hover:scale-105"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow-md transition-all active:scale-95"
           >
             {isGenerating ? (
               <>
@@ -357,7 +314,7 @@ export function SuggestionsTab() {
             ) : (
               <>
                 <Sparkles className="mr-2 h-4 w-4" />
-                Generate
+                Generate Ideas
               </>
             )}
           </Button>
@@ -371,40 +328,38 @@ export function SuggestionsTab() {
         const query = params.toString()
         router.replace(`/suggestions${query ? `?${query}` : ''}`)
       }} className="space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto">
-            <TabsTrigger value="content" className="data-[state=active]:bg-[#FF0000] data-[state=active]:text-white">Content Ideas</TabsTrigger>
-            <TabsTrigger value="trends" className="data-[state=active]:bg-[#FF0000] data-[state=active]:text-white">In Progress</TabsTrigger>
-            <TabsTrigger value="improvements" className="data-[state=active]:bg-[#FF0000] data-[state=active]:text-white">Completed</TabsTrigger>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <TabsList className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-1 border border-border/40 rounded-xl w-full md:w-auto grid grid-cols-3">
+            <TabsTrigger value="content" className="rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary">Content Ideas</TabsTrigger>
+            <TabsTrigger value="trends" className="rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary">In Progress</TabsTrigger>
+            <TabsTrigger value="improvements" className="rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:text-primary">Completed</TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search ideas..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FF0000] focus-visible:ring-offset-2"
+                className="h-10 w-full rounded-xl border border-border/40 bg-background/50 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
-            <div className="flex items-center gap-1 rounded-lg border p-1 shrink-0">
+            <div className="flex items-center bg-background/50 border border-border/40 rounded-xl p-1 shrink-0">
               <Button
-                variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => handleViewModeChange('grid')}
-                className={viewMode === 'grid' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white' : ''}
-                title="Grid view"
+                className={cn("h-8 w-8 rounded-lg", viewMode === 'grid' && "bg-background shadow-sm text-primary")}
               >
                 <LayoutGrid className="h-4 w-4" />
               </Button>
               <Button
-                variant={viewMode === 'list' ? 'default' : 'ghost'}
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => handleViewModeChange('list')}
-                className={viewMode === 'list' ? 'bg-[#FF0000] hover:bg-[#CC0000] text-white' : ''}
-                title="List view"
+                className={cn("h-8 w-8 rounded-lg", viewMode === 'list' && "bg-background shadow-sm text-primary")}
               >
                 <List className="h-4 w-4" />
               </Button>
@@ -412,37 +367,30 @@ export function SuggestionsTab() {
           </div>
         </div>
 
-        <TabsContent value="content" className="space-y-4">
+        <TabsContent value="content" className="space-y-4 max-w-full">
           {isLoadingContent || ideasLoading ? (
             <div className="flex h-[300px] items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
             <div className="space-y-6">
-              {/* New AI Suggestions */}
-              {/* New AI Suggestions - only show when we have generated content */}
               {suggestions.length > 0 && (
-                <Card className="border-2 border-[#FF0000]/20 bg-gradient-to-br from-[#FF0000]/5 to-transparent">
+                <Card className="border-primary/20 bg-primary/5">
                   <CardHeader>
                     <div className="flex items-center gap-2">
-                      <Sparkles className="h-5 w-5 text-[#FF0000]" />
-                      <div>
-                        <CardTitle className="text-xl">Generated AI Suggestions</CardTitle>
-                        <CardDescription>
-                          Fresh content ideas based on your prompt
-                        </CardDescription>
-                      </div>
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      <CardTitle className="text-xl">Generated Suggestions</CardTitle>
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <div className={viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
+                    <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
                       {suggestions.map((suggestion, index) => (
                         <IdeaCard
                           key={`suggestion-${index}`}
                           idea={{
                             ...suggestion,
                             id: `temp-${index}`,
-                            user_id: '', // The backend will handle setting the correct user_id
+                            user_id: '',
                             created_at: new Date().toISOString(),
                             updated_at: new Date().toISOString()
                           }}
@@ -464,25 +412,18 @@ export function SuggestionsTab() {
                 </Card>
               )}
 
-              {/* Saved Ideas */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Saved Ideas</CardTitle>
-                  <CardDescription>Your collection of saved content ideas</CardDescription>
+              <Card className="border-none shadow-none bg-transparent">
+                <CardHeader className="px-0 pt-0">
+                  <CardTitle className="text-lg font-medium">Saved Ideas</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="px-0">
                   {savedIdeas.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <div className="rounded-full bg-muted p-6 mb-4">
-                        <FileText className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                      <h3 className="text-lg font-semibold mb-2">No saved ideas yet</h3>
-                      <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-                        Generate AI suggestions above and save the ones you like, or create your own ideas.
-                      </p>
+                    <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-muted-foreground/25 bg-muted/10">
+                      <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                      <p className="text-muted-foreground">No saved ideas yet</p>
                     </div>
                   ) : (
-                    <div className={viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
+                    <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
                       {savedIdeas.map((idea) => (
                         <IdeaCard
                           key={idea.id}
@@ -502,88 +443,54 @@ export function SuggestionsTab() {
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <TrendingUp className="mr-2 h-5 w-5 text-primary" />
-                Content in Progress
-              </CardTitle>
-              <CardDescription>Ideas you're currently working on</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {ideasLoading ? (
-                <div className="flex h-[200px] items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          {/* In Progress Ideas */}
+          <Card className="border-none shadow-none bg-transparent">
+            <CardContent className="px-0">
+              {inProgressIdeas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-muted-foreground/25 bg-muted/10">
+                  <TrendingUp className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground">No ideas in progress</p>
                 </div>
               ) : (
-                inProgressIdeas.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="rounded-full bg-muted p-6 mb-4">
-                      <TrendingUp className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">No ideas in progress</h3>
-                    <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-                      {searchQuery ? "No ideas match your search." : "Move ideas here when you start working on them."}
-                    </p>
-                  </div>
-                ) : (
-                  <div className={viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
-                    {inProgressIdeas.map((idea) => (
-                      <IdeaCard
-                        key={idea.id}
-                        idea={idea}
-                        onStatusChange={(status) => updateIdea(idea.id, { status })}
-                        onDelete={() => deleteIdea(idea.id)}
-                        onEdit={() => handleEditIdea(idea)}
-                        viewMode={viewMode}
-                      />
-                    ))}
-                  </div>
-                )
+                <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
+                  {inProgressIdeas.map((idea) => (
+                    <IdeaCard
+                      key={idea.id}
+                      idea={idea}
+                      onStatusChange={(status) => updateIdea(idea.id, { status })}
+                      onDelete={() => deleteIdea(idea.id)}
+                      onEdit={() => handleEditIdea(idea)}
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="improvements" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <LineChart className="mr-2 h-5 w-5 text-primary" />
-                Completed Ideas
-              </CardTitle>
-              <CardDescription>Ideas you've successfully turned into content</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {ideasLoading ? (
-                <div className="flex h-[200px] items-center justify-center">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          {/* Completed Ideas */}
+          <Card className="border-none shadow-none bg-transparent">
+            <CardContent className="px-0">
+              {completedIdeas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-muted-foreground/25 bg-muted/10">
+                  <LineChart className="h-10 w-10 text-muted-foreground/50 mb-3" />
+                  <p className="text-muted-foreground">No completed ideas</p>
                 </div>
               ) : (
-                completedIdeas.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="rounded-full bg-muted p-6 mb-4">
-                      <LineChart className="h-12 w-12 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold mb-2">No completed ideas</h3>
-                    <p className="text-sm text-muted-foreground mb-4 max-w-sm">
-                      {searchQuery ? "No ideas match your search." : "Mark ideas as completed when you've published them."}
-                    </p>
-                  </div>
-                ) : (
-                  <div className={viewMode === 'grid' ? 'grid gap-4 md:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
-                    {completedIdeas.map((idea) => (
-                      <IdeaCard
-                        key={idea.id}
-                        idea={idea}
-                        onStatusChange={(status) => updateIdea(idea.id, { status })}
-                        onDelete={() => deleteIdea(idea.id)}
-                        onEdit={() => handleEditIdea(idea)}
-                        viewMode={viewMode}
-                      />
-                    ))}
-                  </div>
-                )
+                <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
+                  {completedIdeas.map((idea) => (
+                    <IdeaCard
+                      key={idea.id}
+                      idea={idea}
+                      onStatusChange={(status) => updateIdea(idea.id, { status })}
+                      onDelete={() => deleteIdea(idea.id)}
+                      onEdit={() => handleEditIdea(idea)}
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
               )}
             </CardContent>
           </Card>
