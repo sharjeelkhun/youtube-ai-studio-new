@@ -83,6 +83,7 @@ export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isL
       bg: "bg-blue-500/10",
       stroke: "#3b82f6",
       fill: "url(#colorViews)",
+      isBar: false
     },
     {
       id: "watch_time",
@@ -93,6 +94,7 @@ export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isL
       bg: "bg-amber-500/10",
       stroke: "#f59e0b",
       fill: "url(#colorWatchTime)",
+      isBar: false
     },
     {
       id: "subscribers",
@@ -114,6 +116,7 @@ export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isL
       bg: "bg-purple-500/10",
       stroke: "#a855f7",
       fill: "url(#colorEngagement)",
+      isBar: false
     },
   ] as const
 

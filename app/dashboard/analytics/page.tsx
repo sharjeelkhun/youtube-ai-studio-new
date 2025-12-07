@@ -1,4 +1,4 @@
-import { AnalyticsTab } from "@/components/tabs/analytics-tab"
+// import { AnalyticsTab } from "@/components/tabs/analytics-tab"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -10,7 +10,7 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
-      <AnalyticsTab />
+      {/* <AnalyticsTab /> */}
     </div>
   )
 }

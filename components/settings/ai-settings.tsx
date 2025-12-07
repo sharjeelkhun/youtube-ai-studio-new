@@ -631,7 +631,7 @@ export function AISettings() {
                           {currentProviderConfig.models.map((model) => (
                             <SelectItem key={model.id} value={model.id}>
                               <span className="font-medium mr-2">{model.name}</span>
-                              {model.description && <span className="text-muted-foreground text-xs text-right ml-auto">({model.description})</span>}
+                              {(model as any).description && <span className="text-muted-foreground text-xs text-right ml-auto">(({(model as any).description})</span>}
                             </SelectItem>
                           ))}
                         </SelectContent>

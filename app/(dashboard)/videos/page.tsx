@@ -357,7 +357,7 @@ function Videos() {
               id: video.id,
               thumbnail_url: video.thumbnail_url || '',
               title: video.title,
-              status: getDisplayStatus(video.status),
+              status: getDisplayStatus(video.status) as "Published" | "Private" | "Unlisted" | "Draft" | "Scheduled",
               views: video.view_count,
               likes: video.like_count,
               comments: video.comment_count,
