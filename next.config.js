@@ -6,7 +6,21 @@ const nextConfig = {
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
   },
   images: {
-    domains: ['yt3.ggpht.com', 'i.ytimg.com', 'img.youtube.com', 'i9.ytimg.com'],
+    unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'www.youtube.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'yt3.ggpht.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+    ],
   },
 }
 

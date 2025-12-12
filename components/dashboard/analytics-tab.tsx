@@ -7,6 +7,7 @@ import { Area, AreaChart, Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { Loader2, ArrowUpRight, ArrowDownRight, Users, Clock, Eye, Activity } from "lucide-react"
 import { db, type AnalyticsData } from "@/lib/db"
 import { cn } from "@/lib/utils"
+import { ConnectChannelHero } from "@/components/connect-channel-hero"
 
 export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isLoading: boolean }) {
   const [analytics, setAnalytics] = useState<AnalyticsData[]>([])
@@ -45,7 +46,26 @@ export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isL
     }
   }, [channelData, dateRange])
 
-  if (isLoading || isLoadingData) {
+  if (isLoading) {
+    return (
+      <div className="flex h-[400px] items-center justify-center">
+        <div className="flex flex-col items-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground">Loading channel data...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!channelData?.id) {
+    return (
+      <div className="py-8">
+        <ConnectChannelHero />
+      </div>
+    )
+  }
+
+  if (isLoadingData) {
     return (
       <div className="flex h-[400px] items-center justify-center">
         <div className="flex flex-col items-center space-y-4">

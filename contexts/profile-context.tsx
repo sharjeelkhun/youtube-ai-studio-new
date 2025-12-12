@@ -23,7 +23,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   const fetchProfile = useCallback(async () => {
-    if (!session) return
+    if (!session?.user?.id) return
 
     setLoading(true)
     try {
@@ -47,7 +47,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false)
     }
-  }, [session])
+  }, [session?.user?.id])
 
   useEffect(() => {
     fetchProfile()
@@ -74,7 +74,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('ai-provider-changed' as any, handleProviderChange)
       window.removeEventListener('storage', handleStorageChange)
     }
-  }, [session, fetchProfile])
+  }, [session?.user?.id, fetchProfile])
 
   const updateProfile = async (newProfileData: Partial<Profile>) => {
     if (!session) throw new Error("No active session")

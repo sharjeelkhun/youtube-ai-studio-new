@@ -22,17 +22,33 @@ interface YoutubeConnectionStatusProps {
 export function YoutubeConnectionStatus({ channel = null }: YoutubeConnectionStatusProps) {
   if (!channel) {
     return (
-      <Card className="p-4">
-        <div className="flex flex-col items-center text-center">
-          <div className="mb-4 rounded-full bg-yellow-100 p-2 dark:bg-yellow-900">
-            <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-300" />
-          </div>
-          <h2 className="text-l font-semibold mb-2">No YouTube Channel Connected</h2>
-          <Link href="/connect-channel">
-            <Button>Connect Channel</Button>
-          </Link>
+      <div className="flex flex-col gap-3 p-3 rounded-xl border border-red-500/20 bg-gradient-to-b from-red-500/5 to-transparent backdrop-blur-sm">
+        <div className="flex items-center gap-2 text-xs font-medium text-red-600/80 dark:text-red-400">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+          </span>
+          <span>Action Required</span>
         </div>
-      </Card>
+
+        <div className="space-y-1">
+          <h4 className="text-sm font-semibold text-foreground">No Channel Found</h4>
+          <p className="text-[10px] text-muted-foreground leading-snug">Connect to unlock AI tools and analytics.</p>
+        </div>
+
+        <Button
+          size="sm"
+          className="w-full justify-center gap-2 bg-white dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 shadow-sm h-8 text-xs font-semibold"
+          onClick={async () => {
+            const response = await fetch('/api/youtube/connect')
+            const data = await response.json()
+            if (data.authUrl) window.location.href = data.authUrl
+          }}
+        >
+          <Users className="w-3.5 h-3.5" />
+          Connect Now
+        </Button>
+      </div>
     )
   }
 

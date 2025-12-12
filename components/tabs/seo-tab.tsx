@@ -12,6 +12,8 @@ import { getSeoScores, analyzeSeo } from "@/lib/api"
 import type { SeoScore } from "@/lib/types"
 import { toast } from "sonner"
 import { useRouter, useSearchParams } from "next/navigation"
+import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
+import { ConnectChannelHero } from "@/components/connect-channel-hero"
 
 export function SeoTab() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -22,6 +24,15 @@ export function SeoTab() {
   const router = useRouter()
   const initialSubtab = (searchParams?.get('tab') as string) || 'videos'
   const [activeTab, setActiveTab] = useState(initialSubtab)
+  const { channel, isLoading: channelLoading } = useYouTubeChannel()
+
+  if (!channelLoading && !channel?.id) {
+    return (
+      <div className="py-8">
+        <ConnectChannelHero />
+      </div>
+    )
+  }
 
   useEffect(() => {
     const fetchSeoScores = async () => {

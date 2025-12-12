@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '@/lib/supabase/client'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Check, ChevronRight, Zap, X } from 'lucide-react'
 import { aiProviders } from '@/lib/ai-providers'
@@ -10,7 +10,6 @@ export function AIProviderSwitcher() {
     const [isOpen, setIsOpen] = useState(false)
     const [currentProvider, setCurrentProvider] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
-    const supabase = createClientComponentClient()
 
     useEffect(() => {
         loadCurrentProvider()

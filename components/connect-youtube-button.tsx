@@ -1,9 +1,12 @@
-'use client'
-
 import { Button } from "@/components/ui/button"
 import { Youtube } from "lucide-react"
+import { cn } from "@/lib/utils"
 
-export function ConnectYouTubeButton() {
+interface ConnectYouTubeButtonProps {
+  className?: string
+}
+
+export function ConnectYouTubeButton({ className }: ConnectYouTubeButtonProps) {
   const handleConnect = async () => {
     const response = await fetch('/api/youtube/connect')
     const data = await response.json()
@@ -15,7 +18,7 @@ export function ConnectYouTubeButton() {
   return (
     <Button
       size="lg"
-      className="bg-red-600 hover:bg-red-700 transition-all duration-300 flex items-center gap-2 text-lg px-8 py-6 shadow-lg hover:shadow-xl"
+      className={cn("bg-red-600 hover:bg-red-700 transition-all duration-300 flex items-center gap-2 text-lg px-8 py-6 shadow-lg hover:shadow-xl", className)}
       onClick={handleConnect}
     >
       <Youtube className="w-5 h-5" />

@@ -56,10 +56,10 @@ async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string) {
   do {
     pageCount++
     console.log(`Fetching videos page ${pageCount}...`)
-    
+
     const playlistUrl: string = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
     console.log('Fetching from URL:', playlistUrl)
-    
+
     const response = await fetch(playlistUrl, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -79,11 +79,11 @@ async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string) {
 
     const data = await response.json()
     console.log(`Fetched ${data.items?.length || 0} videos from page ${pageCount}`)
-    
+
     if (data.items) {
       allVideos = [...allVideos, ...data.items]
     }
-    
+
     nextPageToken = data.nextPageToken
 
   } while (nextPageToken)
@@ -96,10 +96,10 @@ export async function POST(request: Request) {
 
   try {
     const supabase = createRouteHandlerClient<Database>({ cookies })
-    
+
     // Get the current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+
     if (sessionError) {
       console.error('Session error:', sessionError)
       return NextResponse.json({ error: 'Authentication error' }, { status: 401 })
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
       console.log('Token expired, refreshing...')
       try {
         accessToken = await refreshAccessToken(channel.refresh_token)
-        
+
         // Update the access token in the database
         const { error: updateError } = await supabase
           .from('youtube_channels')
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
           })
           throw new Error('Failed to update access token')
         }
-        
+
         console.log('Token refreshed successfully')
       } catch (error) {
         console.error('Error refreshing token:', {
@@ -230,7 +230,7 @@ export async function POST(request: Request) {
     // Process videos in batches of 50 (YouTube API limit)
     for (let i = 0; i < videoIds.length; i += 50) {
       const batchIds = videoIds.slice(i, i + 50)
-      console.log(`Processing video batch ${i/50 + 1}...`)
+      console.log(`Processing video batch ${i / 50 + 1}...`)
 
       const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status,liveStreamingDetails&id=${batchIds.join(',')}`
       console.log('Fetching video stats from:', statsUrl)
@@ -254,8 +254,8 @@ export async function POST(request: Request) {
       const statsData = await statsResponse.json()
       console.log(`Fetched stats for ${statsData.items?.length || 0} videos`)
 
-      // Process each video
-      for (const video of statsData.items) {
+      // Process video batch in parallel to speed up URL checks
+      const videoBatchData = await Promise.all(statsData.items.map(async (video: any) => {
         const base = playlistItems.find(item => item.snippet.resourceId.videoId === video.id)?.snippet
         const iso = video.contentDetails?.duration || ''
         const seconds = (() => {
@@ -267,14 +267,34 @@ export async function POST(request: Request) {
             return h * 3600 + m * 60 + s
           } catch { return 0 }
         })()
-        const isShort = seconds > 0 && seconds <= 60
+
+        let isShort = false
+        // STRICT SHORTS DETECTION:
+        // Verification via URL redirect (parallelized)
+        if (seconds > 0 && seconds <= 60) {
+          try {
+            const res = await fetch(`https://www.youtube.com/shorts/${video.id}`, {
+              method: 'HEAD',
+              redirect: 'follow',
+              headers: { 'User-Agent': 'Mozilla/5.0 (compatible; YouTubeAIStudio/1.0;)' }
+            })
+            if (res.url.includes('/shorts/')) {
+              isShort = true
+            }
+          } catch (e) {
+            console.warn(`Failed to verify Short status for ${video.id}, assuming video.`)
+            isShort = false
+          }
+        }
+
         const liveFlag = video?.snippet?.liveBroadcastContent
         const hasLiveDetails = !!video?.liveStreamingDetails
         const isLive = (liveFlag && liveFlag !== 'none') || hasLiveDetails
         const computedTags: string[] = []
         if (isShort) computedTags.push('short')
         if (isLive) computedTags.push('live')
-        const videoData = {
+
+        return {
           id: video.id,
           channel_id: channel.id,
           title: base?.title || '',
@@ -288,23 +308,22 @@ export async function POST(request: Request) {
           status: video.status.privacyStatus || 'private',
           tags: computedTags
         }
+      }))
 
-        // Upsert the video data
+      // Batch upsert to database (much faster)
+      const validVideos = videoBatchData.filter(v => v !== null)
+      if (validVideos.length > 0) {
         const { error: upsertError } = await supabase
           .from('youtube_videos')
-          .upsert(videoData, {
+          .upsert(validVideos, {
             onConflict: 'id'
           })
 
         if (upsertError) {
-          console.error('Error upserting video:', {
-            error: upsertError,
-            videoId: video.id
-          })
-          continue
+          console.error('Error batch upserting videos:', upsertError)
+        } else {
+          videos.push(...validVideos)
         }
-
-        videos.push(videoData)
       }
     }
 
@@ -336,7 +355,7 @@ export async function POST(request: Request) {
 
   } catch (error) {
     console.error('Error in sync videos API:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'An unexpected error occurred',
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })

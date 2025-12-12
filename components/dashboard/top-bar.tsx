@@ -82,10 +82,14 @@ export function TopBar() {
             <Button
               variant="default"
               size="sm"
-              className="bg-red-600 hover:bg-red-700 text-white shadow-sm shadow-red-500/20"
-              asChild
+              className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white shadow-md hover:shadow-lg transition-all duration-300 px-5 h-9 font-medium"
+              onClick={async () => {
+                const response = await fetch('/api/youtube/connect')
+                const data = await response.json()
+                if (data.authUrl) window.location.href = data.authUrl
+              }}
             >
-              <a href="/connect-channel">Connect</a>
+              Connect Channel
             </Button>
           )}
           <ModeToggle />

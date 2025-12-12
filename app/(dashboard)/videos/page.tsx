@@ -4,7 +4,7 @@ import { VideoGrid } from '@/components/video-grid'
 import { useEffect, useState, Suspense } from 'react'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import type { Database } from '@/lib/database.types'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase/client'
 import VideosLoading from './loading'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -17,10 +17,11 @@ import {
 } from '@/components/ui/pagination'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { LayoutGrid, AlertCircle, RefreshCw, Loader2, Video, List } from 'lucide-react'
+import { LayoutGrid, AlertCircle, RefreshCw, Loader2, Video, List, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { calculateSeoScore } from "@/lib/seo-utils"
+import { ConnectChannelHero } from '@/components/connect-channel-hero'
 
 function Videos() {
   const { channel, isLoading: channelIsLoading } = useYouTubeChannel()
@@ -42,6 +43,7 @@ function Videos() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'video' | 'short' | 'live'>(initialType)
   const [statusFilter, setStatusFilter] = useState<'all' | 'public' | 'private' | 'unlisted'>(initialStatus)
   const [seoFilter, setSeoFilter] = useState<'all' | 'good' | 'average' | 'poor'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const [isSyncing, setIsSyncing] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -52,13 +54,15 @@ function Videos() {
   // We can derive 'videos' (displayed videos) from the processed list.
 
   useEffect(() => {
-    const fetchVideos = async () => {
+    const fetchVideos = async (silent = false) => {
       if (!channel?.id) {
         setVideosLoading(false);
         return
       }
 
-      setVideosLoading(true)
+      // If silent is true, we don't show the loading skeleton
+      // This is used for background updates after sync
+      if (!silent) setVideosLoading(true)
 
       try {
         // Fetch ALL videos for the channel to enable accurate client-side filtering/sorting/pagination
@@ -83,7 +87,7 @@ function Videos() {
       } catch (error) {
         console.error('Error fetching videos:', error)
       } finally {
-        setVideosLoading(false)
+        if (!silent) setVideosLoading(false)
       }
     }
 
@@ -99,10 +103,19 @@ function Videos() {
     })()
 
     if (!channelIsLoading) {
+      // 1. Fetch local data IMMEDIATELY
+      fetchVideos()
+
+      // 2. Trigger sync in background if needed (fire and forget)
       if (shouldAutoSync) {
-        fetch('/api/youtube/videos/sync', { method: 'POST' }).finally(fetchVideos)
-      } else {
-        fetchVideos()
+        console.log('Background syncing videos...')
+        fetch('/api/youtube/videos/sync', { method: 'POST' })
+          .then(() => {
+            console.log('Sync complete, refreshing list...')
+            // Silent refresh to update UI with any new videos
+            fetchVideos(true)
+          })
+          .catch((err) => console.error('Background sync failed:', err))
       }
     }
   }, [channel, channelIsLoading, supabase])
@@ -177,10 +190,42 @@ function Videos() {
 
   // 2. Filter
   const filteredVideos = videosWithSeo.filter(video => {
-    // Type Filter
-    if (typeFilter === 'short' && !video.tags?.includes('short')) return false
-    if (typeFilter === 'live' && !video.tags?.includes('live')) return false
-    if (typeFilter === 'video' && (video.tags?.includes('short') || video.tags?.includes('live'))) return false
+    // Robust parsing
+    let durationSeconds = 0
+    if (video.duration) {
+      try {
+        const match = video.duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+        if (match) {
+          const h = parseInt(match[1] || '0', 10)
+          const m = parseInt(match[2] || '0', 10)
+          const s = parseInt(match[3] || '0', 10)
+          durationSeconds = h * 3600 + m * 60 + s
+        }
+      } catch (e) {
+        // Ignore parse errors, default to 0
+      }
+    }
+
+    const hasShortTag = video.tags?.includes('short')
+    // const isDurationShort = durationSeconds > 0 && durationSeconds <= 60 // REMOVED heuristic
+
+    // Definitions
+    // STRICT: Only treat as short if explicitly tagged (by our robust sync logic)
+    const isShort = hasShortTag
+    const isLive = video.tags?.includes('live')
+    // A standard video is defined as NOT a short and NOT a live stream
+    const isStandardVideo = !isShort && !isLive
+
+    // Apply Type Filter (Inclusive Logic that allows Fallthrough)
+    // If a type is selected, we filter OUT items that don't match.
+    // We do NOT "return true" immediately, because we still need to check Status and SEO.
+    if (typeFilter === 'short') {
+      if (!isShort) return false
+    } else if (typeFilter === 'live') {
+      if (!isLive) return false
+    } else if (typeFilter === 'video') {
+      if (!isStandardVideo) return false
+    }
 
     // Status Filter
     if (statusFilter !== 'all') {
@@ -227,6 +272,18 @@ function Videos() {
     if (s === 'private') return 'Private'
     if (s === 'unlisted') return 'Unlisted'
     return status.charAt(0).toUpperCase() + status.slice(1)
+  }
+
+  if (videosLoading) {
+    return <VideosLoading />
+  }
+
+  if (!channel?.id) {
+    return (
+      <div className="container py-8 px-4 md:px-6">
+        <ConnectChannelHero />
+      </div>
+    )
   }
 
   return (
@@ -341,13 +398,35 @@ function Videos() {
         <div className="flex flex-col items-center justify-center py-24 text-center border-2 border-dashed border-border/40 rounded-3xl bg-muted/5">
           {/* Empty State */}
           <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
-            <Video className="h-8 w-8 text-muted-foreground/50" />
+            {allVideos.length === 0 ? (
+              <Video className="h-8 w-8 text-muted-foreground/50" />
+            ) : (
+              <Search className="h-8 w-8 text-muted-foreground/50" />
+            )}
           </div>
-          <h3 className="text-xl font-semibold mb-2">No videos found</h3>
+          <h3 className="text-xl font-semibold mb-2">
+            {allVideos.length === 0 ? "No videos found" : "No matches found"}
+          </h3>
           <p className="text-muted-foreground max-w-sm mb-6">
-            Try adjusting your filters or sync your channel to see your content here.
+            {allVideos.length === 0
+              ? "We couldn't find any videos for your channel. Sync now to import them."
+              : "No videos match your current filters. Try adjusting them."}
           </p>
-          <Button variant="outline" onClick={handleSync}>Sync Channel</Button>
+          {allVideos.length === 0 ? (
+            <Button variant="outline" onClick={handleSync}>Sync Channel</Button>
+          ) : (
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => {
+                setPage(1)
+                setTypeFilter('all')
+                setStatusFilter('all')
+                setSeoFilter('all')
+                setSearchQuery('')
+                updateUrl({ page: 1, type: 'all', status: 'all' })
+              }}>Clear Filters</Button>
+              <Button variant="ghost" onClick={handleSync} className="text-muted-foreground">Force Sync</Button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-6">

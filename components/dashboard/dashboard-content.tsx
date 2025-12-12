@@ -13,6 +13,7 @@ import { VideosTab } from './videos-tab';
 import { AnalyticsTab } from './analytics-tab';
 import { SettingsTab } from '@/components/dashboard/settings-tab';
 import { SuggestionsTab } from '@/components/tabs/suggestions-tab';
+import { ConnectChannelHero } from '@/components/connect-channel-hero';
 
 interface DashboardContentProps {
   userId?: string;
@@ -102,42 +103,8 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
   // If no channel is connected, show a connection prompt
   if (!channel) {
     return (
-      <div className="space-y-4">
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-
-        <Card className="border-2 border-dashed border-muted-foreground/25">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Youtube className="h-5 w-5 text-red-500" />
-              Connect Your YouTube Channel
-            </CardTitle>
-            <CardDescription>
-              Connect your YouTube channel to see personalized analytics and AI-powered recommendations
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center py-8">
-            <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-red-500/10 mb-6">
-              <Youtube className="h-12 w-12 text-red-500" />
-            </div>
-            <h3 className="text-xl font-medium mb-2">No YouTube Channel Connected</h3>
-            <p className="text-center text-muted-foreground max-w-md mb-6">
-              Connect your YouTube channel to unlock personalized analytics, content suggestions, and optimization
-              tools.
-            </p>
-            <Button
-              onClick={() => router.push("/connect-channel")}
-              className="bg-gradient-to-r from-red-500 to-red-700 hover:from-red-600 hover:to-red-800"
-            >
-              Connect YouTube Channel
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </CardContent>
-          <CardFooter className="justify-center border-t bg-muted/20 py-4">
-            <p className="text-sm text-muted-foreground">
-              Your data is secure and we only request read-only access to your channel.
-            </p>
-          </CardFooter>
-        </Card>
+      <div className="flex-1 flex flex-col h-[calc(100vh-4rem)]">
+        <ConnectChannelHero />
       </div>
     );
   }

@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Loader2, User, HardDrive, Cpu, LogOut, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -16,9 +16,18 @@ import { Input } from "@/components/ui/input"
 
 export function SettingsTab() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentTab = searchParams?.get('settingsTab') || 'channel';
   const { channel, loading } = useYouTubeChannel();
   const [loadingSignOut, setLoadingSignOut] = useState(false);
   const { signOut, user } = useAuth(); // Assuming useAuth exposes user
+
+  // Function to handle tab changes and update URL
+  const handleTabChange = (value: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set('settingsTab', value);
+    router.push(`/dashboard?${params.toString()}`);
+  }
 
   const handleSignOut = async () => {
     setLoadingSignOut(true);
@@ -48,7 +57,7 @@ export function SettingsTab() {
         </div>
       </div>
 
-      <Tabs defaultValue="channel" className="space-y-6">
+      <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-1 border border-border/40 rounded-xl h-auto w-full md:w-auto grid grid-cols-3 md:inline-flex md:grid-cols-none">
           <TabsTrigger value="channel" className="gap-2 rounded-lg px-4 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium transition-all">
             <HardDrive className="h-4 w-4" />

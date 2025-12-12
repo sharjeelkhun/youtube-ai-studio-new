@@ -49,7 +49,7 @@ export function AccountSettings() {
         username: channelData.title || prev.username,
       }))
     }
-  }, [session, channelData])
+  }, [session?.user?.id, session?.user?.email, channelData?.title])
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target

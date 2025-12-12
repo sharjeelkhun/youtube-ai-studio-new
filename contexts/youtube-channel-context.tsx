@@ -44,7 +44,7 @@ const YouTubeChannelContext = createContext<YouTubeChannelContextType>({
   loading: true,
   error: null,
   isConnected: false,
-  refreshChannel: async () => {},
+  refreshChannel: async () => { },
   channelData: null,
   isLoading: true
 })
@@ -75,7 +75,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
           statusText: response.statusText,
           error: responseData
         });
-        
+
         if (response.status === 401) {
           throw new Error('Invalid refresh token. Please reconnect your channel.');
         }
@@ -120,7 +120,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
   const fetchChannelStats = useCallback(async (accessToken: string, channelId: string) => {
     try {
       console.log('Fetching channel stats for channel:', channelId);
-      
+
       // Fetch channel statistics
       const channelResponse = await fetch(
         `https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&id=${channelId}`,
@@ -139,7 +139,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
 
       const channelData = await channelResponse.json();
       console.log('Channel API response:', channelData);
-      
+
       if (!channelData.items?.length) {
         throw new Error('No channel data found');
       }
@@ -202,7 +202,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
 
       const videoStatsData = await videoStatsResponse.json();
       console.log('Video stats response:', videoStatsData);
-      
+
       // Calculate total likes and comments
       const totalLikes = videoStatsData.items.reduce((sum: number, video: any) => {
         return sum + parseInt(video.statistics.likeCount || '0');
@@ -237,7 +237,10 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
     }
 
     console.log('Fetching YouTube channel for user:', session.user.id);
-    setLoading(true);
+    // Only set loading if we don't have a channel yet (initial load)
+    if (!channel) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -265,81 +268,85 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
           lastSynced: channelData.last_synced
         })
 
+        // OPTIMISTIC UPDATE: Set channel immediately to unblock UI
         let currentChannel = channelData as YouTubeChannel
+        setChannel(currentChannel)
+        setLoading(false)
+
         const tokenExpiresAt = new Date(currentChannel.token_expires_at).getTime()
         const now = Date.now()
-        
+
         // Refresh token if it's expired or close to expiring
         if (now >= tokenExpiresAt - 5 * 60 * 1000) {
-        console.log('Token has expired or is expiring soon, refreshing...');
-        try {
-          currentChannel = await refreshToken(currentChannel)
-        } catch (error) {
-          console.error('Failed to refresh token:', error)
-          // Remove the channel if the refresh token is invalid
-          if (error instanceof Error && error.message.includes('Invalid refresh token')) {
-            const { error: deleteError } = await supabase
-              .from('youtube_channels')
-              .delete()
-              .eq('id', currentChannel.id)
-            if (deleteError) {
-              console.error('Error deleting invalid channel:', deleteError)
+          console.log('Token has expired or is expiring soon, refreshing...');
+          try {
+            currentChannel = await refreshToken(currentChannel)
+            // Update state with refreshed token
+            setChannel(currentChannel)
+          } catch (error) {
+            console.error('Failed to refresh token:', error)
+            // Remove the channel if the refresh token is invalid
+            if (error instanceof Error && error.message.includes('Invalid refresh token')) {
+              const { error: deleteError } = await supabase
+                .from('youtube_channels')
+                .delete()
+                .eq('id', currentChannel.id)
+              if (deleteError) {
+                console.error('Error deleting invalid channel:', deleteError)
+              }
+              setChannel(null)
+              setError('Failed to refresh token. Please reconnect your channel.')
+              return
             }
+            // If just a network error, we keep the stale channel but log it
           }
-          setError('Failed to refresh token. Please reconnect your channel.')
-          setChannel(null)
-          setLoading(false)
-          return
         }
-        }
-        
+
         // Fetch fresh stats if not synced recently
         const lastSynced = channelData.last_synced ? new Date(channelData.last_synced).getTime() : 0
         if (now - lastSynced > 5 * 60 * 1000) { // 5 minutes
           console.log('Channel not synced recently, fetching fresh stats...')
-          try {
-            const stats = await fetchChannelStats(currentChannel.access_token, currentChannel.id)
-            
-            const updatedChannel = {
-              ...currentChannel,
-              ...stats,
-              last_synced: new Date().toISOString()
-            }
-            
-            // Update database with new stats
-            const { error: updateError } = await supabase
-              .from('youtube_channels')
-              .update({
-                subscriber_count: stats.subscriber_count,
-                video_count: stats.video_count,
-                view_count: stats.view_count,
-                likes: stats.likes,
-                comments: stats.comments,
-                last_synced: updatedChannel.last_synced
-              })
-              .eq('id', currentChannel.id)
+          // Run in background, don't await to block
+          fetchChannelStats(currentChannel.access_token, currentChannel.id)
+            .then(async (stats) => {
+              const updatedChannel = {
+                ...currentChannel,
+                ...stats,
+                last_synced: new Date().toISOString()
+              }
 
-            if (updateError) {
-              console.error('Error updating channel stats in DB:', updateError)
-              // Don't throw, just log the error and continue with the stale data
-            }
-            
-            setChannel(updatedChannel)
-          } catch (error) {
-            console.error('Error fetching fresh channel stats:', error)
-            setError('Could not update channel statistics.')
-            setChannel(currentChannel); // Fallback to DB data
-          }
-        } else {
-          console.log('Using existing channel data:', channelData)
-          setChannel(channelData as YouTubeChannel)
+              // Update database with new stats
+              const { error: updateError } = await supabase
+                .from('youtube_channels')
+                .update({
+                  subscriber_count: stats.subscriber_count,
+                  video_count: stats.video_count,
+                  view_count: stats.view_count,
+                  likes: stats.likes,
+                  comments: stats.comments,
+                  last_synced: updatedChannel.last_synced
+                })
+                .eq('id', currentChannel.id)
+
+              if (updateError) {
+                console.error('Error updating channel stats in DB:', updateError)
+              } else {
+                setChannel(updatedChannel)
+              }
+            })
+            .catch((error) => {
+              console.error('Error fetching fresh channel stats:', error)
+              // Suppress error in UI, just keep using stale data
+            })
         }
       }
     } catch (error: any) {
       console.error('Error in fetchChannel:', error)
       setError(error instanceof Error ? error.message : 'An unexpected error occurred')
     } finally {
-      setLoading(false)
+      // Ensure loading is false if we didn't take the success path
+      // (The success path sets it false early)
+      setLoading((prev) => prev && false)
     }
   }, [session?.user?.id, refreshToken, fetchChannelStats])
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { supabase } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -391,7 +391,7 @@ export default function VideoPage() {
           return
         }
 
-        const supabase = createClientComponentClient()
+        // const supabase = createClientComponentClient()
 
         // First get the video from our database
         const { data: video, error } = await supabase
@@ -447,7 +447,7 @@ export default function VideoPage() {
     }
 
     fetchVideo()
-  }, [params.videoId, router, session, channel, isSessionLoading, isChannelLoading, isProfileLoading])
+  }, [params.videoId, router, session?.user?.id, channel?.id, isSessionLoading, isChannelLoading, isProfileLoading])
 
   // Countdown effect for AI Generate All retry with live toast updates
   useEffect(() => {
@@ -592,7 +592,7 @@ export default function VideoPage() {
       }
 
       // Save to local history table
-      const supabase = createClientComponentClient()
+      // const supabase = createClientComponentClient()
       await supabase.from('video_history').insert({
         video_id: video?.id,
         title: editedVideo.title,
@@ -620,7 +620,7 @@ export default function VideoPage() {
 
     try {
       setIsSaving(true)
-      const supabase = createClientComponentClient()
+      // const supabase = createClientComponentClient()
       const { error } = await supabase
         .from('youtube_videos')
         .update({

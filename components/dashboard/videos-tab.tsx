@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Video, YouTubeChannel } from "@/lib/db"
+import { ConnectChannelHero } from "@/components/connect-channel-hero"
 
 interface VideosTabProps {
   channelData: YouTubeChannel | null
@@ -150,6 +151,14 @@ export function VideosTab({ channelData, isLoading }: VideosTabProps) {
             </div>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  if (!channelData) {
+    return (
+      <div className="py-8">
+        <ConnectChannelHero />
       </div>
     )
   }
