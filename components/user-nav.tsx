@@ -75,7 +75,7 @@ export function UserNav() {
                 <div className="overflow-hidden">
                   <p className="text-sm font-medium leading-none truncate">{channel.title}</p>
                   <p className="text-[10px] text-muted-foreground mt-1 truncate">
-                    {parseInt(channel.subscriber_count || '0').toLocaleString()} subscribers
+                    {(channel.subscriber_count || 0).toLocaleString()} subscribers
                   </p>
                 </div>
               </div>

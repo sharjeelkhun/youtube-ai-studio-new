@@ -1,4 +1,4 @@
-"use client"
+
 
 import { ConnectChannelHero } from "@/components/connect-channel-hero"
 

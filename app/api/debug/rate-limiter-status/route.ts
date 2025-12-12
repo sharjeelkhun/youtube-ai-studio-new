@@ -3,6 +3,8 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { rateLimiter, PROVIDER_LIMITS } from '@/lib/rate-limiter'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * Debug endpoint to expose real-time rate limiter status
  * Shows available tokens, capacity, and reset time for all providers
@@ -12,10 +14,10 @@ export async function GET(req: Request) {
     // Get user session
     const supabase = createRouteHandlerClient({ cookies })
     const { data: { session } } = await supabase.auth.getSession()
-    
+
     if (!session) {
-      return NextResponse.json({ 
-        error: 'Unauthorized' 
+      return NextResponse.json({
+        error: 'Unauthorized'
       }, { status: 401 })
     }
 
@@ -73,8 +75,8 @@ export async function GET(req: Request) {
 
   } catch (error) {
     console.error('[RATE-LIMITER-STATUS] Error:', error)
-    return NextResponse.json({ 
-      error: 'Failed to get rate limiter status' 
+    return NextResponse.json({
+      error: 'Failed to get rate limiter status'
     }, { status: 500 })
   }
 }

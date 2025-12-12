@@ -33,7 +33,7 @@ export async function GET() {
 
     let fixedCount = 0
     let processedCount = 0
-    const updates = []
+    const updates: { id: string, tags: string[] }[] = []
 
     // 2. Process in batches
     const BATCH_SIZE = 20
