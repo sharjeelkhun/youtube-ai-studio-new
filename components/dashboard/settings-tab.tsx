@@ -3,16 +3,13 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, User, HardDrive, Cpu, LogOut, CheckCircle2 } from 'lucide-react';
+import { Loader2, HardDrive, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Input } from "@/components/ui/input"
 
 export function SettingsTab() {
   const router = useRouter();
@@ -26,7 +23,7 @@ export function SettingsTab() {
   const handleTabChange = (value: string) => {
     const params = new URLSearchParams(window.location.search);
     params.set('settingsTab', value);
-    router.push(`/dashboard?${params.toString()}`);
+    router.push(`/dashboard/settings?${params.toString()}`);
   }
 
   const handleSignOut = async () => {
@@ -58,18 +55,10 @@ export function SettingsTab() {
       </div>
 
       <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
-        <TabsList className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-1 border border-border/40 rounded-xl h-auto w-full md:w-auto grid grid-cols-3 md:inline-flex md:grid-cols-none">
+        <TabsList className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-1 border border-border/40 rounded-xl h-auto w-full md:w-auto">
           <TabsTrigger value="channel" className="gap-2 rounded-lg px-4 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium transition-all">
             <HardDrive className="h-4 w-4" />
             Channel
-          </TabsTrigger>
-          <TabsTrigger value="ai" className="gap-2 rounded-lg px-4 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium transition-all">
-            <Cpu className="h-4 w-4" />
-            AI Config
-          </TabsTrigger>
-          <TabsTrigger value="account" className="gap-2 rounded-lg px-4 py-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary font-medium transition-all">
-            <User className="h-4 w-4" />
-            Account
           </TabsTrigger>
         </TabsList>
 
@@ -136,107 +125,9 @@ export function SettingsTab() {
                     <p className="font-medium">{channel.video_count || 0}</p>
                   </div>
                 </div>
-
-                <div className="flex justify-end pt-4">
-                  <Button
-                    onClick={() => router.push('/connect-channel')}
-                    variant="outline"
-                  >
-                    Manage Connection
-                  </Button>
-                </div>
               </CardContent>
             </Card>
           )}
-        </TabsContent>
-
-        <TabsContent value="ai" className="space-y-4">
-          <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm">
-            <CardHeader>
-              <CardTitle>AI Preferences</CardTitle>
-              <CardDescription>Configure how AI analyzes and generates content for you</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Default Model</Label>
-                  <Select defaultValue="gpt-4">
-                    <SelectTrigger className="bg-background/50">
-                      <SelectValue placeholder="Select model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="gpt-4">GPT-4 Turbo (Recommended)</SelectItem>
-                      <SelectItem value="claude-3">Claude 3 Opus</SelectItem>
-                      <SelectItem value="claude-sonnet">Claude 3.5 Sonnet</SelectItem>
-                      <SelectItem value="gemini-pro">Gemini 1.5 Pro</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">This model will be used for title and script generation.</p>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2">
-                  <Label>Creativity Level (Temperature)</Label>
-                  <div className="flex items-center gap-4">
-                    <Input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.1"
-                      defaultValue="0.7"
-                      className="w-full flex-1" // Range inputs might need custom styling
-                    />
-                    <span className="text-sm font-medium w-8 text-center">0.7</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Higher values make output more creative but less focused.</p>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="justify-end border-t border-border/50 pt-6">
-              <Button>Save Preferences</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="account" className="space-y-4">
-          <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm">
-            <CardHeader>
-              <CardTitle>Profile Details</CardTitle>
-              <CardDescription>Manage your personal account settings</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>Email Address</Label>
-                <Input value={user?.email || ''} readOnly className="bg-muted text-muted-foreground" />
-              </div>
-
-              <Separator />
-
-              <div className="space-y-4">
-                <h3 className="font-medium text-destructive">Danger Zone</h3>
-                <div className="flex items-center justify-between p-4 border border-destructive/20 rounded-xl bg-destructive/5">
-                  <div className="space-y-0.5">
-                    <div className="font-medium text-destructive">Sign Out</div>
-                    <div className="text-sm text-muted-foreground">Securely log out of your session on this device</div>
-                  </div>
-                  <Button variant="destructive" size="sm" onClick={handleSignOut} disabled={loadingSignOut}>
-                    {loadingSignOut ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Signing out...
-                      </>
-                    ) : (
-                      <>
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Sign Out
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

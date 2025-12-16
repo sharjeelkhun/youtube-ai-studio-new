@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import './globals.css';
 import { Providers } from '@/components/providers';
 import { AIProvider } from '@/contexts/ai-context';
+import { SubscriptionProvider } from "@/contexts/subscription-context";
 import ClickSpark from '@/components/click-spark';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -26,14 +27,16 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <AIProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              enableSystem
-              disableTransitionOnChange
-            >
-              {children}
-            </ThemeProvider>
+            <SubscriptionProvider>
+              <ThemeProvider
+                attribute="class"
+                defaultTheme="dark"
+                enableSystem
+                disableTransitionOnChange
+              >
+                {children}
+              </ThemeProvider>
+            </SubscriptionProvider>
           </AIProvider>
         </Providers>
         <ClickSpark />

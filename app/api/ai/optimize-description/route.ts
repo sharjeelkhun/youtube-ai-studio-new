@@ -6,7 +6,7 @@ import { RateLimitTimeoutError } from '@/lib/rate-limiter'
 
 export async function POST(req: Request) {
   const provider = 'unknown'
-  
+
   try {
     const supabase = createRouteHandlerClient({ cookies })
     const { data: { session } } = await supabase.auth.getSession()
@@ -37,10 +37,10 @@ export async function POST(req: Request) {
     }
 
     const apiKey = profile.ai_settings.apiKeys[profile.ai_provider]
-    
+
     // Extract userId for rate limiting
     const userId = session.user.id
-    
+
     let optimizedContent
 
     try {
@@ -61,13 +61,13 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: 'Unsupported AI provider' }, { status: 400 })
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         title: optimizedContent.title || title,
         description: optimizedContent.description || description
       })
     } catch (error: any) {
       console.error('[AI_OPTIMIZE_DESCRIPTION_ERROR]', error)
-      
+
       // Handle rate limit timeout errors from centralized limiter
       if (error instanceof RateLimitTimeoutError) {
         return NextResponse.json({
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
         }, { status: 400 })
       }
 
-      return NextResponse.json({ 
+      return NextResponse.json({
         error: error.message || 'Failed to optimize description'
       }, { status: 500 })
     }

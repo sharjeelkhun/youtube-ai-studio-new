@@ -96,14 +96,14 @@ export function UserNav() {
         <DropdownMenuSeparator className="bg-border/50 my-1" />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
-            <Link href="/settings" className="cursor-pointer rounded-lg focus:bg-primary/10 focus:text-primary transition-colors py-2.5 w-full flex items-center">
+            <Link href="/settings?tab=account" className="cursor-pointer rounded-lg focus:bg-primary/10 focus:text-primary transition-colors py-2.5 w-full flex items-center">
               <User className="mr-2 h-4 w-4" />
               <span>Profile</span>
               <DropdownMenuShortcut>⇧⌘P</DropdownMenuShortcut>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
-            <Link href="/dashboard?tab=settings&settingsTab=account" className="cursor-pointer rounded-lg focus:bg-primary/10 focus:text-primary transition-colors py-2.5 w-full flex items-center">
+            <Link href="/settings?tab=billing" className="cursor-pointer rounded-lg focus:bg-primary/10 focus:text-primary transition-colors py-2.5 w-full flex items-center">
               <CreditCard className="mr-2 h-4 w-4" />
               <span>Billing</span>
               <DropdownMenuShortcut>⌘B</DropdownMenuShortcut>

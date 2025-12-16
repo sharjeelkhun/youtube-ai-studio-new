@@ -488,7 +488,7 @@ export default function LandingPage() {
                 description: "Perfect for new creators looking to grow their channel.",
                 features: ["Basic Analytics", "5 AI Content Suggestions per month", "Basic SEO Tools", "Email Support"],
                 cta: "Get Started",
-                ctaLink: "/signup",
+                ctaLink: "/signup?plan=starter",
                 popular: false,
               },
               {
@@ -503,7 +503,7 @@ export default function LandingPage() {
                   "Priority Support",
                 ],
                 cta: "Get Started",
-                ctaLink: "/signup",
+                ctaLink: "/signup?plan=professional",
                 popular: true,
               },
               {
@@ -518,8 +518,8 @@ export default function LandingPage() {
                   "Dedicated Account Manager",
                   "API Access",
                 ],
-                cta: "Contact Sales",
-                ctaLink: "mailto:sales@youtubeaistudio.com",
+                cta: "Get Started",
+                ctaLink: "/signup?plan=enterprise",
                 popular: false,
               },
             ].map((plan, index) => (

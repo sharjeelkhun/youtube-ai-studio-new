@@ -7,8 +7,9 @@ import { IntegrationsSettings } from "@/components/settings/integrations-setting
 import { AISettings } from "@/components/settings/ai-settings"
 import { NotificationSettings } from "@/components/settings/notification-settings"
 import { AppearanceSettings } from "@/components/settings/appearance-settings"
+import BillingTab from "@/components/dashboard/billing/billing-tab"
 import { useRouter, useSearchParams } from "next/navigation"
-import { User, Layers, Cpu, Bell, Palette } from "lucide-react"
+import { User, Layers, Cpu, Bell, Palette, CreditCard } from "lucide-react"
 import { motion } from "framer-motion"
 
 export function SettingsContent() {
@@ -35,6 +36,7 @@ export function SettingsContent() {
     // { value: "integrations", label: "Integrations", icon: Layers }, // Hiding unused if needed, but keeping for now
     { value: "integrations", label: "Integrations", icon: Layers },
     { value: "ai", label: "AI Providers", icon: Cpu },
+    { value: "billing", label: "Billing", icon: CreditCard },
     { value: "notifications", label: "Notifications", icon: Bell },
     { value: "appearance", label: "Appearance", icon: Palette },
   ]
@@ -71,6 +73,10 @@ export function SettingsContent() {
 
         <TabsContent value="ai" className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
           <AISettings />
+        </TabsContent>
+
+        <TabsContent value="billing" className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+          <BillingTab />
         </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">

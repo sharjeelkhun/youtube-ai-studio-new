@@ -9,18 +9,29 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2 } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Loader2, Sparkles, Crown } from "lucide-react"
 import DotGrid from "@/components/dot-grid"
+import { useSearchParams, useRouter } from "next/navigation"
 
 
 
 export default function SignupPage() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const selectedPlan = searchParams?.get('plan') || null
+
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const { signUp, isLoading, isPreview } = useAuth()
+
+  const planNames: Record<string, string> = {
+    starter: "Starter",
+    professional: "Professional",
+    enterprise: "Enterprise"
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,6 +39,10 @@ export default function SignupPage() {
 
     try {
       await signUp(email, password)
+      // After successful signup, redirect to billing if plan was selected
+      if (selectedPlan) {
+        router.push(`/settings?tab=billing&plan=${selectedPlan}`)
+      }
     } catch (err: any) {
       setError("Could not create account. Please try again.")
     }
@@ -52,6 +67,15 @@ export default function SignupPage() {
             {isPreview && <CardDescription className="text-center">Preview Mode: Enter any details</CardDescription>}
           </CardHeader>
           <CardContent>
+            {selectedPlan && (
+              <Alert className="mb-4 border-[#FF0000]/20 bg-[#FF0000]/5">
+                <Crown className="h-4 w-4 text-[#FF0000]" />
+                <AlertTitle className="text-[#FF0000]">You're signing up for {planNames[selectedPlan] || selectedPlan}</AlertTitle>
+                <AlertDescription>
+                  Complete your account creation to proceed to checkout
+                </AlertDescription>
+              </Alert>
+            )}
             {isPreview && (
               <Alert className="mb-4">
                 <AlertDescription>This is running in preview mode. Any details will work.</AlertDescription>

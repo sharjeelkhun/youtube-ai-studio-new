@@ -268,6 +268,76 @@ export interface Database {
           updated_at?: string
           tags?: string[]
         }
+      },
+      subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          plan_id: string
+          status: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          current_period_start: string
+          current_period_end: string
+          paypal_subscription_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          plan_id: string
+          status?: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          current_period_start?: string
+          current_period_end?: string
+          paypal_subscription_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          plan_id?: string
+          status?: 'active' | 'cancelled' | 'past_due' | 'trialing'
+          current_period_start?: string
+          current_period_end?: string
+          paypal_subscription_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      },
+      payments: {
+        Row: {
+          id: string
+          user_id: string
+          amount: number
+          currency: string
+          status: 'succeeded' | 'failed' | 'pending'
+          payment_method: string
+          description: string | null
+          paypal_transaction_id: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          amount: number
+          currency?: string
+          status?: 'succeeded' | 'failed' | 'pending'
+          payment_method?: string
+          description?: string | null
+          paypal_transaction_id?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          amount?: number
+          currency?: string
+          status?: 'succeeded' | 'failed' | 'pending'
+          payment_method?: string
+          description?: string | null
+          paypal_transaction_id?: string | null
+          created_at?: string
+        }
       }
     }
   }
