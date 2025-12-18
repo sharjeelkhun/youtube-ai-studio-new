@@ -27,19 +27,19 @@ const PLANS = {
         id: PAYPAL_PLAN_IDS.starter,
         name: "Starter",
         price: "Free",
-        features: ["Basic Analytics", "5 AI Content Suggestions", "Basic SEO Tools", "Email Support"],
+        features: ["Sync last 5–10 videos", "1 AI insight per video", "Basic title & description rewrite", "1 AI-generated thumbnail", "Ads outside core workflow", "Email Support"],
     },
     Professional: {
         id: PAYPAL_PLAN_IDS.professional,
         name: "Professional",
         price: "$49",
-        features: ["Advanced Analytics", "Unlimited AI Content Suggestions", "Advanced SEO Tools", "Competitor Analysis", "Priority Support"],
+        features: ["Full channel sync & analysis", "Unlimited AI insights per video", "Multiple AI suggestions for titles, descriptions, and tags", "Thumbnail guidance & A/B testing", "Competitor analysis & pattern insights", "Priority Support", "Optional: use your own OpenAI/Gemini API key", "No ads"],
     },
     Enterprise: {
         id: PAYPAL_PLAN_IDS.enterprise,
         name: "Enterprise",
         price: "$99",
-        features: ["Custom Analytics", "Unlimited AI", "Advanced SEO", "Competitor Analysis", "Dedicated Manager", "API Access"],
+        features: ["Custom analytics dashboard", "Full AI insights & suggestions across all videos", "Advanced SEO & competitor intelligence", "Dedicated account manager", "Competitor analysis & pattern insights", "Priority Support", "API Access", "Full control over AI models & integrations", "No ads"],
     },
 }
 

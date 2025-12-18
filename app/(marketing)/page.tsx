@@ -26,24 +26,23 @@ export default function LandingPage() {
                 <span className="text-muted-foreground">New: AI-Powered Competitor Analysis</span>
               </div>
 
-              <h1 className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60 animate-fade-in-up">
-                Skyrocket Your <span className="text-[#FF0000]">YouTube Revenue</span>
+              <h1 className="text-5xl font-bold tracking-tighter sm:text-5xl md:text-5xl lg:text-5xl bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/60 animate-fade-in-up">
+                Stop Guessing. <span className="text-[#FF0000]">Start Growing Your YouTube Channel</span>
               </h1>
 
               <p className="max-w-2xl text-lg text-muted-foreground md:text-xl leading-relaxed">
-                Stop guessing. Start growing. Join 10,000+ creators using data-driven insights to double their views and monetization in 30 days.
+                AI-powered insights to diagnose underperforming videos and optimize new ones — boost views, subscribers, and revenue without guesswork.
               </p>
-
               <div className="flex flex-col gap-4 sm:flex-row w-full sm:w-auto">
                 <Link href="/signup">
                   <Button size="lg" className="h-12 px-8 text-base bg-[#FF0000] hover:bg-[#CC0000] text-white rounded-xl shadow-[0_0_30px_-5px_#ff000066] transition-all hover:scale-105 hover:shadow-[0_0_40px_-5px_#ff000099]">
-                    Start Growing Now
+                    Analyze My Channel for Free
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
                 <Link href="/dashboard">
                   <Button variant="outline" size="lg" className="h-12 px-8 text-base border-border hover:bg-accent hover:text-accent-foreground rounded-xl backdrop-blur-sm transition-all">
-                    View Demo
+                    See How It Works
                   </Button>
                 </Link>
               </div>
@@ -485,9 +484,9 @@ export default function LandingPage() {
               {
                 name: "Starter",
                 price: "Free",
-                description: "Perfect for new creators looking to grow their channel.",
-                features: ["Basic Analytics", "5 AI Content Suggestions per month", "Basic SEO Tools", "Email Support"],
-                cta: "Get Started",
+                description: "Ideal for new creators just starting out. Diagnose your old videos and get actionable insights.",
+                features: ["Sync last 5–10 videos", "1 AI insight per video", "Basic title & description rewrite", "1 AI-generated thumbnail", "Ads outside core workflow", "Email support"],
+                cta: "Start Free – No Credit Card Required.",
                 ctaLink: "/signup?plan=starter",
                 popular: false,
               },
@@ -496,29 +495,34 @@ export default function LandingPage() {
                 price: "$49",
                 description: "For serious creators who want to accelerate their growth.",
                 features: [
-                  "Advanced Analytics",
-                  "Unlimited AI Content Suggestions",
-                  "Advanced SEO Tools",
-                  "Competitor Analysis",
-                  "Priority Support",
+                  "Full channel sync & analysis",
+                  "Unlimited AI insights per video",
+                  "Multiple AI suggestions for titles, descriptions, and tags",
+                  "Thumbnail guidance & A/B testing",
+                  "Competitor analysis & pattern insights",
+                  "Priority support",
+                  "Optional: use your own OpenAI/Gemini API key",
+                  "No ads",
                 ],
-                cta: "Get Started",
+                cta: "Upgrade to Professional",
                 ctaLink: "/signup?plan=professional",
                 popular: true,
               },
               {
                 name: "Enterprise",
                 price: "$99",
-                description: "For established creators and multi-channel networks.",
+                description: "Designed for established creators and multi-channel networks.",
                 features: [
-                  "Custom Analytics Dashboard",
-                  "Unlimited AI Content Suggestions",
-                  "Advanced SEO Tools",
-                  "Competitor Analysis",
-                  "Dedicated Account Manager",
-                  "API Access",
+                  "Custom analytics dashboard",
+                  "Full AI insights & suggestions across all videos",
+                  "Advanced SEO & competitor intelligence",
+                  "Dedicated account manager",
+                  "Competitor analysis & pattern insights",
+                  "API access",
+                  "Full control over AI models & integrations",
+                  "No ads",
                 ],
-                cta: "Get Started",
+                cta: "Get Enterprise Access",
                 ctaLink: "/signup?plan=enterprise",
                 popular: false,
               },
@@ -587,19 +591,23 @@ export default function LandingPage() {
             {[
               {
                 q: "Do I need a credit card to start?",
-                a: "No, you can start your 14-day free trial without entering any payment information."
+                a: "Nope! You can start your free plan instantly — no payment information required."
               },
               {
                 q: "Can I cancel my subscription anytime?",
-                a: "Yes, you can cancel your subscription at any time from your account settings. No questions asked."
+                a: "Yes. Paid subscriptions are fully flexible. Cancel anytime from your account settings, no questions asked."
               },
               {
                 q: "Is my channel data safe?",
-                a: "Absolutely. We use enterprise-grade encryption and never share your data with third parties. We are fully compliant with YouTube's API Terms of Service."
+                a: "Absolutely. We use enterprise-grade encryption and never share your data with third parties. Fully compliant with YouTube’s API Terms of Service."
               },
               {
-                q: "What happens after my trial ends?",
-                a: "You can choose to upgrade to one of our paid plans or continue with our limited free tier."
+                q: "What happens after my free plan ends?",
+                a: "You can continue using the free tier or upgrade to unlock unlimited AI insights, thumbnail guidance, and advanced analytics."
+              },
+              {
+                q: "Can I bring my own AI API key?",
+                a: "Yes! Paid users can connect their own OpenAI or Gemini API keys to manage usage and costs. Free users use Mistral AI for insights."
               }
             ].map((faq, i) => (
               <ScrollFade key={i} delay={i * 0.1} direction="up">
@@ -620,15 +628,15 @@ export default function LandingPage() {
 
         <div className="container relative mx-auto px-4 md:px-6 text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl text-foreground mb-6">
-            Ready to Go <span className="text-[#FF0000]">Viral?</span>
+            Ready to Grow <span className="text-[#FF0000]">Your Channel?</span>
           </h2>
           <p className="text-muted-foreground md:text-xl max-w-2xl mx-auto mb-10">
-            Join thousands of creators who are already using YouTube AI Studio to grow their channels.
+            Join thousands of creators turning underperforming videos into growth opportunities.
           </p>
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
             <Link href="/signup">
               <Button size="lg" className="h-14 px-8 text-lg bg-[#FF0000] hover:bg-[#CC0000] text-white rounded-xl shadow-2xl hover:shadow-[#FF0000]/25 hover:scale-105 transition-all">
-                Get Started Now
+                Analyze My Channel for Free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
