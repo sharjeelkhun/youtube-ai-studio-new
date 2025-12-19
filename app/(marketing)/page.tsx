@@ -5,6 +5,7 @@ import { ArrowRight, BarChart3, CheckCircle, Play, Sparkles, Star, Users, Zap, T
 import { ModeToggle } from "@/components/mode-toggle"
 import { ScrollReveal, ScrollFade } from "@/components/scroll-reveal"
 import DotGrid from "@/components/dot-grid"
+import { siteConfig } from "@/lib/config"
 
 
 
@@ -416,7 +417,7 @@ export default function LandingPage() {
             {[
               {
                 quote:
-                  "YouTube AI Studio has completely transformed how I approach content creation. The AI suggestions are spot on!",
+                  "{siteConfig.name} has completely transformed how I approach content creation. The AI suggestions are spot on!",
                 author: "Alex Johnson",
                 role: "Tech YouTuber, 500K subscribers",
                 avatar: "/placeholder.svg",
@@ -584,7 +585,7 @@ export default function LandingPage() {
               Frequently Asked Questions
             </h2>
             <p className="text-muted-foreground md:text-xl max-w-2xl mx-auto">
-              Everything you need to know about YouTube AI Studio.
+              Everything you need to know about {siteConfig.name}.
             </p>
           </div>
           <div className="max-w-3xl mx-auto space-y-6">

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { siteConfig } from "@/lib/config"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -75,7 +76,7 @@ export default function OnboardingPage() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1500))
 
-      toast.success("Welcome to YouTube AI Studio!", {
+      toast.success(`Welcome to ${siteConfig.name}!`, {
         description: "Your account is now set up and ready to use.",
       })
 
@@ -99,7 +100,7 @@ export default function OnboardingPage() {
               <Sparkles className="h-6 w-6 text-primary-foreground" />
             </div>
             <CardTitle className="mt-4 text-2xl">Set up your account</CardTitle>
-            <CardDescription>Complete these steps to get started with YouTube AI Studio</CardDescription>
+            <CardDescription>Complete these steps to get started with {siteConfig.name}</CardDescription>
             <Progress value={(step / totalSteps) * 100} className="mt-4" />
             <div className="mt-2 text-xs text-muted-foreground">
               Step {step} of {totalSteps}
@@ -108,7 +109,7 @@ export default function OnboardingPage() {
           <CardContent>
             {step === 1 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-medium">Welcome to YouTube AI Studio</h3>
+                <h3 className="text-lg font-medium">Welcome to {siteConfig.name}</h3>
                 <p className="text-muted-foreground">
                   We're excited to have you on board! Let's set up your account to get the most out of our platform.
                 </p>

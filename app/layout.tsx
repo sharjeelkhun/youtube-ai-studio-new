@@ -9,9 +9,11 @@ import ClickSpark from '@/components/click-spark';
 
 const inter = Inter({ subsets: ['latin'] });
 
+import { siteConfig } from '@/lib/config';
+
 export const metadata: Metadata = {
-  title: 'YouTube AI Studio',
-  description: 'AI-powered YouTube video management and analytics',
+  title: siteConfig.name,
+  description: siteConfig.description,
   icons: {
     icon: 'https://www.youtube.com/s/desktop/377f632f/img/logos/favicon_144x144.png',
   },

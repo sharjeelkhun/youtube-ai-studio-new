@@ -1,6 +1,8 @@
 import Link from "next/link"
 import Image from "next/image"
 
+import { siteConfig } from "@/lib/config"
+
 export function SiteFooter() {
     return (
         <footer className="border-t border-border bg-background py-16">
@@ -15,7 +17,7 @@ export function SiteFooter() {
                                 height={32}
                                 className="h-8 w-8"
                             />
-                            <span className="text-lg font-bold text-foreground">YouTube AI Studio</span>
+                            <span className="text-lg font-bold text-foreground">{siteConfig.name}</span>
                         </div>
                         <p className="mt-2 text-sm text-muted-foreground">
                             AI-powered YouTube analytics and optimization platform.
@@ -75,17 +77,17 @@ export function SiteFooter() {
                         <h3 className="mb-4 text-sm font-semibold text-foreground">Legal</h3>
                         <ul className="space-y-2 text-sm">
                             <li>
-                                <Link href="#" className="text-muted-foreground hover:text-foreground">
+                                <Link href="/terms" className="text-muted-foreground hover:text-foreground">
                                     Terms of Service
                                 </Link>
                             </li>
                             <li>
-                                <Link href="#" className="text-muted-foreground hover:text-foreground">
+                                <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
                                     Privacy Policy
                                 </Link>
                             </li>
                             <li>
-                                <Link href="#" className="text-muted-foreground hover:text-foreground">
+                                <Link href="/cookies" className="text-muted-foreground hover:text-foreground">
                                     Cookie Policy
                                 </Link>
                             </li>
@@ -94,7 +96,7 @@ export function SiteFooter() {
                 </div>
                 <div className="mt-12 border-t border-border pt-6">
                     <p className="text-center text-sm text-muted-foreground">
-                        © {new Date().getFullYear()} YouTube AI Studio. All rights reserved.
+                        © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
                     </p>
                 </div>
             </div>

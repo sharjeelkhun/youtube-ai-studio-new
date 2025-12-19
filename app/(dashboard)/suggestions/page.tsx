@@ -1,8 +1,10 @@
 import { SuggestionsTab } from "@/components/tabs/suggestions-tab"
 import type { Metadata } from "next"
 
+import { siteConfig } from "@/lib/config"
+
 export const metadata: Metadata = {
-  title: "AI Suggestions | YouTube AI Studio",
+  title: `AI Suggestions | ${siteConfig.name}`,
   description: "AI-powered content suggestions for your YouTube channel",
 }
 

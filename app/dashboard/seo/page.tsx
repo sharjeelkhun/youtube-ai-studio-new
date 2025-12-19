@@ -1,8 +1,10 @@
 import { SeoTab } from "@/components/tabs/seo-tab"
 import type { Metadata } from "next"
 
+import { siteConfig } from "@/lib/config"
+
 export const metadata: Metadata = {
-  title: "SEO | YouTube AI Studio",
+  title: `SEO | ${siteConfig.name}`,
   description: "Optimize your YouTube videos for search engines",
 }
 

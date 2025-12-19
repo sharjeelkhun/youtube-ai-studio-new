@@ -1,8 +1,10 @@
 import { CommentsTab } from "@/components/dashboard/comments-tab"
 import type { Metadata } from "next"
 
+import { siteConfig } from "@/lib/config"
+
 export const metadata: Metadata = {
-  title: "Comments | YouTube AI Studio",
+  title: `Comments | ${siteConfig.name}`,
   description: "Manage and respond to your YouTube comments",
 }
 

@@ -177,4 +177,4 @@ The component is automatically available on all dashboard pages:
 
 ## Summary
 
-The AI Provider Switcher is a premium, user-friendly component that makes switching between AI providers effortless. With beautiful animations, responsive design, and intuitive UX, it enhances the overall experience of the YouTube AI Studio application! 🚀
+The AI Provider Switcher is a premium, user-friendly component that makes switching between AI providers effortless. With beautiful animations, responsive design, and intuitive UX, it enhances the overall experience of the YourAI Studio application! 🚀

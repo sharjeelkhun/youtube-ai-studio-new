@@ -1,4 +1,4 @@
-# YouTube AI Studio
+# YourAI Studio
 
 A Next.js application for managing YouTube content with AI-powered features.
 

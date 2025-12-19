@@ -1,8 +1,10 @@
 // import { AnalyticsTab } from "@/components/tabs/analytics-tab"
 import type { Metadata } from "next"
 
+import { siteConfig } from "@/lib/config"
+
 export const metadata: Metadata = {
-  title: "Analytics | YouTube AI Studio",
+  title: `Analytics | ${siteConfig.name}`,
   description: "Detailed analytics for your YouTube channel",
 }
 

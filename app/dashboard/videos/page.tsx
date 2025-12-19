@@ -1,8 +1,10 @@
 import { VideosTab } from "@/components/tabs/videos-tab"
 import type { Metadata } from "next"
 
+import { siteConfig } from "@/lib/config"
+
 export const metadata: Metadata = {
-  title: "Videos | YouTube AI Studio",
+  title: `Videos | ${siteConfig.name}`,
   description: "Manage your YouTube videos",
 }
 

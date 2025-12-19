@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { ModeToggle } from "@/components/mode-toggle"
 
+import { siteConfig } from "@/lib/config"
+
 export function SiteHeader() {
     return (
         <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/70 backdrop-blur-md">
@@ -16,8 +18,8 @@ export function SiteHeader() {
                             height={32}
                             className="h-8 w-8"
                         />
-                        <span className="text-lg font-bold hidden sm:inline">YouTube AI Studio</span>
-                        <span className="text-lg font-bold sm:hidden">AI Studio</span>
+                        <span className="text-lg font-bold hidden sm:inline">{siteConfig.name}</span>
+                        <span className="text-lg font-bold sm:hidden">{siteConfig.name}</span>
                     </Link>
                 </div>
                 <nav className="hidden gap-6 md:flex">
