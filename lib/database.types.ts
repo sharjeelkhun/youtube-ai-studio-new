@@ -72,7 +72,7 @@ export interface Database {
           ai_provider?: string | null
           ai_settings?: Json | null
         }
-      }
+      },
       youtube_channels: {
         Row: {
           id: string
@@ -122,7 +122,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-      }
+      },
       videos: {
         Row: {
           id: string
@@ -169,7 +169,7 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
-      }
+      },
       video_tags: {
         Row: {
           id: number
@@ -186,7 +186,7 @@ export interface Database {
           video_id?: string
           tag?: string
         }
-      }
+      },
       analytics_data: {
         Row: {
           id: number
@@ -218,7 +218,7 @@ export interface Database {
           subscribers?: number
           created_at?: string
         }
-      }
+      },
       youtube_videos: {
         Row: {
           id: string
@@ -280,6 +280,7 @@ export interface Database {
           paypal_subscription_id: string | null
           created_at: string
           updated_at: string
+          cancel_at_period_end: boolean
         }
         Insert: {
           id?: string
@@ -291,6 +292,7 @@ export interface Database {
           paypal_subscription_id?: string | null
           created_at?: string
           updated_at?: string
+          cancel_at_period_end?: boolean
         }
         Update: {
           id?: string
@@ -302,6 +304,7 @@ export interface Database {
           paypal_subscription_id?: string | null
           created_at?: string
           updated_at?: string
+          cancel_at_period_end?: boolean
         }
       },
       payments: {
@@ -315,6 +318,9 @@ export interface Database {
           description: string | null
           paypal_transaction_id: string | null
           created_at: string
+          plan_name: string | null
+          period_start: string | null
+          period_end: string | null
         }
         Insert: {
           id?: string
@@ -326,6 +332,9 @@ export interface Database {
           description?: string | null
           paypal_transaction_id?: string | null
           created_at?: string
+          plan_name?: string | null
+          period_start?: string | null
+          period_end?: string | null
         }
         Update: {
           id?: string
@@ -337,6 +346,9 @@ export interface Database {
           description?: string | null
           paypal_transaction_id?: string | null
           created_at?: string
+          plan_name?: string | null
+          period_start?: string | null
+          period_end?: string | null
         }
       }
     }

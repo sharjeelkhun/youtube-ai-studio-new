@@ -57,9 +57,9 @@ async function fetchAllVideos(accessToken: string, playlistId: string) {
   do {
     pageCount++
     console.log(`Fetching videos page ${pageCount}...`)
-    
+
     const playlistUrl: string = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
-    
+
     const response = await fetch(playlistUrl, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -79,7 +79,7 @@ async function fetchAllVideos(accessToken: string, playlistId: string) {
 
     const data = await response.json()
     console.log(`Fetched ${data.items?.length || 0} videos from page ${pageCount}`)
-    
+
     allVideos = [...allVideos, ...(data.items || [])]
     nextPageToken = data.nextPageToken
 
@@ -104,10 +104,10 @@ export async function GET(request: Request) {
 
   try {
     const supabase = createRouteHandlerClient<Database>({ cookies })
-    
+
     // Get the current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+
     if (sessionError) {
       console.error('Session error:', sessionError)
       return NextResponse.json({ error: 'Authentication error' }, { status: 401 })
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
       .from('youtube_channels')
       .select('*')
       .eq('user_id', session.user.id)
-      .single()
+      .maybeSingle()
 
     if (channelError) {
       console.error('Error fetching channel:', {
@@ -159,7 +159,7 @@ export async function GET(request: Request) {
       console.log('Token expired, refreshing...')
       try {
         accessToken = await refreshAccessToken(channel.refresh_token)
-        
+
         // Update the access token in the database
         const { error: updateError } = await supabase
           .from('youtube_channels')
@@ -178,7 +178,7 @@ export async function GET(request: Request) {
           })
           throw new Error('Failed to update access token')
         }
-        
+
         console.log('Token refreshed successfully')
       } catch (error) {
         console.error('Error refreshing token:', {
@@ -210,7 +210,7 @@ export async function GET(request: Request) {
     // Process videos in batches of 50 (YouTube API limit)
     for (let i = 0; i < videoIds.length; i += 50) {
       const batchIds = videoIds.slice(i, i + 50)
-      console.log(`Processing video batch ${i/50 + 1}...`)
+      console.log(`Processing video batch ${i / 50 + 1}...`)
 
       const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,status&id=${batchIds.join(',')}`
       console.log('Fetching video stats from:', statsUrl)
@@ -223,7 +223,7 @@ export async function GET(request: Request) {
 
       if (!statsResponse.ok) {
         console.error('Failed to fetch video statistics for batch:', {
-          batch: i/50 + 1,
+          batch: i / 50 + 1,
           status: statsResponse.status,
           statusText: statsResponse.statusText
         })
@@ -231,8 +231,8 @@ export async function GET(request: Request) {
       }
 
       const statsData = await statsResponse.json()
-      console.log(`Fetched stats for ${statsData.items?.length || 0} videos in batch ${i/50 + 1}`)
-      
+      console.log(`Fetched stats for ${statsData.items?.length || 0} videos in batch ${i / 50 + 1}`)
+
       // Match statistics with playlist items
       for (const item of playlistItems.slice(i, i + 50)) {
         const videoStats = statsData.items?.find(
@@ -241,24 +241,24 @@ export async function GET(request: Request) {
 
         if (!videoStats) {
           console.log('No stats found for video:', item.snippet.resourceId.videoId)
-        continue
-      }
+          continue
+        }
 
-      const video = {
+        const video = {
           id: item.snippet.resourceId.videoId,
-        channel_id: channel.id,
-        title: item.snippet.title,
-        description: item.snippet.description,
-        thumbnail_url: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
-        published_at: item.snippet.publishedAt,
+          channel_id: channel.id,
+          title: item.snippet.title,
+          description: item.snippet.description,
+          thumbnail_url: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
+          published_at: item.snippet.publishedAt,
           view_count: parseInt(videoStats.statistics.viewCount || '0'),
           like_count: parseInt(videoStats.statistics.likeCount || '0'),
           comment_count: parseInt(videoStats.statistics.commentCount || '0'),
           duration: videoStats.contentDetails.duration,
           status: videoStats.status.privacyStatus
-      }
+        }
 
-      videos.push(video)
+        videos.push(video)
       }
     }
 
@@ -275,7 +275,7 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('Error in videos API:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'An unexpected error occurred',
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })

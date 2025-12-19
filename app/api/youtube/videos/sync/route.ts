@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       .from('youtube_channels')
       .select('*')
       .eq('user_id', session.user.id)
-      .single()
+      .maybeSingle()
 
     if (channelError) {
       console.error('Error fetching channel:', {

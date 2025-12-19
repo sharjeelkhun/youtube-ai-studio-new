@@ -10,24 +10,31 @@ import {
 } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { useSession } from "@/contexts/session-context"
+import { useSubscription } from "@/contexts/subscription-context"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Loader2 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { MobileNav } from "@/components/mobile-nav"
+import { useMobile } from "@/hooks/use-mobile"
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { session, isLoading } = useSession()
+  const { session, isLoading: sessionLoading } = useSession()
+  const { isCheckoutRequired, isLoading: subLoading } = useSubscription()
   const router = useRouter()
+  const isMobile = useMobile()
+
+  const isLoading = sessionLoading || subLoading
 
   useEffect(() => {
-    if (!isLoading && !session?.user) {
+    if (!sessionLoading && !session?.user) {
       router.replace("/login")
     }
-  }, [session, isLoading, router])
+  }, [session, sessionLoading, router])
 
   if (isLoading) {
     return (
@@ -78,20 +85,25 @@ export default function DashboardLayout({
 
   return (
     <DashboardProvider>
-      <div className="flex min-h-screen w-full">
-        <AppSidebar>
-          <Sidebar />
-        </AppSidebar>
-        <SidebarInset>
-          <div className="flex flex-1 flex-col">
+      <div className="flex h-screen w-full overflow-hidden text-foreground">
+        {!isMobile && (
+          <AppSidebar>
+            <Sidebar />
+          </AppSidebar>
+        )}
+        <SidebarInset className="overflow-hidden">
+          <div className="flex flex-1 flex-col h-full overflow-hidden">
             <TopBar />
-            <main className="flex-1 overflow-y-auto overflow-x-hidden bg-muted/40 p-4 md:p-6 lg:p-8 w-full max-w-full">
-              {children}
+            <main className={`flex-1 overflow-y-auto bg-muted/40 p-4 md:p-6 lg:p-8 ${isCheckoutRequired ? 'flex items-center justify-center' : ''}`}>
+              <div className={isCheckoutRequired ? 'w-full max-w-4xl' : ''}>
+                {children}
+              </div>
             </main>
           </div>
           <Toaster />
         </SidebarInset>
       </div>
+      <MobileNav />
     </DashboardProvider>
   )
 }

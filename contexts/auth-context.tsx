@@ -21,7 +21,7 @@ interface AuthContextType {
   isLoading: boolean
   isPreview: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
-  signUp: (email: string, password: string) => Promise<void>
+  signUp: (email: string, password: string, plan?: string | null) => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   validateEmail: (email: string) => boolean
@@ -71,18 +71,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('Starting sign in process...')
     setLoading(true)
     setError(null)
-    
+
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
-      
+
       if (error) {
         console.error('Sign in error:', error)
         return { error }
       }
-      
+
       console.log('Sign in successful:', {
         userId: data.user?.id,
         hasSession: !!data.session
@@ -115,25 +115,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, plan?: string | null) => {
     console.log('Starting sign up process...')
     setLoading(true)
     setError(null)
-    
+
     try {
+      const redirectUrl = plan
+        ? `${window.location.origin}/callback?plan=${plan}`
+        : `${window.location.origin}/callback`
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: redirectUrl,
         },
       })
-      
+
       if (error) {
         console.error('Sign up error:', error)
         throw error
       }
-      
+
       console.log('Sign up successful:', {
         userId: data.user?.id,
         hasSession: !!data.session

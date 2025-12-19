@@ -53,7 +53,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   return (
     <div className="flex h-16 items-center justify-between border-b bg-background px-4">
       <Button variant="ghost" size="icon" className="md:hidden" onClick={onMenuClick}>
-        <Menu className="h-6 w-6" />
+        <Menu className="h-6 w-6" strokeWidth={2.5} />
         <span className="sr-only">Toggle menu</span>
       </Button>
       <div className="flex items-center gap-4">

@@ -19,7 +19,7 @@ export type AnalyticsData = Database["public"]["Tables"]["analytics_data"]["Row"
 // Check if we're in a preview environment
 export const isPreviewEnvironment = () => {
   return (
-    process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true' || 
+    process.env.NEXT_PUBLIC_PREVIEW_MODE === 'true' ||
     !process.env.NEXT_PUBLIC_SUPABASE_URL ||
     !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   )
@@ -194,7 +194,7 @@ export const db = {
         .from("youtube_channels")
         .insert([{ ...channel, created_at: new Date().toISOString() }])
         .select()
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error("Error creating channel:", error)
@@ -214,7 +214,7 @@ export const db = {
         .update({ ...updates, last_updated: new Date().toISOString() })
         .eq("id", id)
         .select()
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error("Error updating channel:", error)
@@ -251,7 +251,7 @@ export const db = {
         return mockData.videos.find((v) => v.id === id) || null
       }
 
-      const { data, error } = await supabase.from("videos").select("*").eq("id", id).single()
+      const { data, error } = await supabase.from("videos").select("*").eq("id", id).maybeSingle()
 
       if (error) {
         console.error("Error fetching video:", error)
@@ -271,7 +271,7 @@ export const db = {
         .from("videos")
         .insert([{ ...video, created_at: now, updated_at: now }])
         .select()
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error("Error creating video:", error)
@@ -300,7 +300,7 @@ export const db = {
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("id", id)
         .select()
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error("Error updating video:", error)
@@ -421,7 +421,7 @@ export const db = {
         .from("profiles")
         .upsert([{ ...profile, updated_at: now }], { onConflict: "id" })
         .select()
-        .single()
+        .maybeSingle()
 
       if (error) {
         console.error("Error upserting profile:", error)

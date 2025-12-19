@@ -5,15 +5,17 @@ import { DashboardProvider } from "@/components/dashboard-provider"
 import { DashboardSidebar as Sidebar } from "@/components/dashboard/sidebar"
 import { TopBar } from "@/components/dashboard/top-bar"
 import { AIProviderSwitcher } from "@/components/ai-provider-switcher"
+import { MobileNav } from "@/components/mobile-nav"
 import {
   Sidebar as AppSidebar,
   SidebarInset,
 } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
+import { useSubscription } from "@/contexts/subscription-context"
 import { useSession } from "@/contexts/session-context"
 import { useRouter } from "next/navigation"
+import { useMobile } from "@/hooks/use-mobile"
 import { useEffect } from "react"
-import { Loader2 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function DashboardLayout({
@@ -21,52 +23,37 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { session, isLoading } = useSession()
-  const router = useRouter()
+  const { session, isLoading: sessionLoading } = useSession()
+  const { isCheckoutRequired, isLoading: subLoading } = useSubscription()
+  const routerInstance = useRouter()
+  const isMobile = useMobile()
+
+  const isLoading = sessionLoading || subLoading
 
   useEffect(() => {
-    if (!isLoading && !session?.user) {
-      router.replace("/login")
+    if (!sessionLoading && !session?.user) {
+      routerInstance.replace("/login")
     }
-  }, [session, isLoading, router])
+  }, [session, sessionLoading, routerInstance])
+
+  // Redirect if checkout is required and we're not on the main dashboard
+  useEffect(() => {
+    if (!isLoading && isCheckoutRequired) {
+      if (window.location.pathname !== '/dashboard') {
+        routerInstance.push("/dashboard")
+      }
+    }
+  }, [isCheckoutRequired, isLoading, routerInstance])
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
-        <div className="flex h-full w-full flex-col">
-          <div className="border-b">
-            <div className="flex h-16 items-center px-4">
-              <div className="flex-1">
-                <Skeleton className="h-5 w-[200px]" />
-              </div>
-              <div className="flex items-center gap-4">
-                <Skeleton className="h-8 w-8 rounded-full" />
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-1">
-            <div className="hidden h-full w-64 border-r md:block">
-              <div className="space-y-4 py-4">
-                <div className="px-3 py-2">
-                  <Skeleton className="h-4 w-20" />
-                  <div className="mt-4 space-y-1">
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <main className="flex-1 overflow-y-auto bg-muted/40 p-4 md:p-6 lg:p-8">
-              <div className="space-y-4">
-                <Skeleton className="h-8 w-48" />
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  <Skeleton className="h-32 w-full" />
-                  <Skeleton className="h-32 w-full" />
-                  <Skeleton className="h-32 w-full" />
-                </div>
-              </div>
-            </main>
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="space-y-4 w-full max-w-md px-4">
+          <Skeleton className="h-8 w-3/4 mx-auto" />
+          <Skeleton className="h-[200px] w-full" />
+          <div className="flex gap-4">
+            <Skeleton className="h-10 flex-1" />
+            <Skeleton className="h-10 flex-1" />
           </div>
         </div>
       </div>
@@ -80,13 +67,15 @@ export default function DashboardLayout({
   return (
     <DashboardProvider>
       <div className="flex h-screen w-full overflow-hidden">
-        <AppSidebar>
-          <Sidebar />
-        </AppSidebar>
+        {!isMobile && (
+          <AppSidebar>
+            <Sidebar />
+          </AppSidebar>
+        )}
         <SidebarInset className="overflow-hidden">
           <div className="flex flex-1 flex-col h-full overflow-hidden">
             <TopBar />
-            <main className="flex-1 overflow-y-auto bg-muted/40 p-4 md:p-6 lg:p-8">
+            <main className="flex-1 overflow-y-auto bg-muted/40 p-4 md:p-6 lg:p-8 pb-20 md:pb-6">
               {children}
             </main>
           </div>
@@ -94,6 +83,7 @@ export default function DashboardLayout({
           <AIProviderSwitcher />
         </SidebarInset>
       </div>
+      <MobileNav />
     </DashboardProvider>
   )
 }

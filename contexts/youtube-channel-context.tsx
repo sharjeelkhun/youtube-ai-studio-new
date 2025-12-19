@@ -249,7 +249,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
         .from('youtube_channels')
         .select('*')
         .eq('user_id', session.user.id)
-        .single();
+        .maybeSingle();
 
       if (channelError || !channelData) {
         if (channelError && channelError.code !== 'PGRST116') { // Ignore 'not found' errors

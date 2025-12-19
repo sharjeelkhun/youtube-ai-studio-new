@@ -18,13 +18,24 @@ export async function getAIProvider(supabase: SupabaseClient) {
 
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("ai_provider, ai_settings")
+    .select("*")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error("Error fetching user profile:", error);
     throw new Error("Failed to fetch user profile");
+  }
+
+  if (!profile) {
+    // Return default settings if profile doesn't exist yet
+    return {
+      ai_provider: "openai",
+      openai_api_key: null,
+      google_api_key: null,
+      anthropic_api_key: null,
+      mistral_api_key: null,
+    };
   }
 
   if (!profile || !profile.ai_provider) {

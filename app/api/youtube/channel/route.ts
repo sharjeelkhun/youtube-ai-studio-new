@@ -50,7 +50,7 @@ async function refreshAccessToken(refreshToken: string) {
 
 export async function GET(request: Request) {
   console.log('Channel API called')
-  
+
   try {
     const { searchParams } = new URL(request.url)
     const channelId = searchParams.get('channelId')
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
 
     // Get the current session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
+
     if (sessionError) {
       console.error('Session error:', sessionError)
       return NextResponse.json({ error: 'Authentication error' }, { status: 401 })
@@ -84,7 +84,7 @@ export async function GET(request: Request) {
       .select('*')
       .eq('id', channelId)
       .eq('user_id', session.user.id)
-      .single()
+      .maybeSingle()
 
     if (channelError) {
       console.error('Error fetching channel:', {
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
       console.log('Token expired, refreshing...')
       try {
         accessToken = await refreshAccessToken(channel.refresh_token)
-        
+
         // Update the access token in the database
         const { error: updateError } = await supabase
           .from('youtube_channels')
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
             token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
           })
           .eq('id', channel.id)
-      .eq('user_id', session.user.id)
+          .eq('user_id', session.user.id)
 
         if (updateError) {
           console.error('Error updating token:', {
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
             userId: session.user.id
           })
           throw new Error('Failed to update access token')
-    }
+        }
 
         console.log('Token refreshed successfully')
       } catch (error) {
@@ -145,7 +145,7 @@ export async function GET(request: Request) {
           userId: session.user.id
         })
         return NextResponse.json({ error: 'Failed to refresh access token' }, { status: 401 })
-    }
+      }
     }
 
     // Get the channel's uploads playlist ID
@@ -153,9 +153,9 @@ export async function GET(request: Request) {
     console.log('Fetching channel details from:', channelUrl)
 
     const channelResponse = await fetch(channelUrl, {
-        headers: {
+      headers: {
         Authorization: `Bearer ${accessToken}`,
-        },
+      },
     })
 
     if (!channelResponse.ok) {
@@ -195,7 +195,7 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('Error in channel API:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'An unexpected error occurred',
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })

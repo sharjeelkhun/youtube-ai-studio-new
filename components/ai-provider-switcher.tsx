@@ -53,7 +53,7 @@ export function AIProviderSwitcher() {
                 .from('profiles')
                 .select('ai_provider')
                 .eq('id', user.id)
-                .single()
+                .maybeSingle()
 
             if (profile && profile.ai_provider !== currentProvider) {
                 setCurrentProvider(profile.ai_provider)

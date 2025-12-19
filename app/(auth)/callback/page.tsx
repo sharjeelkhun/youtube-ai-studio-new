@@ -19,8 +19,24 @@ export default function AuthCallbackPage() {
         return;
       }
 
-      // Redirect to dashboard on successful login
-      router.push('/dashboard');
+      // Check for plan in URL first, then fallback to cookies
+      const searchParams = new URLSearchParams(window.location.search);
+      let plan = searchParams.get('plan');
+
+      if (!plan) {
+        const cookies = document.cookie.split('; ');
+        const pendingPlanCookie = cookies.find(row => row.startsWith('pending_plan='));
+        if (pendingPlanCookie) {
+          plan = pendingPlanCookie.split('=')[1];
+        }
+      }
+
+      // Redirect based on plan or default to dashboard
+      if (plan) {
+        router.push(`/settings?tab=billing&plan=${plan}`);
+      } else {
+        router.push('/dashboard');
+      }
     };
 
     handleAuthCallback();

@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/contexts/auth-context"
-import { LogOut, Settings, User as UserIcon } from "lucide-react"
+import { LogOut, Settings, User as UserIcon, LayoutDashboard } from "lucide-react"
 import { toast } from "sonner"
 import type { User } from "@supabase/supabase-js"
 import type { Profile } from "@/lib/db"
@@ -66,7 +66,12 @@ export function UserMenu({ user, profile }: UserMenuProps) {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => router.push("/dashboard")}>
+          <LayoutDashboard className="mr-2 h-4 w-4" />
+          Dashboard
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
+          <Settings className="mr-2 h-4 w-4" />
           Settings
         </DropdownMenuItem>
         <DropdownMenuItem onClick={handleSignOut}>

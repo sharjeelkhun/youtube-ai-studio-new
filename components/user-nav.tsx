@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User, CreditCard, Settings, LogOut, Sparkles, LifeBuoy, Youtube } from "lucide-react"
+import { User, CreditCard, Settings, LogOut, Sparkles, LifeBuoy, Youtube, LayoutDashboard } from "lucide-react"
 import Link from "next/link"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 
@@ -95,6 +95,13 @@ export function UserNav() {
 
         <DropdownMenuSeparator className="bg-border/50 my-1" />
         <DropdownMenuGroup>
+          <DropdownMenuItem asChild>
+            <Link href="/dashboard" className="cursor-pointer rounded-lg focus:bg-primary/10 focus:text-primary transition-colors py-2.5 w-full flex items-center">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              <span>Dashboard</span>
+              <DropdownMenuShortcut>⌘D</DropdownMenuShortcut>
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/settings?tab=account" className="cursor-pointer rounded-lg focus:bg-primary/10 focus:text-primary transition-colors py-2.5 w-full flex items-center">
               <User className="mr-2 h-4 w-4" />

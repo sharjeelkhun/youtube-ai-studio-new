@@ -8,6 +8,7 @@ import { UserNav } from "@/components/user-nav"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { ModeToggle } from "@/components/mode-toggle"
 import { Separator } from "@/components/ui/separator"
+import { useMobile } from "@/hooks/use-mobile"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -17,10 +18,14 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
+import { siteConfig } from "@/lib/config"
 
 export function TopBar() {
   const { channel, loading, isConnected } = useYouTubeChannel()
   const pathname = usePathname()
+  const isMobile = useMobile()
 
   // Simple breadcrumb logic
   const getBreadcrumbs = () => {
@@ -38,8 +43,20 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 border-b bg-background/80 backdrop-blur-md px-4 shadow-sm transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
       <div className="flex items-center gap-2">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+        {isMobile && (
+          <Link href="/" className="flex items-center gap-2 mr-2">
+            <Image
+              src="/youtube-logo.png"
+              alt="YouTube"
+              width={32}
+              height={32}
+              className="h-8 w-8"
+            />
+            <span className="text-lg font-bold">{siteConfig.name}</span>
+          </Link>
+        )}
+        {!isMobile && <SidebarTrigger className="-ml-1" />}
+        {!isMobile && <Separator orientation="vertical" className="mr-2 h-4" />}
         <Breadcrumb>
           <BreadcrumbList>
             {breadcrumbs.map((crumb, index) => (

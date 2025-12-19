@@ -5,6 +5,8 @@ import { ArrowRight, BarChart3, CheckCircle, Play, Sparkles, Star, Users, Zap, T
 import { ModeToggle } from "@/components/mode-toggle"
 import { ScrollReveal, ScrollFade } from "@/components/scroll-reveal"
 import DotGrid from "@/components/dot-grid"
+import { HeroActions } from "@/components/hero-actions"
+import { CtaActions } from "@/components/cta-actions"
 import { siteConfig } from "@/lib/config"
 
 
@@ -34,19 +36,7 @@ export default function LandingPage() {
               <p className="max-w-2xl text-lg text-muted-foreground md:text-xl leading-relaxed">
                 AI-powered insights to diagnose underperforming videos and optimize new ones — boost views, subscribers, and revenue without guesswork.
               </p>
-              <div className="flex flex-col gap-4 sm:flex-row w-full sm:w-auto">
-                <Link href="/signup">
-                  <Button size="lg" className="h-12 px-8 text-base bg-[#FF0000] hover:bg-[#CC0000] text-white rounded-xl shadow-[0_0_30px_-5px_#ff000066] transition-all hover:scale-105 hover:shadow-[0_0_40px_-5px_#ff000099]">
-                    Analyze My Channel for Free
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link href="/dashboard">
-                  <Button variant="outline" size="lg" className="h-12 px-8 text-base border-border hover:bg-accent hover:text-accent-foreground rounded-xl backdrop-blur-sm transition-all">
-                    See How It Works
-                  </Button>
-                </Link>
-              </div>
+              <HeroActions />
               <div className="flex items-center gap-4 text-sm text-zinc-500">
                 <div className="flex -space-x-2">
                   {[1, 2, 3, 4].map((i) => (
@@ -634,14 +624,7 @@ export default function LandingPage() {
           <p className="text-muted-foreground md:text-xl max-w-2xl mx-auto mb-10">
             Join thousands of creators turning underperforming videos into growth opportunities.
           </p>
-          <div className="flex flex-col justify-center gap-4 sm:flex-row">
-            <Link href="/signup">
-              <Button size="lg" className="h-14 px-8 text-lg bg-[#FF0000] hover:bg-[#CC0000] text-white rounded-xl shadow-2xl hover:shadow-[#FF0000]/25 hover:scale-105 transition-all">
-                Analyze My Channel for Free
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-            </Link>
-          </div>
+          <CtaActions />
         </div>
       </section>
 

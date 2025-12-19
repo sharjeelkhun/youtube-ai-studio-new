@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Home, MessageSquare, PlusCircle, Settings, User, Video, Youtube } from "lucide-react"
+import { BarChart3, Home, MessageSquare, PlusCircle, Settings, User, Video, Youtube, Search, Lightbulb } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -65,6 +65,26 @@ export function Sidebar({ className }: SidebarProps) {
           >
             <MessageSquare className="h-4 w-4" />
             Comments
+          </Link>
+          <Link
+            href="/seo"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              pathname === "/seo" && "bg-muted text-primary",
+            )}
+          >
+            <Search className="h-4 w-4" />
+            SEO
+          </Link>
+          <Link
+            href="/suggestions"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
+              pathname === "/suggestions" && "bg-muted text-primary",
+            )}
+          >
+            <Lightbulb className="h-4 w-4" />
+            Suggestions
           </Link>
           <Link
             href="/settings"
