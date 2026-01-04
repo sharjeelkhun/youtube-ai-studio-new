@@ -7,6 +7,7 @@ import { Mistral } from "@mistralai/mistralai";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { acquireRateLimit } from "./rate-limiter";
 import { trackUsage } from "./track-usage";
+import { FEATURE_LIMITS } from "./feature-access";
 
 async function generate(
   client: OpenAI | GoogleGenerativeAI | Anthropic | Mistral,
@@ -140,6 +141,31 @@ export async function generateContentSuggestions(supabase: SupabaseClient, userP
   if (!session) throw new Error('Unauthorized - No active session')
   const userId = session.user.id
 
+  // Check user's subscription plan
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('plan_id, status, current_period_end')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  let planName = 'Starter' // Default plan
+  if (subscription) {
+    const isValid =
+      ['active', 'trialing'].includes(subscription.status) ||
+      (subscription.status === 'cancelled' && subscription.current_period_end && new Date(subscription.current_period_end) > new Date())
+
+    if (isValid) {
+      const planId = subscription.plan_id?.toLowerCase()
+      if (planId === 'professional') planName = 'Professional'
+      else if (planId === 'enterprise') planName = 'Enterprise'
+    }
+  }
+
+  const aiInsightsLimit = FEATURE_LIMITS.AI_INSIGHTS_PER_VIDEO[planName as keyof typeof FEATURE_LIMITS.AI_INSIGHTS_PER_VIDEO] || 1
+  console.log('User plan:', planName, 'AI insights limit:', aiInsightsLimit)
+
   let ai_provider: string
   let client: any
   try {
@@ -169,9 +195,9 @@ export async function generateContentSuggestions(supabase: SupabaseClient, userP
   const model = getModel(ai_provider);
   const prompt = `Generate YouTube video ideas based on the following request. Make each idea specific, actionable, and valuable to viewers.
 
-User Request: ${userPrompt || "Generate 5 video ideas about AI tools for content creators"}
+User Request: ${userPrompt || "Generate video ideas about AI tools for content creators"}
 
-IMPORTANT: Return ONLY valid JSON array with this EXACT structure for each idea:
+IMPORTANT: Return ONLY valid JSON array with this EXACT structure for each idea. Generate exactly ${aiInsightsLimit} idea${aiInsightsLimit === 1 ? '' : 's'}:
 [{
   "title": "Catchy, SEO-friendly title",
   "type": "video_idea",

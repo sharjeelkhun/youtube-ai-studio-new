@@ -16,6 +16,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { useProfile } from "@/contexts/profile-context"
 import { EditIdeaDialog } from "@/components/edit-idea-dialog"
 import { cn } from "@/lib/utils"
+import { useFeatureAccess } from "@/lib/feature-access"
 
 export function SuggestionsTab() {
   const { profile } = useProfile()
@@ -34,6 +35,9 @@ export function SuggestionsTab() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState("")
+
+  // Feature access hook
+  const { hasFeature, getUpgradeMessage, planName } = useFeatureAccess()
 
   // Load view mode from local storage
   useEffect(() => {
@@ -69,6 +73,18 @@ export function SuggestionsTab() {
     if (!promptText.trim()) {
       toast.error("Error", {
         description: "Please enter a prompt for the AI.",
+      })
+      return
+    }
+
+    // Check if user has access to multiple AI suggestions
+    if (!hasFeature('MULTIPLE_AI_SUGGESTIONS')) {
+      toast.error("Upgrade Required", {
+        description: getUpgradeMessage('MULTIPLE_AI_SUGGESTIONS'),
+        action: {
+          label: 'Upgrade Plan',
+          onClick: () => router.push('/settings?tab=billing')
+        }
       })
       return
     }

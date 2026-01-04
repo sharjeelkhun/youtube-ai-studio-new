@@ -18,18 +18,18 @@ export default function SettingsLoading() {
         </div>
 
         <div className="space-y-6">
-          <div className="rounded-lg border p-4 shadow-sm">
-            <Skeleton className="h-6 w-[180px] mb-4" />
+          <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+            <Skeleton className="h-6 w-[180px] mb-4 rounded-lg" />
             <div className="space-y-4">
               <div className="space-y-2">
-                <Skeleton className="h-5 w-[120px]" />
-                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-5 w-[120px] rounded-lg" />
+                <Skeleton className="h-10 w-full rounded-lg" />
               </div>
               <div className="space-y-2">
-                <Skeleton className="h-5 w-[140px]" />
-                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-5 w-[140px] rounded-lg" />
+                <Skeleton className="h-10 w-full rounded-lg" />
               </div>
-              <Skeleton className="h-10 w-[120px]" />
+              <Skeleton className="h-10 w-[120px] rounded-lg" />
             </div>
           </div>
         </div>

@@ -30,8 +30,17 @@ export async function POST(request: Request) {
     const REDIRECT_URI = getRedirectUri(request)
 
     if (!CLIENT_ID || !CLIENT_SECRET) {
+      console.error('❌ Missing Google OAuth credentials in auth callback:', {
+        hasClientId: !!CLIENT_ID,
+        hasClientSecret: !!CLIENT_SECRET,
+        hint: 'Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local. See GOOGLE_OAUTH_SETUP.md for instructions.'
+      });
       return NextResponse.json(
-        { error: "Google OAuth credentials are not properly configured" },
+        { 
+          error: "Google OAuth credentials are not properly configured",
+          details: "Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET",
+          setupUrl: "/GOOGLE_OAUTH_SETUP.md"
+        },
         { status: 500 }
       )
     }

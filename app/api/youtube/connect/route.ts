@@ -50,9 +50,16 @@ export async function GET(request: Request) {
 
   // Validate Google API credentials
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    console.error('❌ Missing Google OAuth credentials in connect endpoint:', {
+      hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      hint: 'Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local. See GOOGLE_OAUTH_SETUP.md for instructions.'
+    });
     return NextResponse.json(
       {
-        error: "Google OAuth credentials are not configured"
+        error: "Google OAuth credentials are not configured",
+        details: "Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment",
+        setupUrl: "/GOOGLE_OAUTH_SETUP.md"
       },
       { status: 500 }
     )

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers'
 import { trackUsage } from '@/lib/track-usage'
 import { acquireRateLimit } from '@/lib/rate-limiter'
 import { getFallbackModel } from '@/lib/ai-providers'
+import { FEATURE_LIMITS } from '@/lib/feature-access'
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,6 +26,34 @@ export async function POST(request: NextRequest) {
         { status: 401 }
       )
     }
+
+    // Check user's subscription plan
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('plan_id, status, current_period_end')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    let planName = 'Starter' // Default plan
+    if (subscription) {
+      const isValid =
+        ['active', 'trialing'].includes(subscription.status) ||
+        (subscription.status === 'cancelled' && subscription.current_period_end && new Date(subscription.current_period_end) > new Date())
+
+      if (isValid) {
+        const planId = subscription.plan_id?.toLowerCase()
+        if (planId === 'professional') planName = 'Professional'
+        else if (planId === 'enterprise') planName = 'Enterprise'
+      }
+    }
+
+    const thumbnailLimit = FEATURE_LIMITS.THUMBNAIL_GENERATIONS[planName as keyof typeof FEATURE_LIMITS.THUMBNAIL_GENERATIONS] || 1
+
+    // Check how many thumbnails this user has generated (you might want to track this in a separate table)
+    // For now, we'll allow the generation but log the plan info
+    console.log('User plan:', planName, 'Thumbnail generation limit:', thumbnailLimit)
 
     // Get user profile with AI settings
     const { data: profile, error: profileError } = await supabase

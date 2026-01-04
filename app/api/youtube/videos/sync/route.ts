@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { Database } from '@/lib/database.types'
+import { FEATURE_LIMITS } from '@/lib/feature-access'
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic'
@@ -48,7 +49,7 @@ async function refreshAccessToken(refreshToken: string) {
   return data.access_token
 }
 
-async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string) {
+async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string, limit: number = -1) {
   let allVideos: any[] = []
   let nextPageToken: string | null = null
   let pageCount = 0
@@ -82,11 +83,17 @@ async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string) {
 
     if (data.items) {
       allVideos = [...allVideos, ...data.items]
+
+      // Check if we've reached the limit
+      if (limit > 0 && allVideos.length >= limit) {
+        allVideos = allVideos.slice(0, limit)
+        break
+      }
     }
 
     nextPageToken = data.nextPageToken
 
-  } while (nextPageToken)
+  } while (nextPageToken && (limit === -1 || allVideos.length < limit))
 
   return allVideos
 }
@@ -111,6 +118,31 @@ export async function POST(request: Request) {
     }
 
     console.log('Session found for user:', session.user.id)
+
+    // Check user's subscription plan
+    const { data: subscription, error: subError } = await supabase
+      .from('subscriptions')
+      .select('plan_id, status, current_period_end')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    let planName = 'Starter' // Default plan
+    if (subscription) {
+      const isValid =
+        ['active', 'trialing'].includes(subscription.status) ||
+        (subscription.status === 'cancelled' && subscription.current_period_end && new Date(subscription.current_period_end) > new Date())
+
+      if (isValid) {
+        const planId = subscription.plan_id?.toLowerCase()
+        if (planId === 'professional') planName = 'Professional'
+        else if (planId === 'enterprise') planName = 'Enterprise'
+      }
+    }
+
+    const videoSyncLimit = FEATURE_LIMITS.VIDEO_SYNC_LIMIT[planName as keyof typeof FEATURE_LIMITS.VIDEO_SYNC_LIMIT] || 10
+    console.log('User plan:', planName, 'Video sync limit:', videoSyncLimit)
 
     // Get the user's YouTube channel
     const { data: channel, error: channelError } = await supabase
@@ -210,9 +242,9 @@ export async function POST(request: Request) {
     const uploadsPlaylistId = channelData.items[0].contentDetails.relatedPlaylists.uploads
     console.log('Found uploads playlist:', uploadsPlaylistId)
 
-    // Fetch all videos from the uploads playlist
-    const playlistItems = await fetchAllVideos(accessToken, uploadsPlaylistId)
-    console.log(`Total videos found: ${playlistItems.length}`)
+    // Fetch all videos from the uploads playlist (limited by plan)
+    const playlistItems = await fetchAllVideos(accessToken, uploadsPlaylistId, videoSyncLimit)
+    console.log(`Total videos found (limited by plan ${planName}): ${playlistItems.length}`)
 
     if (playlistItems.length === 0) {
       console.log('No videos found in playlist')

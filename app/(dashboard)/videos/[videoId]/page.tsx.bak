@@ -28,18 +28,6 @@ import { getRateLimitStatus, RateLimitTimeoutError } from '@/lib/rate-limiter'
 import { cn } from "@/lib/utils"
 import { SeoScoreCard } from "@/components/video/seo-score-card"
 import { SearchPreviewCard } from "@/components/video/search-preview-card"
-import { VideoHealthSummary } from "@/components/video/video-health-summary"
-import { AIActionChecklist } from "@/components/video/ai-action-checklist"
-import { TitleOptimization } from "@/components/video/title-optimization"
-import { DescriptionOptimization } from "@/components/video/description-optimization"
-import { TagsIntelligence } from "@/components/video/tags-intelligence"
-import { VideoOptimizationMode } from "@/components/video/video-optimization-mode"
-import { ThumbnailIntelligence } from "@/components/video/thumbnail-intelligence"
-import { CTRAndSEOPrediction } from "@/components/video/ctr-seo-prediction"
-import { NextBestAction } from "@/components/video/next-best-action"
-import { VersionAndChangeTracking } from "@/components/video/version-change-tracking"
-import { VideoPlayer } from "@/components/video/video-player"
-import { ConsolidatedOptimization } from "@/components/video/consolidated-optimization"
 
 interface Video {
   id: string
@@ -89,259 +77,6 @@ const handleApiResponse = async (
   return data;
 };
 
-// ============================================================================
-// HELPER FUNCTIONS FOR NEW OPTIMIZATION FEATURES
-// ============================================================================
-
-const calculateTitleScore = (title: string): number => {
-  if (!title) return 0;
-  let score = 50;
-  if (title.length >= 35 && title.length <= 60) score += 20;
-  if (title.length > 70) score -= 10;
-  if (/[!?]/.test(title)) score += 15;
-  if (/^(how|why|what|top|best|free)/i.test(title)) score += 10;
-  return Math.min(100, score);
-};
-
-const calculateDescriptionScore = (description: string): number => {
-  if (!description) return 0;
-  let score = 50;
-  if (description.length >= 100 && description.length <= 500) score += 20;
-  if (description.includes('\n')) score += 15;
-  const lines = description.split('\n');
-  if (lines[0]?.length <= 120) score += 10;
-  return Math.min(100, score);
-};
-
-const calculateTagsScore = (tags: string[]): number => {
-  if (!tags || tags.length === 0) return 0;
-  let score = 40;
-  score += Math.min(30, tags.length * 3);
-  if (tags.some(tag => tag.length > 20)) score -= 5;
-  return Math.min(100, score);
-};
-
-const calculateHookStrength = (title: string): "Low" | "Medium" | "High" => {
-  const firstWords = title.split(' ').slice(0, 5).join(' ');
-  if (/^(how|why|what|top|best|free|secret|shocking|revealed)/i.test(firstWords)) return "High";
-  if (/^(the|a|an|my|your)/i.test(firstWords)) return "Low";
-  return "Medium";
-};
-
-const calculateKeywordCoverage = (title: string): number => {
-  if (!title) return 0;
-  const keywords = title.split(' ').filter(w => w.length > 3);
-  return Math.min(100, keywords.length * 15);
-};
-
-const calculateFirst2LinesScore = (description: string): number => {
-  if (!description) return 0;
-  const lines = description.split('\n').slice(0, 2).join(' ');
-  let score = 50;
-  if (lines.length > 50) score += 20;
-  if (lines.length > 150) score -= 10;
-  if (/^[A-Z]/.test(lines)) score += 10;
-  return Math.min(100, score);
-};
-
-const calculateKeywordDensity = (description: string): number => {
-  if (!description) return 0;
-  const keywords = description.split(/\s+/).length;
-  return Math.round((keywords / description.length) * 100 * 10) / 10;
-};
-
-const calculateTagRelevance = (tags: string[]): Record<string, number> => {
-  const relevance: Record<string, number> = {};
-  tags.forEach(tag => {
-    const score = Math.round(70 + Math.random() * 30);
-    relevance[tag] = score;
-  });
-  return relevance;
-};
-
-// ============================================================================
-// CTR & SEO PREDICTION CALCULATIONS
-// ============================================================================
-
-const calculateCurrentCTR = (video: any): number => {
-  // Base CTR: Use actual view_count and engagement as proxy
-  // If no engagement data, estimate from video age
-  if (video.view_count && video.like_count) {
-    const engagementRate = (video.like_count / video.view_count) * 100;
-    // Approximate CTR from engagement (rough estimate)
-    return Math.min(10, Math.max(1, engagementRate * 0.5));
-  }
-  // Default fallback if no data
-  return 2.5;
-};
-
-const calculatePredictedCTR = (video: any, titleScore: number, descriptionScore: number): number => {
-  const baseCTR = calculateCurrentCTR(video);
-  // Improvement potential based on title and description optimization
-  const titleImprovement = Math.max(0, (titleScore - 50) / 50) * 2;
-  const descriptionImprovement = Math.max(0, (descriptionScore - 50) / 50) * 1.5;
-  const predictedCTR = baseCTR * (1 + (titleImprovement + descriptionImprovement) / 10);
-  return Math.round(predictedCTR * 10) / 10;
-};
-
-const calculateCTRImprovement = (currentCTR: number, predictedCTR: number): number => {
-  if (currentCTR === 0) return 0;
-  return Math.round(((predictedCTR - currentCTR) / currentCTR) * 100);
-};
-
-const calculateCurrentSearchVisibility = (video: any, tagsScore: number, descriptionScore: number): number => {
-  // Base visibility from tags and description quality
-  let visibility = 30;
-  visibility += (tagsScore / 100) * 30;
-  visibility += (descriptionScore / 100) * 20;
-  if (video.tags?.length >= 15) visibility += 10;
-  if (video.tags?.length >= 25) visibility += 10;
-  return Math.min(100, Math.round(visibility));
-};
-
-const calculatePredictedSearchVisibility = (video: any, titleScore: number, tagsScore: number, descriptionScore: number): number => {
-  let visibility = 40;
-  visibility += (titleScore / 100) * 25;
-  visibility += (tagsScore / 100) * 35;
-  visibility += (descriptionScore / 100) * 25;
-  if (video.tags?.length >= 20) visibility += 15;
-  return Math.min(100, Math.round(visibility));
-};
-
-const calculateSearchVisibilityImprovement = (current: number, predicted: number): number => {
-  if (current === 0) return 0;
-  return Math.round(((predicted - current) / current) * 100);
-};
-
-const calculateThumbnailScore = (thumbnailUrl?: string, title?: string): number => {
-  // Base score
-  let score = 50;
-
-  // If thumbnail exists, assume some quality
-  if (thumbnailUrl && thumbnailUrl !== '') {
-    score += 20;
-  }
-
-  // If title has elements that help thumbnail (length, keywords), boost score
-  if (title) {
-    if (title.length >= 40 && title.length <= 80) score += 15;
-    if (/[!?]/.test(title)) score += 10;
-  }
-
-  return Math.min(100, score);
-};
-
-const generateChecklistItems = (video: any, titleScore?: number, descScore?: number, tagsScore?: number) => {
-  const tScore = titleScore || calculateTitleScore(video.title);
-  const dScore = descScore || calculateDescriptionScore(video.description);
-  const tgScore = tagsScore || calculateTagsScore(video.tags || []);
-  const thumbScore = calculateThumbnailScore(video.thumbnail_url, video.title);
-
-  const items: any[] = [];
-
-  // Title Hook - high priority if score is low
-  if (tScore < 70) {
-    items.push({
-      id: '1',
-      title: 'Improve Title Hook',
-      description: tScore < 40 ? 'Add power words (How, Why, Best, Secret) in first 5 words - Critical!' : 'Add stronger hook power words in first 5 words',
-      completed: false,
-      priority: tScore < 40 ? ('high' as const) : ('high' as const),
-      impact: '80% CTR improvement potential',
-      score: tScore,
-    });
-  }
-
-  // Description First 2 Lines - high priority if score is low
-  const first2LinesScore = calculateFirst2LinesScore(video.description);
-  if (first2LinesScore < 70) {
-    items.push({
-      id: '2',
-      title: 'Optimize First 2 Lines',
-      description: first2LinesScore < 40 ? 'Make opening compelling - Hook viewers immediately!' : 'Make description opening more engaging',
-      completed: false,
-      priority: first2LinesScore < 40 ? ('high' as const) : ('high' as const),
-      impact: '45% click-through improvement',
-      score: first2LinesScore,
-    });
-  }
-
-  // Keyword Density - medium priority
-  const keywordDensity = calculateKeywordDensity(video.description);
-  if (keywordDensity < 2 || keywordDensity > 3.5) {
-    items.push({
-      id: '3',
-      title: 'Optimize Keyword Density',
-      description: keywordDensity < 2 ? 'Add more relevant keywords naturally' : 'Reduce keyword density to avoid over-optimization',
-      completed: false,
-      priority: ('medium' as const),
-      impact: '30% search visibility boost',
-      score: keywordDensity < 2 ? 45 : 65,
-    });
-  }
-
-  // Tags - medium priority if score is low
-  if (tgScore < 70) {
-    items.push({
-      id: '4',
-      title: 'Improve Tags Quality',
-      description: tgScore < 40 ? `Only ${video.tags?.length || 0} tags - Add 15-30 relevant tags` : 'Enhance tag relevance and coverage',
-      completed: false,
-      priority: tgScore < 40 ? ('high' as const) : ('medium' as const),
-      impact: '50% discoverability increase',
-      score: tgScore,
-    });
-  }
-
-  // Thumbnail - medium priority if score needs improvement
-  if (thumbScore < 70) {
-    items.push({
-      id: '5',
-      title: 'Optimize Thumbnail',
-      description: thumbScore < 40 ? 'Create high-contrast thumbnail with clear text and bold visuals' : 'High contrast, clear text, engaging visuals',
-      completed: false,
-      priority: thumbScore < 40 ? ('high' as const) : ('medium' as const),
-      impact: '25% average views increase',
-      score: thumbScore,
-    });
-  }
-
-  return items.length > 0 ? items : [
-    {
-      id: '1',
-      title: 'Improve Title Hook',
-      description: 'Add power words in the first 5 words',
-      completed: false,
-      priority: ('high' as const),
-      impact: '80% CTR improvement potential',
-      score: tScore,
-    },
-  ];
-};
-
-const generateSuggestedTags = (video: any): string[] => {
-  return [
-    'YouTube SEO',
-    'Video Optimization',
-    'Content Strategy',
-    'Digital Marketing',
-    'Channel Growth',
-    'AI Tools',
-  ];
-};
-
-const generateThumbnailSuggestions = (): string[] => [
-  'Add more contrast between text and background',
-  'Use bold, sans-serif fonts for better readability at small sizes',
-  'Include facial expressions or emotions in center frame',
-];
-
-const generateThumbnailConcepts = (): string[] => [
-  'Shocked expression with text overlay "SHOCKING DISCOVERY"',
-  'Split-screen comparison: Before (gray) vs After (vibrant colors)',
-  'Minimal design with large emoji or icon and single word hook',
-];
-
 export default function VideoPage() {
   const params = useParams()
   const router = useRouter()
@@ -377,9 +112,6 @@ export default function VideoPage() {
   const [activeOperation, setActiveOperation] = useState<'title' | 'description' | 'tags' | 'all' | null>(null)
   const activeOperationStartTime = useRef<Date | null>(null)
   const operationLockTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Checklist state management
-  const [completedChecklistItems, setCompletedChecklistItems] = useState<Set<string>>(new Set())
 
   // ============================================================================
   // CONSTANTS: Rate Limiter and Retry Configuration
@@ -683,40 +415,14 @@ export default function VideoPage() {
 
         const youtubeData = await response.json()
 
-        // Calculate realistic metrics from actual data
-        const viewCount = youtubeData.view_count || 0
-        const likeCount = youtubeData.like_count || 0
-        const commentCount = youtubeData.comment_count || 0
-
-        // Engagement rate: (likes + comments) / views * 100
-        const calculatedEngagementRate = viewCount > 0
-          ? ((likeCount + commentCount) / viewCount) * 100
-          : 0
-
-        // Retention rate estimate: Higher engagement = better retention
-        // Base retention of 40%, bonus up to 60% based on engagement
-        const calculatedRetentionRate = Math.min(
-          95,
-          40 + (calculatedEngagementRate * 10)
-        )
-
-        // Watch time estimate: views * average video duration estimate
-        // Assuming average 40% completion rate
-        const calculatedWatchTime = Math.floor(viewCount * 0.4)
-
-        // Subscriber gained estimate: ~1-3% of highly engaged viewers
-        const calculatedSubscriberGained = Math.floor(
-          (likeCount * 0.02) + (commentCount * 0.05)
-        )
-
-        // Combine database data with YouTube data and calculated metrics
+        // Combine database data with YouTube data
         const fullVideoDetails = {
           ...video,
           ...youtubeData,
-          watch_time: calculatedWatchTime,
-          engagement_rate: Math.round(calculatedEngagementRate * 100) / 100,
-          subscriber_gained: calculatedSubscriberGained,
-          retention_rate: Math.round(calculatedRetentionRate * 100) / 100,
+          watch_time: Math.floor(Math.random() * 1000), // These are still mock
+          engagement_rate: Math.random() * 100,
+          subscriber_gained: Math.floor(Math.random() * 100),
+          retention_rate: Math.random() * 100,
         }
 
         setVideo(fullVideoDetails)
@@ -1047,86 +753,6 @@ export default function VideoPage() {
     }
   }, [profile])
 
-  // NEW: Unified optimization handler using video content analysis
-  const handleUnifiedOptimize = async (type: 'all' | 'title' | 'description' | 'tags' = 'all') => {
-    if (!editedVideo) return
-
-    const setLoading = (loading: boolean) => {
-      if (type === 'title') setIsOptimizingTitle(loading)
-      else if (type === 'description') setIsOptimizingDescription(loading)
-      else if (type === 'tags') setIsOptimizingTags(loading)
-      else setIsGenerating(loading)
-    }
-
-    setLoading(true)
-
-    try {
-      // Show analyzing indicator for video content
-      toast.info('Analyzing video content...', {
-        description: 'Fetching transcript and analyzing video',
-        duration: 2000
-      })
-
-      const response = await fetch('/api/ai/optimize-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoId: params.videoId,
-          type,
-          currentTitle: editedVideo.title,
-          currentDescription: editedVideo.description,
-          currentTags: editedVideo.tags || [],
-          includeTranscript: true
-        })
-      })
-
-      if (response.status === 429) {
-        toast.error('Rate limit reached', {
-          description: 'Please wait a moment before trying again.',
-          duration: 3000
-        })
-        return
-      }
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        if (data?.errorCode === 'billing_error' && profile?.ai_provider) {
-          setBillingErrorProvider(profile.ai_provider)
-          router.push('/settings')
-        }
-        throw new Error(data?.error || `Failed to optimize ${type}`)
-      }
-
-      // Update video with optimized content
-      setEditedVideo(prev => ({
-        ...prev!,
-        title: data.title || prev!.title,
-        description: data.description || prev!.description,
-        tags: data.tags || prev!.tags
-      }))
-
-      // Show success with context
-      const context = data.transcriptUsed
-        ? '✅ Based on actual video content'
-        : '⚠️ Based on existing metadata (no transcript)'
-
-      toast.success(`${type === 'all' ? 'Video' : type.charAt(0).toUpperCase() + type.slice(1)} optimized!`, {
-        description: context,
-        duration: 4000
-      })
-
-    } catch (error: any) {
-      console.error('[UNIFIED-OPTIMIZE] Error:', error)
-      toast.error('Optimization failed', {
-        description: error.message || `Failed to optimize ${type}`,
-        duration: 5000
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleOptimizeTitle = async () => {
     if (!editedVideo || !profile || !checkAIConfig('title')) return
 
@@ -1305,185 +931,6 @@ export default function VideoPage() {
     } finally {
       setIsOptimizingTags(false);
       clearActiveOperationLock()
-    }
-  }
-
-  const handleOptimizeAll = async () => {
-    if (!editedVideo || !profile || !checkAIConfig('all')) return
-
-    setActiveOperationLock('all')
-
-    // Show initial toast
-    const toastId = toast.loading('🚀 Starting video optimization...', {
-      description: 'Optimizing title, description, and tags',
-    });
-
-    let currentEditedVideo = { ...editedVideo };
-
-    try {
-      // Step 1: Optimize Title
-      toast.loading('📝 Optimizing title...', { id: toastId });
-      try {
-        const titleResponse = await fetch('/api/ai/optimize-title', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: currentEditedVideo.title,
-            description: currentEditedVideo.description,
-            provider: profile.ai_provider
-          })
-        });
-
-        if (titleResponse.ok) {
-          const titleData = await titleResponse.json();
-          if (titleData.optimizedTitle) {
-            currentEditedVideo.title = titleData.optimizedTitle;
-            setEditedVideo(prev => ({ ...prev!, title: titleData.optimizedTitle }));
-          }
-        }
-      } catch (error) {
-        console.error('Title optimization error:', error);
-      }
-
-      // Step 2: Optimize Description
-      toast.loading('📄 Optimizing description...', { id: toastId });
-      try {
-        const descResponse = await fetch('/api/ai/optimize-description', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: currentEditedVideo.title,
-            description: currentEditedVideo.description
-          })
-        });
-
-        if (descResponse.ok) {
-          const descData = await descResponse.json();
-          if (descData.description) {
-            currentEditedVideo.description = descData.description;
-            setEditedVideo(prev => ({ ...prev!, description: descData.description }));
-          }
-        }
-      } catch (error) {
-        console.error('Description optimization error:', error);
-      }
-
-      // Step 3: Optimize Tags
-      toast.loading('🏷️ Optimizing tags...', { id: toastId });
-      try {
-        const tagsResponse = await fetch('/api/ai/optimize-tags', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: currentEditedVideo.title,
-            description: currentEditedVideo.description,
-            currentTags: currentEditedVideo.tags,
-            maxTags: 10
-          })
-        });
-
-        if (tagsResponse.ok) {
-          const tagsData = await tagsResponse.json();
-          if (tagsData.tags) {
-            let tags = tagsData.tags;
-            if (typeof tags === 'string') {
-              try {
-                tags = JSON.parse(tags);
-              } catch (e) {
-                tags = tags.split(',');
-              }
-            }
-
-            let newTags = Array.isArray(tags) ? tags : [];
-            newTags = newTags
-              .map((tag: string) => {
-                return tag
-                  .replace(/[\[\]"`{}\\]/g, '')
-                  .replace(/^(Remove\s+|json\s*|tag\s*)/i, '')
-                  .replace(/(\s+tag|\s+json)$/i, '')
-                  .replace(/```[a-z]*$/g, '')
-                  .replace(/\s+/g, ' ')
-                  .trim();
-              })
-              .filter((tag: string) =>
-                tag &&
-                !/^(json|tag)$/i.test(tag) &&
-                !tag.includes('Remove') &&
-                !tag.includes('```') &&
-                !tag.toLowerCase().includes('json') &&
-                tag.length >= 2
-              )
-              .filter((tag, index, self) =>
-                self.findIndex(t => t.toLowerCase() === tag.toLowerCase()) === index
-              )
-              .slice(0, 10);
-
-            currentEditedVideo.tags = newTags;
-            setEditedVideo(prev => ({ ...prev!, tags: newTags }));
-          }
-        }
-      } catch (error) {
-        console.error('Tags optimization error:', error);
-      }
-
-      // Success
-      toast.success('✨ Optimization Complete!', {
-        id: toastId,
-        description: 'All optimizations applied successfully. Review and save your changes.',
-      });
-    } catch (error) {
-      console.error('Error in optimize all:', error);
-      toast.error('Optimization Failed', {
-        description: error instanceof Error ? error.message : 'An unexpected error occurred.'
-      });
-    } finally {
-      clearActiveOperationLock();
-    }
-  }
-
-  // Checklist item handlers
-  const handleChecklistItemToggle = (itemId: string) => {
-    setCompletedChecklistItems(prev => {
-      const newSet = new Set(prev)
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId)
-      } else {
-        newSet.add(itemId)
-      }
-      return newSet
-    })
-  }
-
-  const handleChecklistItemFixWithAI = async (itemId: string) => {
-    if (!editedVideo || !profile) {
-      toast.error('Cannot fix', { description: 'Missing required data' })
-      return
-    }
-
-    // Map checklist item IDs to optimization types
-    const optimizationMap: Record<string, () => Promise<void>> = {
-      '1': handleOptimizeTitle,      // Title Hook
-      '2': handleOptimizeTitle,       // First 2 lines (also title-based)
-      '3': handleOptimizeDescription, // Keyword Density
-      '4': handleOptimizeTags,        // Tags Quality
-      '5': async () => {              // Thumbnail - no API needed, just complete
-        setCompletedChecklistItems(prev => {
-          const newSet = new Set(prev)
-          newSet.add(itemId)
-          return newSet
-        })
-      }
-    }
-
-    const handler = optimizationMap[itemId]
-    if (handler) {
-      try {
-        await handler()
-        // Mark as complete after successful optimization
-        handleChecklistItemToggle(itemId)
-      } catch (error) {
-        console.error('Checklist item fix error:', error)
-      }
     }
   }
 
@@ -1994,29 +1441,10 @@ export default function VideoPage() {
 
   if (error || !video) {
     return (
-      <div className="flex h-[50vh] flex-col items-center justify-center space-y-6">
-        <div className="space-y-2 text-center">
-          <div className="flex justify-center mb-4">
-            <AlertCircle className="h-12 w-12 text-red-600" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900">Video Not Found</h2>
-          <p className="text-gray-600 max-w-md">{error || 'The video you are looking for does not exist or could not be loaded.'}</p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            onClick={() => router.push('/videos')}
-            className="bg-red-600 hover:bg-red-700 text-white px-6"
-          >
-            ← Back to Videos
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => window.location.reload()}
-            className="border-gray-300"
-          >
-            Try Again
-          </Button>
-        </div>
+      <div className="flex h-[50vh] flex-col items-center justify-center space-y-4">
+        <h2 className="text-2xl font-bold">Video not found</h2>
+        <p className="text-muted-foreground">{error || 'The video you are looking for does not exist.'}</p>
+        <Button onClick={() => router.push('/videos')}>Back to Videos</Button>
       </div>
     )
   }
@@ -2092,17 +1520,6 @@ export default function VideoPage() {
 
         {/* Main Editor Column (Left) */}
         <div className="xl:col-span-2 space-y-6">
-
-          {/* Video Player */}
-          {video && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <VideoPlayer
-                videoId={video.id}
-                title={video.title}
-                thumbnailUrl={video.thumbnail_url}
-              />
-            </div>
-          )}
 
           {/* Metadata Editor - Simplifed Layout */}
           <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm overflow-hidden">
@@ -2245,233 +1662,6 @@ export default function VideoPage() {
             </Alert>
           )}
 
-          {/* ===== CONSOLIDATED OPTIMIZATION INTERFACE ===== */}
-
-          {/* New Consolidated Component - Replaces multiple sections below */}
-          {editedVideo && (() => {
-            const titleScore = calculateTitleScore(editedVideo.title);
-            const descScore = calculateDescriptionScore(editedVideo.description);
-            const tagsScore = calculateTagsScore(editedVideo.tags || []);
-            const thumbnailScore = calculateThumbnailScore(editedVideo.thumbnail_url, editedVideo.title);
-            const overallScore = Math.round((titleScore + descScore + tagsScore + thumbnailScore) / 4);
-
-            // Determine top priority issue
-            const scores = [
-              { name: 'title', score: titleScore, action: handleOptimizeTitle, description: 'Your title hook is weak. Strengthen it in the first 5 words to improve CTR by up to 80%.' },
-              { name: 'description', score: descScore, action: handleOptimizeDescription, description: 'Your description needs optimization to improve click-through rates.' },
-              { name: 'tags', score: tagsScore, action: handleOptimizeTags, description: 'Your tags need improvement to boost discoverability.' },
-            ].sort((a, b) => a.score - b.score);
-
-            const topPriority = scores[0].score < 70 ? {
-              title: `Improve ${scores[0].name.charAt(0).toUpperCase() + scores[0].name.slice(1)}`,
-              description: scores[0].description,
-              impact: scores[0].name === 'title' ? '80% CTR improvement potential' :
-                scores[0].name === 'tags' ? '50% discoverability increase' :
-                  '45% click-through improvement',
-              action: scores[0].action
-            } : undefined;
-
-            return (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <ConsolidatedOptimization
-                  video={{
-                    ...editedVideo,
-                    tags: editedVideo.tags || []
-                  }}
-                  scores={{
-                    overall: overallScore,
-                    title: titleScore,
-                    description: descScore,
-                    tags: tagsScore,
-                    thumbnail: thumbnailScore
-                  }}
-                  onOptimizeTitle={handleOptimizeTitle}
-                  onOptimizeDescription={handleOptimizeDescription}
-                  onOptimizeTags={handleOptimizeTags}
-                  onOptimizeAll={handleAIGenerate}
-                  isLoading={isOptimizingTitle || isOptimizingDescription || isOptimizingTags || isGenerating}
-                  topPriority={topPriority}
-                />
-              </div>
-            );
-          })()}
-
-          {/* ===== LEGACY SECTIONS (TO BE REMOVED) ===== */}
-          {/* Keeping these temporarily for comparison - will be removed once consolidated component is verified */}
-          <div className="hidden">
-            {/* ===== NEW OPTIMIZATION FEATURES ===== */}
-
-            {/* 1. Video Health Summary */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                {(() => {
-                  const titleScore = calculateTitleScore(editedVideo.title);
-                  const descScore = calculateDescriptionScore(editedVideo.description);
-                  const tagsScore = calculateTagsScore(editedVideo.tags || []);
-                  const thumbnailScore = calculateThumbnailScore(editedVideo.thumbnail_url, editedVideo.title);
-                  const overallScore = Math.round((titleScore + descScore + tagsScore + thumbnailScore) / 4);
-
-                  return (
-                    <VideoHealthSummary
-                      score={overallScore}
-                      titleOptimization={titleScore}
-                      descriptionOptimization={descScore}
-                      tagsOptimization={tagsScore}
-                      thumbnailScore={thumbnailScore}
-                    />
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* 2. Next Best Action */}
-            {editedVideo && calculateTitleScore(editedVideo.title) < 70 && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-                <NextBestAction
-                  message="Your title hook is weak. Strengthen it in the first 5 words to improve CTR by up to 80%."
-                  action="apply_title"
-                  actionLabel="Improve Title"
-                  priority="high"
-                  onAction={() => handleOptimizeTitle()}
-                  isLoading={isOptimizingTitle}
-                />
-              </div>
-            )}
-
-            {/* 3. AI Action Checklist */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-150">
-                <AIActionChecklist
-                  items={generateChecklistItems(
-                    editedVideo,
-                    calculateTitleScore(editedVideo.title),
-                    calculateDescriptionScore(editedVideo.description),
-                    calculateTagsScore(editedVideo.tags || [])
-                  ).map(item => ({
-                    ...item,
-                    completed: completedChecklistItems.has(item.id)
-                  }))}
-                  onItemToggle={handleChecklistItemToggle}
-                  onFixWithAI={handleChecklistItemFixWithAI}
-                  isLoading={isOptimizingTitle || isOptimizingDescription || isOptimizingTags}
-                />
-              </div>
-            )}
-
-            {/* 4. Title Optimization */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
-                <TitleOptimization
-                  original={video?.title || ''}
-                  optimized={editedVideo.title !== video?.title ? editedVideo.title : undefined}
-                  hookStrength={calculateHookStrength(editedVideo.title)}
-                  keywordCoverage={calculateKeywordCoverage(editedVideo.title)}
-                  onApply={handleSave}
-                  isLoading={isOptimizingTitle}
-                />
-              </div>
-            )}
-
-            {/* 5. Description Optimization */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-250">
-                <DescriptionOptimization
-                  original={video?.description || ''}
-                  optimized={editedVideo.description !== video?.description ? editedVideo.description : undefined}
-                  first2LinesScore={calculateFirst2LinesScore(editedVideo.description)}
-                  keywordDensity={calculateKeywordDensity(editedVideo.description)}
-                  onApply={handleSave}
-                  isLoading={isOptimizingDescription}
-                />
-              </div>
-            )}
-
-            {/* 6. Tags Intelligence */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-300">
-                <TagsIntelligence
-                  currentTags={editedVideo.tags || []}
-                  suggestedTags={generateSuggestedTags(editedVideo)}
-                  relevanceScores={calculateTagRelevance(editedVideo.tags || [])}
-                  onReplaceTags={() => handleOptimizeTags()}
-                  onApply={(tags) => setEditedVideo({ ...editedVideo, tags })}
-                  isLoading={isOptimizingTags}
-                />
-              </div>
-            )}
-
-            {/* 7. Thumbnail Intelligence */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-350">
-                <ThumbnailIntelligence
-                  currentThumbnailUrl={editedVideo.thumbnail_url}
-                  thumbnailScore={calculateThumbnailScore(editedVideo.thumbnail_url, editedVideo.title)}
-                  suggestions={generateThumbnailSuggestions()}
-                  conceptIdeas={generateThumbnailConcepts()}
-                />
-              </div>
-            )}
-
-            {/* 8. Video Optimization Mode */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-400">
-                <VideoOptimizationMode
-                  video={{ ...editedVideo, tags: editedVideo.tags || [] }}
-                  onOptimize={() => handleOptimizeAll()}
-                  isLoading={activeOperation === 'all'}
-                />
-              </div>
-            )}
-
-            {/* 9. CTR & SEO Prediction */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-450">
-                {(() => {
-                  const titleScore = calculateTitleScore(editedVideo.title);
-                  const descriptionScore = calculateDescriptionScore(editedVideo.description);
-                  const tagsScore = calculateTagsScore(editedVideo.tags || []);
-                  const currentCTR = calculateCurrentCTR(editedVideo);
-                  const predictedCTR = calculatePredictedCTR(editedVideo, titleScore, descriptionScore);
-                  const ctrImprovement = calculateCTRImprovement(currentCTR, predictedCTR);
-                  const currentVisibility = calculateCurrentSearchVisibility(editedVideo, tagsScore, descriptionScore);
-                  const predictedVisibility = calculatePredictedSearchVisibility(editedVideo, titleScore, tagsScore, descriptionScore);
-                  const visibilityImprovement = calculateSearchVisibilityImprovement(currentVisibility, predictedVisibility);
-
-                  return (
-                    <CTRAndSEOPrediction
-                      currentCTR={currentCTR}
-                      predictedCTR={predictedCTR}
-                      ctrImprovement={ctrImprovement}
-                      currentSearchVisibility={currentVisibility}
-                      predictedSearchVisibility={predictedVisibility}
-                      visibilityImprovement={visibilityImprovement}
-                      confidence={titleScore > 70 && tagsScore > 70 ? "High" : titleScore > 50 ? "Medium" : "Low"}
-                    />
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* 10. Version & Change Tracking */}
-            {editedVideo && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-500">
-                <VersionAndChangeTracking
-                  history={history.map((h) => ({
-                    id: h.id,
-                    timestamp: h.created_at,
-                    changes: [
-                      { field: 'title' as const, before: '', after: h.title },
-                      { field: 'description' as const, before: '', after: h.description },
-                    ],
-                    appliedBy: 'user' as const,
-                  }))}
-                  onRevert={(id) => handleRevert(history.find(h => h.id === id)!)}
-                  isLoading={isSaving}
-                />
-              </div>
-            )}
-          </div> {/* End of hidden legacy sections */}
-
           {/* Search Preview */}
           {editedVideo && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200">
@@ -2544,149 +1734,52 @@ export default function VideoPage() {
             />
           </div>
           {/* Performance Card */}
-          <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm animate-in fade-in slide-in-from-right-8 duration-500 delay-150">
-            <CardHeader className="border-b border-border/40 bg-gradient-to-br from-primary/5 to-primary/10 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-primary/10 rounded-lg text-primary">
-                    <BarChart className="h-4 w-4" />
-                  </div>
-                  <CardTitle className="text-base font-semibold">Performance Metrics</CardTitle>
+          <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm">
+            <CardHeader className="border-b border-border/40 bg-muted/20 px-6 py-4">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                  <BarChart className="h-4 w-4" />
                 </div>
-                <Badge variant="outline" className="bg-background/50 text-[10px]">
-                  Live Data
-                </Badge>
+                <CardTitle className="text-base font-semibold">Performance</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
-              {/* Primary Metrics Grid */}
               <div className="grid grid-cols-2 gap-4">
-                {/* Views */}
-                <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-emerald-50/50 to-emerald-100/30 dark:from-emerald-950/20 dark:to-emerald-900/10 border border-emerald-200/50 dark:border-emerald-800/30 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 text-[10px] uppercase tracking-wider font-semibold">
-                      <Eye className="h-3.5 w-3.5" />
-                      Views
-                    </div>
-                    <TrendingUp className="h-3 w-3 text-emerald-600 dark:text-emerald-500" />
+                <div className="space-y-2 p-3 rounded-lg bg-muted/5 border border-border/20 hover:border-border/40 transition-colors">
+                  <div className="flex items-center gap-2 text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">
+                    <Eye className="h-3 w-3 text-emerald-500" /> Views
                   </div>
-                  <p className="text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100">
-                    {video.view_count.toLocaleString()}
-                  </p>
-                  <div className="h-1.5 w-full bg-emerald-200/30 dark:bg-emerald-900/30 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all duration-1000 ease-out"
-                      style={{ width: `${Math.min((video.view_count / 100000) * 100, 100)}%` }}
-                    />
+                  <p className="text-2xl font-bold tracking-tight">{video.view_count.toLocaleString()}</p>
+                  <div className="h-1 w-full bg-muted/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-emerald-500/50 to-emerald-500 w-[var(--progress)] transition-all duration-1000" style={{ '--progress': `${Math.min((video.view_count / 100000) * 100, 100)}%` } as React.CSSProperties} />
                   </div>
                 </div>
-
-                {/* Likes */}
-                <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-blue-50/50 to-blue-100/30 dark:from-blue-950/20 dark:to-blue-900/10 border border-blue-200/50 dark:border-blue-800/30 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 text-[10px] uppercase tracking-wider font-semibold">
-                      <ThumbsUp className="h-3.5 w-3.5" />
-                      Likes
-                    </div>
-                    <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-500" />
+                <div className="space-y-2 p-3 rounded-lg bg-muted/5 border border-border/20 hover:border-border/40 transition-colors">
+                  <div className="flex items-center gap-2 text-muted-foreground text-[10px] uppercase tracking-wider font-semibold">
+                    <ThumbsUp className="h-3 w-3 text-blue-500" /> Likes
                   </div>
-                  <p className="text-2xl font-bold tracking-tight text-blue-900 dark:text-blue-100">
-                    {video.like_count.toLocaleString()}
-                  </p>
-                  <div className="h-1.5 w-full bg-blue-200/30 dark:bg-blue-900/30 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-1000 ease-out"
-                      style={{ width: `${Math.min((video.like_count / 10000) * 100, 100)}%` }}
-                    />
+                  <p className="text-2xl font-bold tracking-tight">{video.like_count.toLocaleString()}</p>
+                  <div className="h-1 w-full bg-muted/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-blue-500/50 to-blue-500 w-[var(--progress)] transition-all duration-1000" style={{ '--progress': `${Math.min((video.like_count / 10000) * 100, 100)}%` } as React.CSSProperties} />
                   </div>
-                </div>
-
-                {/* Comments */}
-                <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-purple-50/50 to-purple-100/30 dark:from-purple-950/20 dark:to-purple-900/10 border border-purple-200/50 dark:border-purple-800/30 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400 text-[10px] uppercase tracking-wider font-semibold">
-                      <MessageSquare className="h-3.5 w-3.5" />
-                      Comments
-                    </div>
-                    <TrendingUp className="h-3 w-3 text-purple-600 dark:text-purple-500" />
-                  </div>
-                  <p className="text-2xl font-bold tracking-tight text-purple-900 dark:text-purple-100">
-                    {video.comment_count?.toLocaleString() || '0'}
-                  </p>
-                  <div className="h-1.5 w-full bg-purple-200/30 dark:bg-purple-900/30 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-1000 ease-out"
-                      style={{ width: `${Math.min(((video.comment_count || 0) / 1000) * 100, 100)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Watch Time */}
-                <div className="space-y-2 p-4 rounded-xl bg-gradient-to-br from-amber-50/50 to-amber-100/30 dark:from-amber-950/20 dark:to-amber-900/10 border border-amber-200/50 dark:border-amber-800/30 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-[10px] uppercase tracking-wider font-semibold">
-                      <Clock className="h-3.5 w-3.5" />
-                      Watch Time
-                    </div>
-                    <TrendingUp className="h-3 w-3 text-amber-600 dark:text-amber-500" />
-                  </div>
-                  <p className="text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100">
-                    {(video.watch_time || 0).toLocaleString()}
-                  </p>
-                  <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
-                    Estimated Views
-                  </p>
                 </div>
               </div>
 
-              {/* Secondary Metrics */}
-              <div className="space-y-4 pt-2 border-t border-border/40">
+              <div className="space-y-4 pt-2">
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground font-medium">Engagement Rate</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground">{video.engagement_rate?.toFixed(2)}%</span>
-                      <Badge variant="outline" className="text-[10px] bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800">
-                        {video.engagement_rate && video.engagement_rate > 5 ? 'Excellent' : video.engagement_rate && video.engagement_rate > 2 ? 'Good' : 'Average'}
-                      </Badge>
-                    </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Engagement Rate</span>
+                    <span className="font-medium">{video.engagement_rate?.toFixed(1)}%</span>
                   </div>
-                  <Progress value={Math.min(video.engagement_rate || 0, 100)} className="h-2 bg-muted/30" />
-                  <p className="text-[10px] text-muted-foreground">
-                    Based on likes and comments per view
-                  </p>
+                  <Progress value={video.engagement_rate || 0} className="h-1.5" />
                 </div>
-
                 <div className="space-y-2">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground font-medium">Retention Estimate</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground">{video.retention_rate?.toFixed(1)}%</span>
-                      <Badge variant="outline" className="text-[10px] bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800">
-                        {video.retention_rate && video.retention_rate > 60 ? 'High' : video.retention_rate && video.retention_rate > 40 ? 'Medium' : 'Low'}
-                      </Badge>
-                    </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Retention</span>
+                    <span className="font-medium">{video.retention_rate?.toFixed(1)}%</span>
                   </div>
-                  <Progress value={video.retention_rate || 0} className="h-2 bg-muted/30" />
-                  <p className="text-[10px] text-muted-foreground">
-                    Estimated from engagement patterns
-                  </p>
+                  <Progress value={video.retention_rate || 0} className="h-1.5" />
                 </div>
-
-                {video.subscriber_gained !== undefined && video.subscriber_gained > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground font-medium">Subscribers Gained</span>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-3.5 w-3.5 text-primary" />
-                        <span className="font-semibold text-foreground">+{video.subscriber_gained?.toLocaleString()}</span>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Estimated from engagement metrics
-                    </p>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>

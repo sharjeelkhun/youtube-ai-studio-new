@@ -20,12 +20,17 @@ export async function POST(request: Request) {
       : "http://localhost:3000/connect-channel";
 
     if (!clientId || !clientSecret) {
-      console.error('Missing required environment variables:', {
+      console.error('❌ Missing Google OAuth credentials:', {
         hasClientId: !!clientId,
-        hasClientSecret: !!clientSecret
+        hasClientSecret: !!clientSecret,
+        hint: 'Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local. See GOOGLE_OAUTH_SETUP.md for instructions.'
       });
       return NextResponse.json(
-        { error: 'Server configuration error' },
+        { 
+          error: 'Google OAuth credentials not configured',
+          details: 'Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET in environment variables',
+          setupUrl: '/GOOGLE_OAUTH_SETUP.md'
+        },
         { status: 500 }
       );
     }

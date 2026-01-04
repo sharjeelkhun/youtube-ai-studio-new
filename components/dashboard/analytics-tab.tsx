@@ -8,12 +8,17 @@ import { Loader2, ArrowUpRight, ArrowDownRight, Users, Clock, Eye, Activity } fr
 import { db, type AnalyticsData } from "@/lib/db"
 import { cn } from "@/lib/utils"
 import { ConnectChannelHero } from "@/components/connect-channel-hero"
+import { useFeatureAccess } from "@/lib/feature-access"
+import { UpgradePrompt } from "@/components/upgrade-prompt"
 
 export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isLoading: boolean }) {
   const [analytics, setAnalytics] = useState<AnalyticsData[]>([])
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [dateRange, setDateRange] = useState("30d")
   const [selectedMetric, setSelectedMetric] = useState<"views" | "watch_time" | "subscribers" | "engagement">("views")
+
+  // Feature access hook
+  const { hasFeature, planName } = useFeatureAccess()
 
   useEffect(() => {
     async function fetchAnalytics() {
@@ -290,6 +295,17 @@ export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isL
           </Card>
         ))}
       </div>
+
+      {/* Enterprise Feature: Custom Analytics Dashboard */}
+      {!hasFeature('CUSTOM_ANALYTICS_DASHBOARD') && (
+        <UpgradePrompt
+          feature="Custom Analytics Dashboard"
+          description="Get advanced analytics with custom dashboards, detailed competitor insights, and comprehensive reporting tools."
+          requiredPlan="Enterprise"
+          currentPlan={planName}
+          className="mt-6"
+        />
+      )}
     </div>
   )
 }
