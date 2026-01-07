@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { User, CreditCard, Settings, LogOut, Sparkles, LifeBuoy, Youtube, LayoutDashboard } from "lucide-react"
+import { User, CreditCard, Settings, LogOut, Sparkles, LifeBuoy, Youtube, LayoutDashboard, ShieldCheck } from "lucide-react"
 import Link from "next/link"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 
@@ -50,7 +50,14 @@ export function UserNav() {
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-semibold leading-none text-foreground">{user.email?.split('@')[0]}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold leading-none text-foreground">{user.email?.split('@')[0]}</p>
+                {user.role === 'admin' && (
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                    Admin
+                  </span>
+                )}
+              </div>
               <p className="text-xs leading-none text-muted-foreground font-medium">
                 {user.email}
               </p>
@@ -95,6 +102,14 @@ export function UserNav() {
 
         <DropdownMenuSeparator className="bg-border/50 my-1" />
         <DropdownMenuGroup>
+          {user.role === 'admin' && (
+            <DropdownMenuItem asChild>
+              <Link href="/admin" className="cursor-pointer rounded-lg bg-primary/10 text-primary focus:bg-primary/20 focus:text-primary font-medium py-2.5 w-full flex items-center mb-1">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                <span>Admin Panel</span>
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link href="/dashboard" className="cursor-pointer rounded-lg focus:bg-primary/10 focus:text-primary transition-colors py-2.5 w-full flex items-center">
               <LayoutDashboard className="mr-2 h-4 w-4" />

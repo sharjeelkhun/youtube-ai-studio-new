@@ -46,7 +46,8 @@ export async function middleware(request: NextRequest) {
     !user &&
     (pathname.startsWith("/dashboard") ||
       pathname.startsWith("/videos") ||
-      pathname.startsWith("/settings"))
+      pathname.startsWith("/settings") ||
+      pathname.startsWith("/admin")) // Protect admin
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
@@ -62,7 +63,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - auth/callback (important for auth flow)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|auth/callback).*)",
   ],
 };

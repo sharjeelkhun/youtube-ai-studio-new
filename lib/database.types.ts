@@ -53,6 +53,7 @@ export interface Database {
           updated_at: string
           ai_provider: string | null
           ai_settings: Json | null
+          role: string
         }
         Insert: {
           id: string
@@ -62,6 +63,7 @@ export interface Database {
           updated_at?: string
           ai_provider?: string | null
           ai_settings?: Json | null
+          role?: string
         }
         Update: {
           id?: string
@@ -71,6 +73,7 @@ export interface Database {
           updated_at?: string
           ai_provider?: string | null
           ai_settings?: Json | null
+          role?: string
         }
       },
       youtube_channels: {

@@ -12,6 +12,7 @@ interface User {
   email: string
   name?: string
   avatar_url?: string
+  role?: string
 }
 
 interface AuthContextType {
@@ -44,19 +45,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<Error | null>(null)
 
   useEffect(() => {
-    if (session?.user) {
-      setSupabaseUser(session.user)
-      setUser({
-        id: session.user.id,
-        email: session.user.email!,
-        name: session.user.user_metadata?.name,
-        avatar_url: session.user.user_metadata?.avatar_url,
-      })
-    } else {
-      setSupabaseUser(null)
-      setUser(null)
+    const syncUser = async () => {
+      if (session?.user) {
+        setSupabaseUser(session.user)
+
+        // Fetch profile to get role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        setUser({
+          id: session.user.id,
+          email: session.user.email!,
+          name: profile?.full_name || session.user.user_metadata?.name,
+          avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url,
+          role: profile?.role || 'user'
+        })
+      } else {
+        setSupabaseUser(null)
+        setUser(null)
+      }
+      setIsLoading(false)
     }
-    setIsLoading(false)
+
+    syncUser()
   }, [session])
 
   useEffect(() => {
