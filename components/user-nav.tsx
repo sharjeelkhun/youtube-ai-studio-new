@@ -31,7 +31,10 @@ export function UserNav() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-9 w-9 rounded-full ring-2 ring-transparent hover:ring-primary/20 transition-all">
+        <Button variant="ghost" className={`relative h-9 w-9 rounded-full transition-all ${user.role === 'admin'
+          ? 'ring-2 ring-amber-500/40 hover:ring-amber-500/60 shadow-sm shadow-amber-500/20'
+          : 'ring-2 ring-transparent hover:ring-primary/20'
+          }`}>
           <Avatar className="h-9 w-9 border border-border/50">
             {/* <AvatarImage src="/avatars/01.png" alt="@shadcn" /> */}
             <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary font-medium">
@@ -104,7 +107,7 @@ export function UserNav() {
         <DropdownMenuGroup>
           {user.role === 'admin' && (
             <DropdownMenuItem asChild>
-              <Link href="/admin" className="cursor-pointer rounded-lg bg-primary/10 text-primary focus:bg-primary/20 focus:text-primary font-medium py-2.5 w-full flex items-center mb-1">
+              <Link href="/admin" className="cursor-pointer rounded-lg focus:bg-primary/10 focus:text-primary transition-colors py-2.5 w-full flex items-center mb-1">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 <span>Admin Panel</span>
               </Link>
