@@ -47,9 +47,40 @@ export async function middleware(request: NextRequest) {
     (pathname.startsWith("/dashboard") ||
       pathname.startsWith("/videos") ||
       pathname.startsWith("/settings") ||
+      pathname.startsWith("/setup") ||
       pathname.startsWith("/admin")) // Protect admin
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Check onboarding status for authenticated users
+  if (user && !pathname.startsWith("/setup") && !pathname.startsWith("/api")) {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", user.id)
+        .single();
+
+      // If onboarding is not complete and user is trying to access protected routes
+      if (
+        profile &&
+        !profile.onboarding_completed &&
+        (pathname.startsWith("/dashboard") ||
+          pathname.startsWith("/videos") ||
+          pathname.startsWith("/settings") ||
+          pathname.startsWith("/admin"))
+      ) {
+        return NextResponse.redirect(new URL("/setup", request.url));
+      }
+
+      // If onboarding is complete and user is on setup page, redirect to dashboard
+      if (profile && profile.onboarding_completed && pathname === "/setup") {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+    } catch (error) {
+      console.error("Error checking onboarding status:", error);
+    }
   }
 
   return response;

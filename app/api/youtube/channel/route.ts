@@ -109,6 +109,16 @@ export async function GET(request: Request) {
       userId: session.user.id
     })
 
+    // Get user profile to check for personal YouTube API Key or Gemini Key
+    const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id).single()
+    const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
+
+    const appendKey = (url: string) => {
+      if (!personalApiKey) return url
+      const separator = url.includes('?') ? '&' : '?'
+      return `${url}${separator}key=${personalApiKey}`
+    }
+
     // Check if we need to refresh the token
     const tokenExpiry = new Date(channel.token_expires_at)
     let accessToken = channel.access_token
@@ -149,7 +159,7 @@ export async function GET(request: Request) {
     }
 
     // Get the channel's uploads playlist ID
-    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails,statistics&id=${channel.id}`
+    const channelUrl = appendKey(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails,statistics&id=${channel.id}`)
     console.log('Fetching channel details from:', channelUrl)
 
     const channelResponse = await fetch(channelUrl, {

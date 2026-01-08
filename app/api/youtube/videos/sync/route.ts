@@ -49,16 +49,22 @@ async function refreshAccessToken(refreshToken: string) {
   return data.access_token
 }
 
-async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string, limit: number = -1) {
+async function fetchAllVideos(accessToken: string, uploadsPlaylistId: string, limit: number = -1, apiKey?: string) {
   let allVideos: any[] = []
   let nextPageToken: string | null = null
   let pageCount = 0
+
+  const appendKey = (url: string) => {
+    if (!apiKey) return url
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}key=${apiKey}`
+  }
 
   do {
     pageCount++
     console.log(`Fetching videos page ${pageCount}...`)
 
-    const playlistUrl: string = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
+    const playlistUrl: string = appendKey(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`)
     console.log('Fetching from URL:', playlistUrl)
 
     const response = await fetch(playlistUrl, {
@@ -144,6 +150,16 @@ export async function POST(request: Request) {
     const videoSyncLimit = FEATURE_LIMITS.VIDEO_SYNC_LIMIT[planName as keyof typeof FEATURE_LIMITS.VIDEO_SYNC_LIMIT] || 10
     console.log('User plan:', planName, 'Video sync limit:', videoSyncLimit)
 
+    // Get user profile to check for personal YouTube API Key or Gemini Key
+    const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id).single()
+    const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
+
+    const appendKey = (url: string) => {
+      if (!personalApiKey) return url
+      const separator = url.includes('?') ? '&' : '?'
+      return `${url}${separator}key=${personalApiKey}`
+    }
+
     // Get the user's YouTube channel
     const { data: channel, error: channelError } = await supabase
       .from('youtube_channels')
@@ -212,7 +228,7 @@ export async function POST(request: Request) {
     }
 
     // Get the channel's uploads playlist ID
-    const channelUrl = `https://www.googleapis.com/youtube/v3/channels?part=contentDetails,statistics&id=${channel.id}`
+    const channelUrl = appendKey(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails,statistics&id=${channel.id}`)
     console.log('Fetching channel details from:', channelUrl)
 
     const channelResponse = await fetch(channelUrl, {
@@ -243,7 +259,7 @@ export async function POST(request: Request) {
     console.log('Found uploads playlist:', uploadsPlaylistId)
 
     // Fetch all videos from the uploads playlist (limited by plan)
-    const playlistItems = await fetchAllVideos(accessToken, uploadsPlaylistId, videoSyncLimit)
+    const playlistItems = await fetchAllVideos(accessToken, uploadsPlaylistId, videoSyncLimit, personalApiKey)
     console.log(`Total videos found (limited by plan ${planName}): ${playlistItems.length}`)
 
     if (playlistItems.length === 0) {
@@ -264,7 +280,7 @@ export async function POST(request: Request) {
       const batchIds = videoIds.slice(i, i + 50)
       console.log(`Processing video batch ${i / 50 + 1}...`)
 
-      const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status,liveStreamingDetails&id=${batchIds.join(',')}`
+      const statsUrl = appendKey(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status,liveStreamingDetails&id=${batchIds.join(',')}`)
       console.log('Fetching video stats from:', statsUrl)
 
       const statsResponse = await fetch(statsUrl, {

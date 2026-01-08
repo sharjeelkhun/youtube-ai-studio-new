@@ -2,16 +2,29 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Youtube, AlertCircle, Check, ExternalLink, Loader2, BarChart, MessageSquare, RefreshCw, Unplug, ArrowRight } from "lucide-react"
+import { Youtube, AlertCircle, Check, ExternalLink, Loader2, BarChart, MessageSquare, RefreshCw, Unplug, ArrowRight, Save, Info, Sparkles } from "lucide-react"
 import { toast } from "sonner"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
+import { useProfile } from "@/contexts/profile-context"
 import { cn } from "@/lib/utils"
 
 export function IntegrationsSettings() {
   const router = useRouter()
-  const { channelData, isLoading, isConnected, refreshChannel } = useYouTubeChannel()
+  const { channelData, isLoading: channelLoading, isConnected, refreshChannel } = useYouTubeChannel()
+  const { profile, updateProfile, loading: profileLoading } = useProfile()
+  const [youtubeApiKey, setYoutubeApiKey] = useState("")
+  const [isSaving, setIsSaving] = useState(false)
+
+  useEffect(() => {
+    if (profile?.youtube_api_key) {
+      setYoutubeApiKey(profile.youtube_api_key)
+    }
+  }, [profile])
 
   const handleConnectYouTube = () => {
     router.push("/connect-channel")
@@ -55,6 +68,33 @@ export function IntegrationsSettings() {
       })
     }
   }
+
+  const handleSaveYoutubeKey = async () => {
+    setIsSaving(true)
+    try {
+      await updateProfile({
+        youtube_api_key: youtubeApiKey
+      })
+      toast.success("YouTube API settings saved successfully!")
+    } catch (error) {
+      toast.error("Failed to save YouTube API settings.")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleUseGeminiKeyForYoutube = () => {
+    const geminiKey = profile?.ai_settings?.apiKeys?.gemini
+    if (geminiKey) {
+      setYoutubeApiKey(geminiKey)
+      toast.success("Using Gemini key for YouTube!")
+    } else {
+      toast.error("No Gemini API key found in your AI settings.")
+    }
+  }
+
+  const isLoading = channelLoading || profileLoading
+  const hasGeminiKey = !!profile?.ai_settings?.apiKeys?.gemini
 
   return (
     <div className="space-y-8">
@@ -196,6 +236,77 @@ export function IntegrationsSettings() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm transition-all duration-300 hover:shadow-md hover:bg-background/70">
+        <CardHeader>
+          <div className="flex items-center gap-2 mb-2 text-xl font-bold">
+            YouTube API Configuration
+          </div>
+          <CardDescription>
+            The system automatically reuses your Google Gemini key for YouTube to avoid quota limits.
+            You only need to provide a separate key if you're using a different provider (like OpenAI).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/10 mb-2">
+            <p className="text-sm text-red-600 dark:text-red-400 flex gap-2">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                Using your own key increases your daily quota to 10,000 requests, which is plenty for personal use.
+              </span>
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="youtube-api-key" className="text-sm font-medium">YouTube API Key</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="youtube-api-key"
+                  type="password"
+                  placeholder="AIza..."
+                  value={youtubeApiKey}
+                  onChange={(e) => setYoutubeApiKey(e.target.value)}
+                  className="bg-background/80"
+                />
+                {hasGeminiKey && youtubeApiKey !== profile?.ai_settings?.apiKeys?.gemini && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleUseGeminiKeyForYoutube}
+                    className="shrink-0"
+                  >
+                    Use Gemini Key
+                  </Button>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5 pt-1">
+                <p className="text-xs text-muted-foreground">
+                  Get your key from the <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google Cloud Console</a>.
+                </p>
+                <p className="text-[10px] text-muted-foreground opacity-70">
+                  Note: Ensure "YouTube Data API v3" is enabled in your Google Cloud Project.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="flex justify-end pt-2 pb-6 px-6 border-t border-border/50">
+          <Button onClick={handleSaveYoutubeKey} disabled={isSaving || profileLoading} className="shadow-lg hover:shadow-primary/20 transition-all active:scale-95">
+            {isSaving || profileLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save YouTube Key
+              </>
+            )}
+          </Button>
+        </CardFooter>
+      </Card>
 
       {/* Secondary Integrations Grid */}
       <h3 className="text-lg font-semibold flex items-center gap-2 px-1">

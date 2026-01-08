@@ -11,11 +11,16 @@ export default function AuthCallbackPage() {
 
   useEffect(() => {
     const handleAuthCallback = async () => {
-      const { error } = await supabase.auth.getSession();
+      const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) {
         console.error('Error during auth callback:', error);
         router.push('/login?error=auth');
+        return;
+      }
+
+      if (!session?.user) {
+        router.push('/login');
         return;
       }
 
@@ -31,12 +36,22 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // Redirect based on plan or default to dashboard
+      // Initialize onboarding data if plan is selected
       if (plan) {
-        router.push(`/settings?tab=billing&plan=${plan}`);
-      } else {
-        router.push('/dashboard');
+        try {
+          await supabase
+            .from('profiles')
+            .update({
+              onboarding_data: { selectedPlan: plan },
+            })
+            .eq('id', session.user.id);
+        } catch (err) {
+          console.error('Error saving plan to onboarding data:', err);
+        }
       }
+
+      // Always redirect to setup for new users (middleware will handle completed users)
+      router.push('/setup');
     };
 
     handleAuthCallback();

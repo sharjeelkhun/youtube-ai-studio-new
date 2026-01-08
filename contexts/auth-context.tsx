@@ -11,6 +11,7 @@ interface User {
   id: string
   email: string
   name?: string
+  phone?: string
   avatar_url?: string
   role?: string
 }
@@ -22,7 +23,9 @@ interface AuthContextType {
   isLoading: boolean
   isPreview: boolean
   signIn: (email: string, password: string) => Promise<{ error: any }>
-  signUp: (email: string, password: string, plan?: string | null) => Promise<void>
+  signUp: (email: string, password: string, name: string, phone: string, plan?: string | null) => Promise<void>
+  verifyOtp: (email: string, token: string, type: 'signup' | 'recovery' | 'magiclink') => Promise<{ error: any }>
+  resendOtp: (email: string, type: 'signup' | 'email_change') => Promise<{ error: any }>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   validateEmail: (email: string) => boolean
@@ -59,7 +62,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser({
           id: session.user.id,
           email: session.user.email!,
-          name: profile?.full_name || session.user.user_metadata?.name,
+          name: profile?.full_name || session.user.user_metadata?.full_name || session.user.user_metadata?.name,
+          phone: profile?.phone || session.user.user_metadata?.phone,
           avatar_url: profile?.avatar_url || session.user.user_metadata?.avatar_url,
           role: profile?.role || 'user'
         })
@@ -129,7 +133,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string, plan?: string | null) => {
+  const signUp = async (email: string, password: string, name: string, phone: string, plan?: string | null) => {
+    console.log('Starting sign up process with name:', name, 'and phone:', phone)
     console.log('Starting sign up process...')
     setLoading(true)
     setError(null)
@@ -144,6 +149,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         options: {
           emailRedirectTo: redirectUrl,
+          data: {
+            full_name: name,
+            phone: phone,
+          }
         },
       })
 
@@ -163,6 +172,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Unexpected error during sign up:', err)
       setError(err instanceof Error ? err : new Error('Failed to sign up'))
       throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const verifyOtp = async (email: string, token: string, type: 'signup' | 'recovery' | 'magiclink') => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { data, error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type,
+      })
+      if (error) throw error
+      return { error: null }
+    } catch (err: any) {
+      setError(err)
+      return { error: err }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const resendOtp = async (email: string, type: 'signup' | 'email_change') => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { error } = await supabase.auth.resend({
+        email,
+        type,
+      })
+      if (error) throw error
+      return { error: null }
+    } catch (err: any) {
+      setError(err)
+      return { error: err }
     } finally {
       setLoading(false)
     }
@@ -196,6 +242,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isPreview: false,
     signIn,
     signUp,
+    verifyOtp,
+    resendOtp,
     signOut,
     resetPassword,
     validateEmail,

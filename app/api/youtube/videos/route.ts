@@ -48,17 +48,23 @@ async function refreshAccessToken(refreshToken: string) {
   return data.access_token
 }
 
-async function fetchAllVideos(accessToken: string, playlistId: string) {
+async function fetchAllVideos(accessToken: string, playlistId: string, apiKey?: string) {
   let allVideos: any[] = []
   let nextPageToken = null
   let pageCount = 0
   const maxPages = 10 // Limit to prevent excessive API calls
 
+  const appendKey = (url: string) => {
+    if (!apiKey) return url
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}key=${apiKey}`
+  }
+
   do {
     pageCount++
     console.log(`Fetching videos page ${pageCount}...`)
 
-    const playlistUrl: string = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`
+    const playlistUrl: string = appendKey(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`)
 
     const response = await fetch(playlistUrl, {
       headers: {
@@ -151,6 +157,16 @@ export async function GET(request: Request) {
       tokenExpiresAt: channel.token_expires_at
     })
 
+    // Get user profile to check for personal YouTube API Key or Gemini Key
+    const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id).single()
+    const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
+
+    const appendKey = (url: string) => {
+      if (!personalApiKey) return url
+      const separator = url.includes('?') ? '&' : '?'
+      return `${url}${separator}key=${personalApiKey}`
+    }
+
     // Check if we need to refresh the token
     const tokenExpiry = new Date(channel.token_expires_at)
     let accessToken = channel.access_token
@@ -191,7 +207,7 @@ export async function GET(request: Request) {
     }
 
     // Fetch all videos from the playlist
-    const playlistItems = await fetchAllVideos(accessToken, playlistId)
+    const playlistItems = await fetchAllVideos(accessToken, playlistId, personalApiKey)
     console.log(`Total videos found: ${playlistItems.length}`)
 
     if (playlistItems.length === 0) {
@@ -212,7 +228,7 @@ export async function GET(request: Request) {
       const batchIds = videoIds.slice(i, i + 50)
       console.log(`Processing video batch ${i / 50 + 1}...`)
 
-      const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,status&id=${batchIds.join(',')}`
+      const statsUrl = appendKey(`https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,status&id=${batchIds.join(',')}`)
       console.log('Fetching video stats from:', statsUrl)
 
       const statsResponse = await fetch(statsUrl, {

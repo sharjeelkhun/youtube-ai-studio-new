@@ -7,6 +7,7 @@ import { useSession } from './session-context'
 interface Profile {
   ai_provider: string | null
   ai_settings: any | null
+  youtube_api_key: string | null
 }
 
 interface ProfileContextType {
@@ -37,6 +38,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         setProfile({
           ai_provider: data[0].provider,
           ai_settings: data[0].settings,
+          youtube_api_key: data[0].youtube_key,
         })
       } else {
         setProfile(null)
@@ -82,6 +84,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     const updatedProfile = {
       ai_provider: null,
       ai_settings: null,
+      youtube_api_key: null,
       ...profile,
       ...newProfileData,
     }
@@ -93,6 +96,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.rpc('update_ai_settings', {
         new_provider: updatedProfile.ai_provider,
         new_settings: updatedProfile.ai_settings,
+        new_youtube_key: updatedProfile.youtube_api_key
       })
 
       if (error) {

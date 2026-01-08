@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
+import { supabase } from "@/lib/supabase/client"
 
 export default function ConnectionCallbackPage() {
     const router = useRouter()
@@ -54,12 +55,20 @@ export default function ConnectionCallbackPage() {
                     description: `Successfully connected to ${data.channelTitle || 'your channel'}`
                 })
 
-                // Refresh context data
-                await refreshChannel()
+                // Check if onboarding is complete
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("onboarding_completed")
+                    .eq("id", (await supabase.auth.getUser()).data.user?.id)
+                    .single()
 
                 // Redirect after short delay
                 setTimeout(() => {
-                    router.push("/dashboard")
+                    if (profile && !profile.onboarding_completed) {
+                        window.location.href = "/setup"
+                    } else {
+                        window.location.href = "/dashboard"
+                    }
                 }, 2000)
 
             } catch (err: any) {
@@ -115,14 +124,29 @@ export default function ConnectionCallbackPage() {
                                 <p className="text-sm text-muted-foreground max-w-xs mx-auto">
                                     {errorMessage}
                                 </p>
+                                {errorMessage.toLowerCase().includes('quota') && (
+                                    <p className="text-xs text-muted-foreground mt-2 bg-muted p-2 rounded border border-border/50">
+                                        Tip: You can proceed to the dashboard and add your own YouTube API Key in Settings to avoid this limit.
+                                    </p>
+                                )}
                             </div>
-                            <Button
-                                variant="outline"
-                                onClick={() => router.push('/connect-channel')}
-                                className="mt-4"
-                            >
-                                Try Again
-                            </Button>
+                            <div className="flex flex-col gap-2 w-full mt-4">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => router.push('/connect-channel')}
+                                >
+                                    Try Again
+                                </Button>
+                                {errorMessage.toLowerCase().includes('quota') && (
+                                    <Button
+                                        variant="ghost"
+                                        onClick={() => window.location.href = "/dashboard"}
+                                        className="text-muted-foreground hover:text-foreground"
+                                    >
+                                        Skip for Now
+                                    </Button>
+                                )}
+                            </div>
                         </>
                     )}
 

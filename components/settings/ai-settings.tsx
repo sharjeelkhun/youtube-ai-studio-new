@@ -466,9 +466,9 @@ export function AISettings() {
       // Set storage flag for cross-tab sync
       localStorage.setItem('ai_provider_changed', Date.now().toString())
 
-      toast.success("API settings saved successfully!")
+      toast.success("Settings saved successfully!")
     } catch (error) {
-      toast.error("Failed to save API settings.")
+      toast.error("Failed to save settings.")
     } finally {
       setIsLoading(false)
     }
@@ -708,7 +708,7 @@ export function AISettings() {
             ) : (
               <>
                 <Save className="mr-2 h-4 w-4" />
-                Save API Configuration
+                Save All Configuration
               </>
             )}
           </Button>
@@ -958,6 +958,6 @@ export function AISettings() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </div >
   )
 }

@@ -14,6 +14,7 @@ import { AnalyticsTab } from './analytics-tab';
 import { SettingsTab } from '@/components/dashboard/settings-tab';
 import { SuggestionsTab } from '@/components/tabs/suggestions-tab';
 import { ConnectChannelHero } from '@/components/connect-channel-hero';
+import { ContinueSetup } from './continue-setup';
 
 interface DashboardContentProps {
   userId?: string;
@@ -100,11 +101,14 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
     );
   }
 
-  // If no channel is connected, show a connection prompt
+  // If no channel is connected, show a connection prompt along with setup progress
   if (!channel) {
     return (
-      <div className="flex-1 flex flex-col h-[calc(100vh-4rem)]">
-        <ConnectChannelHero />
+      <div className="container mx-auto py-8">
+        <ContinueSetup />
+        <div className="flex-1 flex flex-col pt-8">
+          <ConnectChannelHero />
+        </div>
       </div>
     );
   }
@@ -117,6 +121,8 @@ export default function DashboardContent({ userId, email, channelId }: Dashboard
           Welcome back, <span className="font-medium text-foreground">{email}</span>
         </p>
       </div>
+
+      <ContinueSetup />
 
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-1 border border-border/40 rounded-xl h-auto w-full md:w-auto grid grid-cols-2 md:inline-flex md:grid-cols-none">

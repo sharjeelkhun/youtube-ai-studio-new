@@ -1,6 +1,7 @@
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
+import { supabaseAdmin } from "@/lib/supabase-admin"
 
 // Helper: always resolve redirect dynamically
 const getRedirectUri = (request: Request) => {
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
         hint: 'Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env.local. See GOOGLE_OAUTH_SETUP.md for instructions.'
       });
       return NextResponse.json(
-        { 
+        {
           error: "Google OAuth credentials are not properly configured",
           details: "Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET",
           setupUrl: "/GOOGLE_OAUTH_SETUP.md"
@@ -70,21 +71,6 @@ export async function POST(request: Request) {
     const { access_token, refresh_token, expires_in } = tokenData
     const expiryDate = new Date(Date.now() + expires_in * 1000)
 
-    // Fetch channel data
-    const channelResponse = await fetch(
-      "https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics&mine=true",
-      { headers: { Authorization: `Bearer ${access_token}` } }
-    )
-
-    const channelData = await channelResponse.json()
-
-    if (!channelResponse.ok) {
-      return NextResponse.json(
-        { error: channelData.error?.message || "Failed to fetch channel data" },
-        { status: channelResponse.status }
-      )
-    }
-
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const {
@@ -95,6 +81,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
+    // Get user profile to check for personal YouTube API Key or Gemini Key
+    const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id).single()
+    const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
+
+    const appendKey = (url: string) => {
+      if (!personalApiKey) return url
+      const separator = url.includes('?') ? '&' : '?'
+      return `${url}${separator}key=${personalApiKey}`
+    }
+
+    // Fetch channel data (with contentDetails to get uploads playlist)
+    const channelResponse = await fetch(
+      appendKey("https://www.googleapis.com/youtube/v3/channels?part=snippet,statistics,contentDetails&mine=true"),
+      { headers: { Authorization: `Bearer ${access_token}` } }
+    )
+
+    const channelData = await channelResponse.json()
+
+    if (!channelResponse.ok) {
+      if (channelData.error?.errors?.[0]?.reason === 'quotaExceeded') {
+        return NextResponse.json(
+          {
+            error: "YouTube API quota exceeded for the app. Please try again tomorrow or add your own YouTube API Key in settings to proceed.",
+            errorCode: 'quota_exceeded'
+          },
+          { status: 403 }
+        )
+      }
+      return NextResponse.json(
+        { error: channelData.error?.message || "Failed to fetch channel data" },
+        { status: channelResponse.status }
+      )
+    }
+
+    // Moved up
+
     const channel = channelData.items?.[0]
 
     if (!channel) {
@@ -102,26 +124,45 @@ export async function POST(request: Request) {
     }
 
     const channelId = channel.id;
+
+    // Check if channel is already connected to another user
+    const { data: existingChannel } = await supabaseAdmin
+      .from("youtube_channels")
+      .select("user_id")
+      .eq("id", channelId)
+      .single()
+
+    if (existingChannel && existingChannel.user_id !== session.user.id) {
+      return NextResponse.json(
+        { error: "This YouTube channel is already connected to another account. Please connect a different channel." },
+        { status: 409 }
+      )
+    }
+
     await supabase.from("youtube_channels").upsert(
       {
         id: channelId,
         user_id: session.user.id,
         title: channel.snippet.title,
         description: channel.snippet.description,
-        subscribers: channel.statistics.subscriberCount || 0,
-        videos: channel.statistics.videoCount || 0,
+        subscriber_count: channel.statistics.subscriberCount || 0,
+        video_count: channel.statistics.videoCount || 0,
         thumbnail: channel.snippet.thumbnails?.default?.url || null,
         access_token,
         refresh_token,
         token_expires_at: expiryDate.toISOString(),
+        last_updated: new Date().toISOString(),
       },
       { onConflict: "id" }
     )
 
-    // Fetch some videos to populate the database
+    // Fetch the recent videos from the uploads playlist (Quota efficient: 1 unit)
     try {
+      const uploadsPlaylistId = channel.contentDetails?.relatedPlaylists?.uploads
+      if (!uploadsPlaylistId) throw new Error("No uploads playlist found")
+
       const videosResponse = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&maxResults=10&order=date&type=video`,
+        appendKey(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${uploadsPlaylistId}&maxResults=10`),
         {
           headers: {
             Authorization: `Bearer ${access_token}`,
@@ -133,9 +174,9 @@ export async function POST(request: Request) {
 
       if (videosResponse.ok && videosData.items?.length > 0) {
         const videoPromises = videosData.items.map(async (item: any) => {
-          const videoId = item.id.videoId
+          const videoId = item.snippet.resourceId.videoId
           const videoDetailsResponse = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status,liveStreamingDetails&id=${videoId}`,
+            appendKey(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails,status,liveStreamingDetails&id=${videoId}`),
             {
               headers: {
                 Authorization: `Bearer ${access_token}`,
@@ -191,8 +232,12 @@ export async function POST(request: Request) {
           onConflict: "id",
         })
       }
-    } catch (videoError) {
+    } catch (videoError: any) {
       console.error("Error fetching initial videos:", videoError)
+      // Check for quota error in video fetch too
+      if (videoError.message?.includes('quotaExceeded') || (videoError.errors?.[0]?.reason === 'quotaExceeded')) {
+        console.warn("Quota exceeded during initial video fetch. Proceeding with partial data.")
+      }
     }
 
     return NextResponse.json({

@@ -54,6 +54,7 @@ export interface Database {
           ai_provider: string | null
           ai_settings: Json | null
           role: string
+          phone: string | null
         }
         Insert: {
           id: string

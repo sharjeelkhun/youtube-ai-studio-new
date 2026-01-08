@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState } from "react"
+import React, { useState } from "react"
 import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
@@ -9,9 +8,16 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, Sparkles, Crown } from "lucide-react"
+import { Loader2, Sparkles, Crown, AlertCircle } from "lucide-react"
 import DotGrid from "@/components/dot-grid"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from "@/components/ui/input-otp"
+import { toast } from "sonner"
 
 export default function SignupPage() {
   const searchParams = useSearchParams()
@@ -20,9 +26,14 @@ export default function SignupPage() {
   const [signUpSuccess, setSignUpSuccess] = useState(false)
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
+  const [phone, setPhone] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const { signUp, isLoading, isPreview } = useAuth()
+  const [otpCode, setOtpCode] = useState("")
+  const [isVerifying, setIsVerifying] = useState(false)
+  const [isResending, setIsResending] = useState(false)
+  const { signUp, verifyOtp, resendOtp, isLoading, isPreview } = useAuth()
+  const router = useRouter()
 
   const planNames: Record<string, string> = {
     starter: "Starter",
@@ -41,11 +52,61 @@ export default function SignupPage() {
         document.cookie = `pending_plan=${selectedPlan}; path=/; max-age=3600; SameSite=Lax`
       }
 
-      await signUp(email, password, selectedPlan)
+      await signUp(email, password, fullName, phone, selectedPlan)
       setSignUpSuccess(true)
     } catch (err: any) {
       // Show the specific error message from Supabase if available
       setError(err.message || "Could not create account. Please try again.")
+    }
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (otpCode.length !== 6) {
+      setError("Please enter the 6-digit code.")
+      return
+    }
+
+    setIsVerifying(true)
+    setError(null)
+
+    try {
+      const { error: verifyError } = await verifyOtp(email, otpCode, 'signup')
+
+      if (verifyError) {
+        throw verifyError
+      }
+
+      toast.success("Email verified successfully!")
+      // Redirect to dash or plan selection/payment
+      if (selectedPlan) {
+        router.push(`/callback?plan=${selectedPlan}`)
+      } else {
+        router.push('/dashboard')
+      }
+    } catch (err: any) {
+      setError(err.message || "Invalid or expired code. Please try again.")
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    setIsResending(true)
+    setError(null)
+
+    try {
+      const { error: resendError } = await resendOtp(email, 'signup')
+
+      if (resendError) {
+        throw resendError
+      }
+
+      toast.success("A new verification code has been sent.")
+    } catch (err: any) {
+      setError(err.message || "Could not resend code. Please try again later.")
+    } finally {
+      setIsResending(false)
     }
   }
 
@@ -77,29 +138,91 @@ export default function SignupPage() {
           </CardHeader>
 
           {signUpSuccess ? (
-            <CardContent className="space-y-6 pt-6 pb-8">
-              <div className="flex flex-col items-center justify-center space-y-4 text-center">
-                <div className="h-20 w-20 rounded-full bg-green-500/10 flex items-center justify-center shadow-inner">
-                  <Sparkles className="h-10 w-10 text-green-500" />
+            <CardContent className="space-y-8 pt-8 pb-10">
+              <div className="flex flex-col items-center justify-center space-y-6 text-center animate-in fade-in zoom-in-95 duration-500">
+                <div className="relative">
+                  <div className="absolute -inset-1 rounded-full bg-primary/20 blur animate-pulse" />
+                  <div className="relative h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center shadow-inner">
+                    <Sparkles className="h-10 w-10 text-primary" />
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  <h3 className="text-2xl font-bold text-foreground">Next Step: Verify Email</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed px-4">
-                    We've sent a verification link to <br />
-                    <span className="font-bold text-foreground bg-secondary/50 px-2 py-0.5 rounded transition-colors break-all">{email}</span>
+
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-bold tracking-tight text-foreground">Verify your email</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    We've sent a 6-digit verification code to <br />
+                    <span className="font-bold text-foreground bg-secondary/50 px-2 py-0.5 rounded break-all">{email}</span>
                   </p>
-                  <Alert className="mt-6 border-[#FF0000]/20 bg-[#FF0000]/5 text-left">
-                    <Crown className="h-4 w-4 text-[#FF0000]" />
-                    <AlertTitle className="text-[#FF0000] font-bold">Action Required</AlertTitle>
-                    <AlertDescription className="text-xs">
-                      Please click the link in your email to confirm your account and complete your <strong>{planNames[selectedPlan || ''] || 'Starter'}</strong> setup.
-                    </AlertDescription>
+                </div>
+
+                {error && (
+                  <Alert variant="destructive" className="animate-in fade-in slide-in-from-top-2 duration-300 w-full text-left bg-destructive/5 border-destructive/20">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm font-medium">{error}</AlertDescription>
                   </Alert>
+                )}
+
+                <form onSubmit={handleVerifyOtp} className="w-full space-y-8">
+                  <div className="flex flex-col items-center gap-4">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground opacity-70">Enter Verification Code</Label>
+                    <InputOTP
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={(value) => setOtpCode(value)}
+                      autoFocus
+                    >
+                      <InputOTPGroup className="gap-2">
+                        <InputOTPSlot index={0} className="h-12 w-10 md:w-12 text-lg font-bold rounded-lg border-2" />
+                        <InputOTPSlot index={1} className="h-12 w-10 md:w-12 text-lg font-bold rounded-lg border-2" />
+                        <InputOTPSlot index={2} className="h-12 w-10 md:w-12 text-lg font-bold rounded-lg border-2" />
+                      </InputOTPGroup>
+                      <InputOTPSeparator className="text-muted-foreground" />
+                      <InputOTPGroup className="gap-2">
+                        <InputOTPSlot index={3} className="h-12 w-10 md:w-12 text-lg font-bold rounded-lg border-2" />
+                        <InputOTPSlot index={4} className="h-12 w-10 md:w-12 text-lg font-bold rounded-lg border-2" />
+                        <InputOTPSlot index={5} className="h-12 w-10 md:w-12 text-lg font-bold rounded-lg border-2" />
+                      </InputOTPGroup>
+                    </InputOTP>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    className="w-full h-12 text-base font-bold shadow-xl shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all"
+                    disabled={isVerifying || otpCode.length !== 6}
+                  >
+                    {isVerifying ? (
+                      <>
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      "Verify & Continue"
+                    )}
+                  </Button>
+                </form>
+
+                <div className="flex flex-col items-center gap-3 w-full pt-4 border-t border-border/30">
+                  <p className="text-xs text-muted-foreground font-medium">
+                    Didn't receive the code?
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 px-6 font-bold rounded-full border-border/50 hover:bg-secondary transition-colors"
+                    onClick={handleResendOtp}
+                    disabled={isResending}
+                  >
+                    {isResending ? (
+                      <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                    ) : null}
+                    {isResending ? "Resending..." : "Resend Code"}
+                  </Button>
                 </div>
               </div>
-              <div className="pt-6 border-t border-border/50">
-                <Button variant="ghost" size="sm" className="w-full text-muted-foreground" onClick={() => setSignUpSuccess(false)}>
-                  Back to signup
+
+              <div className="pt-6">
+                <Button variant="ghost" size="sm" className="w-full text-muted-foreground hover:text-foreground transition-colors" onClick={() => setSignUpSuccess(false)}>
+                  Back to Registration
                 </Button>
               </div>
             </CardContent>
@@ -142,6 +265,18 @@ export default function SignupPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="you@yourbrand.com"
+                      required
+                      className="bg-muted/50 focus:bg-background transition-all"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+1 (555) 000-0000"
                       required
                       className="bg-muted/50 focus:bg-background transition-all"
                     />
