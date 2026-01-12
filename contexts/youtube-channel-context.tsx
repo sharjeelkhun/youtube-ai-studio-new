@@ -249,6 +249,7 @@ export function YouTubeChannelProvider({ children }: { children: React.ReactNode
         .from('youtube_channels')
         .select('*')
         .eq('user_id', session.user.id)
+        .limit(1)
         .maybeSingle();
 
       if (channelError || !channelData) {

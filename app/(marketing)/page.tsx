@@ -8,11 +8,8 @@ import DotGrid from "@/components/dot-grid"
 import { HeroActions } from "@/components/hero-actions"
 import { CtaActions } from "@/components/cta-actions"
 import { siteConfig } from "@/lib/config"
-
-
-
-
-export default function LandingPage() {
+import { PLANS } from "@/lib/pricing"
+export default function IndexPage() {
   return (
     <div className="flex min-h-screen flex-col">
       {/* Hero Section */}
@@ -471,53 +468,7 @@ export default function LandingPage() {
             <p className="mt-4 text-muted-foreground md:text-xl max-w-2xl mx-auto leading-relaxed">Choose the plan that's right for your channel.</p>
           </div>
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                name: "Starter",
-                price: "Free",
-                description: "Ideal for new creators just starting out. Diagnose your old videos and get actionable insights.",
-                features: ["Sync last 5–10 videos", "1 AI insight per video", "Basic title & description rewrite", "1 AI-generated thumbnail", "Ads outside core workflow", "Email support"],
-                cta: "Start Free – No Credit Card Required.",
-                ctaLink: "/signup?plan=starter",
-                popular: false,
-              },
-              {
-                name: "Professional",
-                price: "$49",
-                description: "For serious creators who want to accelerate their growth.",
-                features: [
-                  "Full channel sync & analysis",
-                  "Unlimited AI insights per video",
-                  "Multiple AI suggestions for titles, descriptions, and tags",
-                  "Thumbnail guidance & A/B testing",
-                  "Competitor analysis & pattern insights",
-                  "Priority support",
-                  "Optional: use your own OpenAI/Gemini API key",
-                  "No ads",
-                ],
-                cta: "Upgrade to Professional",
-                ctaLink: "/signup?plan=professional",
-                popular: true,
-              },
-              {
-                name: "Enterprise",
-                price: "$99",
-                description: "Designed for established creators and multi-channel networks.",
-                features: [
-                  "Custom analytics dashboard",
-                  "Full AI insights & suggestions across all videos",
-                  "Advanced SEO & competitor intelligence",
-                  "Dedicated account manager",
-                  "Competitor analysis & pattern insights",
-                  "API access",
-                  "Full control over AI models & integrations",
-                  "No ads",
-                ],
-                cta: "Get Enterprise Access",
-                ctaLink: "/signup?plan=enterprise",
-                popular: false,
-              },
-            ].map((plan, index) => (
+            {PLANS.map((plan, index) => (
               <ScrollReveal key={index} delay={index * 0.15}>
                 <div className={`relative flex flex-col rounded-2xl border bg-card/50 backdrop-blur-xl p-8 shadow-lg transition-all hover:shadow-2xl hover:-translate-y-2 ${plan.popular ? "border-[#FF0000] ring-1 ring-[#FF0000]/20 scale-105 z-10 bg-card" : "border-border hover:border-foreground/20"}`}>
                   {plan.popular && (

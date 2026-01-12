@@ -3,6 +3,7 @@
 import { VideoGrid } from '@/components/video-grid'
 import { useEffect, useState, Suspense } from 'react'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
+import { useSubscription } from '@/contexts/subscription-context'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase/client'
 import VideosLoading from './loading'
@@ -25,6 +26,7 @@ import { ConnectChannelHero } from '@/components/connect-channel-hero'
 
 function Videos() {
   const { channel, isLoading: channelIsLoading } = useYouTubeChannel()
+  const { isPro, isEnterprise } = useSubscription()
   const [videosLoading, setVideosLoading] = useState(true);
   const [showSyncNotice, setShowSyncNotice] = useState(false);
   const [newCount, setNewCount] = useState<number | null>(null)
@@ -67,22 +69,36 @@ function Videos() {
       try {
         // Fetch ALL videos for the channel to enable accurate client-side filtering/sorting/pagination
         // especially for simulated fields like "SEO Score" which don't exist in DB.
+        // Check for personal API Key to determine display limit for free users
+        const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', channel.user_id).maybeSingle()
+        const hasPersonalKey = !!(profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini)
+
+        // Fetch ALL videos for the channel
         const { data, error, count } = await supabase
           .from('youtube_videos')
           .select('*', { count: 'exact' })
           .eq('channel_id', channel.id)
           .order('published_at', { ascending: false })
-        // No .range() here - we fetch all
 
         if (error) throw error
 
-        if (!data || data.length === 0) {
-          if (channel.id) setShowSyncNotice(true) // Only show if we actually tried a channel
+        let displayedVideos = data || []
+
+        // Enforce Plan Limits on Display
+        if (!isPro && !isEnterprise) {
+          const limit = hasPersonalKey ? 25 : 5
+          if (displayedVideos.length > limit) {
+            displayedVideos = displayedVideos.slice(0, limit)
+          }
+        }
+
+        if (!displayedVideos || displayedVideos.length === 0) {
+          if (channel.id) setShowSyncNotice(true)
           setAllVideos([])
           setTotalCount(0)
         } else {
-          setAllVideos(data)
-          setTotalCount(count || 0)
+          setAllVideos(displayedVideos)
+          setTotalCount(displayedVideos.length)
         }
       } catch (error) {
         console.error('Error fetching videos:', error)
@@ -474,6 +490,27 @@ function Videos() {
               </Pagination>
             </div>
           )}
+
+          {/* Upsell for Free Plan Users */}
+          {!isPro && !isEnterprise && allVideos.length > 0 && (
+            <Card className="border-primary/20 bg-primary/5 backdrop-blur-sm shadow-sm p-6 mt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div className="space-y-1 text-center md:text-left">
+                <h3 className="text-lg font-semibold text-foreground">Want to see more videos?</h3>
+                <p className="text-sm text-muted-foreground max-w-lg">
+                  Free plans are limited to the most recent 5 videos. Connect your own YouTube API key to sync up to 25 videos, or upgrade to Professional for unlimited access.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={() => router.push('/settings?tab=integrations')}>
+                  Add API Key
+                </Button>
+                <Button onClick={() => router.push('/signup?plan=professional')} className="bg-gradient-to-r from-primary to-primary/80 hover:scale-105 transition-all shadow-lg shadow-primary/20">
+                  Upgrade to Pro
+                </Button>
+              </div>
+            </Card>
+          )}
+
         </div>
       )}
     </div>

@@ -1,101 +1,112 @@
-"use client"
-
 import { useSubscription } from "@/contexts/subscription-context"
+import { PLANS, PlanId } from "./pricing"
 
-// Define feature access levels
+// Helper to extract limit for a specific plan
+const getLimit = (planId: PlanId, key: keyof typeof PLANS[number]['limits']) => {
+    const plan = PLANS.find(p => p.id === planId)
+    return plan?.limits[key] ?? 1
+}
+
+// Helper to extract capability for a specific plan
+const getCapability = (planId: PlanId, key: keyof typeof PLANS[number]['capabilities']) => {
+    const plan = PLANS.find(p => p.id === planId)
+    return plan?.capabilities[key] ?? false
+}
+
+// Define feature access levels derived from pricing config
 export const FEATURE_LIMITS = {
     // Video sync limits
     VIDEO_SYNC_LIMIT: {
-        Starter: 10,
-        Professional: -1, // unlimited
-        Enterprise: -1, // unlimited
+        Starter: getLimit('starter', 'videoSync'),
+        Professional: getLimit('professional', 'videoSync'),
+        Enterprise: getLimit('enterprise', 'videoSync'),
     },
 
     // AI insights per video
     AI_INSIGHTS_PER_VIDEO: {
-        Starter: 1,
-        Professional: -1, // unlimited
-        Enterprise: -1, // unlimited
+        Starter: getLimit('starter', 'aiInsights'),
+        Professional: getLimit('professional', 'aiInsights'),
+        Enterprise: getLimit('enterprise', 'aiInsights'),
     },
 
     // Thumbnail generations per video
     THUMBNAIL_GENERATIONS: {
-        Starter: 1,
-        Professional: 5,
-        Enterprise: -1, // unlimited
+        Starter: getLimit('starter', 'thumbnailGenerations'),
+        Professional: getLimit('professional', 'thumbnailGenerations'),
+        Enterprise: getLimit('enterprise', 'thumbnailGenerations'),
     },
 
     // API rate limits (requests per hour)
     API_RATE_LIMIT: {
-        Starter: 100,
-        Professional: 1000,
-        Enterprise: -1, // unlimited
+        Starter: getLimit('starter', 'apiRate'),
+        Professional: getLimit('professional', 'apiRate'),
+        Enterprise: getLimit('enterprise', 'apiRate'),
     },
 
     // Feature access flags
     FEATURES: {
         MULTIPLE_AI_SUGGESTIONS: {
-            Starter: false,
-            Professional: true,
-            Enterprise: true,
+            Starter: getCapability('starter', 'multipleAiSuggestions'),
+            Professional: getCapability('professional', 'multipleAiSuggestions'),
+            Enterprise: getCapability('enterprise', 'multipleAiSuggestions'),
         },
         THUMBNAIL_GUIDANCE: {
-            Starter: false,
-            Professional: true,
-            Enterprise: true,
+            Starter: getCapability('starter', 'thumbnailGuidance'),
+            Professional: getCapability('professional', 'thumbnailGuidance'),
+            Enterprise: getCapability('enterprise', 'thumbnailGuidance'),
         },
         COMPETITOR_ANALYSIS: {
-            Starter: false,
-            Professional: true,
-            Enterprise: true,
+            Starter: getCapability('starter', 'competitorAnalysis'),
+            Professional: getCapability('professional', 'competitorAnalysis'),
+            Enterprise: getCapability('enterprise', 'competitorAnalysis'),
         },
         CUSTOM_ANALYTICS_DASHBOARD: {
-            Starter: false,
-            Professional: false,
-            Enterprise: true,
+            Starter: getCapability('starter', 'customAnalytics'),
+            Professional: getCapability('professional', 'customAnalytics'),
+            Enterprise: getCapability('enterprise', 'customAnalytics'),
         },
         API_ACCESS: {
-            Starter: false,
-            Professional: false,
-            Enterprise: true,
+            Starter: getCapability('starter', 'apiAccess'),
+            Professional: getCapability('professional', 'apiAccess'),
+            Enterprise: getCapability('enterprise', 'apiAccess'),
         },
         CUSTOM_AI_MODELS: {
-            Starter: false,
-            Professional: false,
-            Enterprise: true,
+            Starter: getCapability('starter', 'customAiModels'),
+            Professional: getCapability('professional', 'customAiModels'),
+            Enterprise: getCapability('enterprise', 'customAiModels'),
         },
         NO_ADS: {
-            Starter: false,
-            Professional: true,
-            Enterprise: true,
+            Starter: getCapability('starter', 'noAds'),
+            Professional: getCapability('professional', 'noAds'),
+            Enterprise: getCapability('enterprise', 'noAds'),
         },
         BULK_VIDEO_OPERATIONS: {
-            Starter: false,
-            Professional: true,
-            Enterprise: true,
+            Starter: getCapability('starter', 'bulkOperations'),
+            Professional: getCapability('professional', 'bulkOperations'),
+            Enterprise: getCapability('enterprise', 'bulkOperations'),
         },
         ADVANCED_ANALYTICS: {
-            Starter: false,
-            Professional: true,
-            Enterprise: true,
+            Starter: getCapability('starter', 'advancedAnalytics'),
+            Professional: getCapability('professional', 'advancedAnalytics'),
+            Enterprise: getCapability('enterprise', 'advancedAnalytics'),
         },
         DATA_EXPORT: {
-            Starter: false,
-            Professional: true,
-            Enterprise: true,
+            Starter: getCapability('starter', 'dataExport'),
+            Professional: getCapability('professional', 'dataExport'),
+            Enterprise: getCapability('enterprise', 'dataExport'),
         },
         ADVANCED_FILTERING: {
-            Starter: false,
+            Starter: false, // Not in pricing config explicitly, keeping default
             Professional: true,
             Enterprise: true,
         },
         PRIORITY_PROCESSING: {
-            Starter: false,
-            Professional: false,
-            Enterprise: true,
+            Starter: getCapability('starter', 'priorityProcessing'),
+            Professional: getCapability('professional', 'priorityProcessing'),
+            Enterprise: getCapability('enterprise', 'priorityProcessing'),
         },
         CUSTOM_AI_PROMPTS: {
-            Starter: false,
+            Starter: false, // Not in pricing config explicitly
             Professional: true,
             Enterprise: true,
         },

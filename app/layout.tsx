@@ -7,7 +7,7 @@ import { AIProvider } from '@/contexts/ai-context';
 import { SubscriptionProvider } from "@/contexts/subscription-context";
 import ClickSpark from '@/components/click-spark';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 import { siteConfig } from '@/lib/config';
 
@@ -33,7 +33,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <Providers>
           <AIProvider>
             <SubscriptionProvider>

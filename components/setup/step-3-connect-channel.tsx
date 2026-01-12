@@ -52,10 +52,28 @@ export function Step3ConnectChannel({ onNext, onBack }: Step3ConnectChannelProps
         setError(null)
 
         try {
-            // Redirect to YouTube OAuth flow
-            const redirectUrl = `${window.location.origin}/api/youtube/auth`
-            window.location.href = redirectUrl
+            // Fetch auth URL from the connect endpoint with Bearer token
+            if (!session?.access_token) {
+                throw new Error("No active session")
+            }
+
+            const response = await fetch('/api/youtube/connect', {
+                headers: {
+                    "Authorization": `Bearer ${session.access_token}`
+                }
+            })
+            if (!response.ok) {
+                throw new Error('Failed to initiate connection')
+            }
+
+            const data = await response.json()
+            if (data.authUrl) {
+                window.location.href = data.authUrl
+            } else {
+                throw new Error('No auth URL received')
+            }
         } catch (err) {
+            console.error('Error initiating connection:', err)
             setError("Failed to initiate YouTube connection. Please try again.")
             setIsConnecting(false)
         }

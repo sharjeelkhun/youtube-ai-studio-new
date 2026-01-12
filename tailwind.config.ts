@@ -62,6 +62,18 @@ const config = {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
         },
       },
+      fontFamily: {
+        sans: [
+          'SF Pro Text',
+          'SF Pro Display',
+          'SF Pro Icons',
+          'var(--font-sans)',
+          'Helvetica Neue',
+          'Helvetica',
+          'Arial',
+          'sans-serif'
+        ],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",

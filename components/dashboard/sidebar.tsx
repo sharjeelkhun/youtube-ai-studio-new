@@ -68,12 +68,12 @@ export function DashboardSidebar() {
                     <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm border border-gray-100">
                         <img
                             src="https://www.youtube.com/s/desktop/377f632f/img/logos/favicon_144x144.png"
-                            alt="AI Studio"
+                            alt="YourAI Studio"
                             className="h-6 w-6 object-contain"
                         />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-lg font-bold leading-none tracking-tight">AI Studio</span>
+                        <span className="text-lg font-bold leading-none tracking-tight">YourAI Studio</span>
                         <span className="text-xs text-muted-foreground font-medium">YouTube Growth</span>
                     </div>
                 </a>

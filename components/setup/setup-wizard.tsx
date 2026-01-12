@@ -71,7 +71,7 @@ export function SetupWizard() {
         <div className="min-h-screen bg-gradient-to-br from-background via-muted/30 to-background py-12 px-4">
             <div className="container max-w-5xl mx-auto">
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-center mb-2">Welcome to YouTube AI Studio</h1>
+                    <h1 className="text-4xl font-bold text-center mb-2">Welcome to YourAI Studio</h1>
                     <p className="text-center text-muted-foreground">Let's get your account set up in just a few steps</p>
                 </div>
 

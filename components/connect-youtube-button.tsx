@@ -8,9 +8,18 @@ interface ConnectYouTubeButtonProps {
   className?: string
 }
 
+import { supabase } from "@/lib/supabase/client"
+
 export function ConnectYouTubeButton({ className }: ConnectYouTubeButtonProps) {
   const handleConnect = async () => {
-    const response = await fetch('/api/youtube/connect')
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return
+
+    const response = await fetch('/api/youtube/connect', {
+      headers: {
+        "Authorization": `Bearer ${session.access_token}`
+      }
+    })
     const data = await response.json()
     if (data.authUrl) {
       window.location.href = data.authUrl

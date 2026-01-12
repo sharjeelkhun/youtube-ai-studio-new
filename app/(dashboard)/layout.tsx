@@ -4,7 +4,7 @@ import type React from "react"
 import { DashboardProvider } from "@/components/dashboard-provider"
 import { DashboardSidebar as Sidebar } from "@/components/dashboard/sidebar"
 import { TopBar } from "@/components/dashboard/top-bar"
-import { AIProviderSwitcher } from "@/components/ai-provider-switcher"
+
 import { MobileNav } from "@/components/mobile-nav"
 import {
   Sidebar as AppSidebar,
@@ -31,7 +31,11 @@ export default function DashboardLayout({
   const isLoading = sessionLoading || subLoading
 
   useEffect(() => {
+    // Determine if we are on a public path that doesn't strictly require auth (like callbacks being processed)
+    // although callback IS inside dashboard layout...
+
     if (!sessionLoading && !session?.user) {
+      console.log('[DashboardLayout] No session found, redirecting to login');
       routerInstance.replace("/login")
     }
   }, [session, sessionLoading, routerInstance])
@@ -80,7 +84,7 @@ export default function DashboardLayout({
             </main>
           </div>
           <Toaster position="bottom-center" richColors />
-          <AIProviderSwitcher />
+
         </SidebarInset>
       </div>
       <MobileNav />

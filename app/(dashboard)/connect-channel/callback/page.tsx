@@ -12,13 +12,16 @@ import { supabase } from "@/lib/supabase/client"
 export default function ConnectionCallbackPage() {
     const router = useRouter()
     const searchParams = useSearchParams()
-    const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+    const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'conflict'>('loading')
     const [errorMessage, setErrorMessage] = useState("")
+    const [conflictData, setConflictData] = useState<{ channelTitle?: string } | null>(null)
     const hasProcessed = useRef(false)
     const { refreshChannel } = useYouTubeChannel()
 
     useEffect(() => {
-        const code = searchParams.get("code")
+        // Middleware renames 'code' to 'g_code' to prevent Supabase conflict
+        const code = searchParams.get("g_code") || searchParams.get("code")
+        const state = searchParams.get("state")
         const error = searchParams.get("error")
 
         if (hasProcessed.current) return
@@ -38,13 +41,39 @@ export default function ConnectionCallbackPage() {
 
         const exchangeCode = async () => {
             try {
+                // Recover session first
+                const { data: { session } } = await supabase.auth.getSession()
+
+                if (!session) {
+                    console.error("No session found in callback, attempting refresh...")
+                    const { data: { session: refreshedSession }, error: refreshError } = await supabase.auth.refreshSession()
+                    if (refreshError || !refreshedSession) {
+                        throw new Error("Authentication failed. Please log in again.")
+                    }
+                }
+
+                const currentSession = (await supabase.auth.getSession()).data.session
+                if (!currentSession) throw new Error("No active session")
+
+                console.log("Exchanging code with token...")
+
                 const response = await fetch("/api/youtube/auth-callback", {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ code }),
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${currentSession.access_token}`
+                    },
+                    body: JSON.stringify({ code, state }),
                 })
 
                 const data = await response.json()
+
+                if (response.status === 409 && data.conflict) {
+                    setStatus('conflict')
+                    setErrorMessage(data.error)
+                    setConflictData({ channelTitle: data.channelTitle })
+                    return
+                }
 
                 if (!response.ok) {
                     throw new Error(data.error || "Failed to exchange token")
@@ -81,6 +110,38 @@ export default function ConnectionCallbackPage() {
         exchangeCode()
     }, [searchParams, router, refreshChannel])
 
+    const handleForceClaim = async () => {
+        try {
+            const currentSession = (await supabase.auth.getSession()).data.session
+            if (!currentSession) {
+                toast.error("Authentication lost. Please reload properly.")
+                return
+            }
+
+            setStatus('loading')
+            const response = await fetch('/api/youtube/connect?force=true', {
+                headers: {
+                    "Authorization": `Bearer ${currentSession.access_token}`
+                }
+            })
+            const data = await response.json()
+
+            if (response.status === 401) {
+                toast.error("Session expired. Please log in again.")
+                return
+            }
+
+            if (data.authUrl) {
+                window.location.href = data.authUrl
+            } else {
+                toast.error("Failed to start connection process.")
+            }
+        } catch (e) {
+            console.error(e)
+            toast.error("An error occurred starting the claim process.")
+        }
+    }
+
     return (
         <div className="flex min-h-[80vh] items-center justify-center p-4">
             <Card className="w-full max-w-md border-border/50 bg-background/60 backdrop-blur-xl shadow-xl">
@@ -110,6 +171,38 @@ export default function ConnectionCallbackPage() {
                                 <p className="text-sm text-muted-foreground">
                                     Your channel has been connected. Redirecting...
                                 </p>
+                            </div>
+                        </>
+                    )}
+
+                    {status === 'conflict' && (
+                        <>
+                            <div className="h-16 w-16 rounded-full bg-yellow-500/10 flex items-center justify-center mb-2">
+                                <AlertCircle className="h-8 w-8 text-yellow-600" />
+                            </div>
+                            <div className="space-y-2">
+                                <h2 className="text-xl font-semibold text-yellow-600">Channel Already Connected</h2>
+                                <p className="text-sm text-muted-foreground">
+                                    The channel <strong>{conflictData?.channelTitle}</strong> is already connected to another account.
+                                </p>
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    Do you want to disconnect it from the other account and connect it here?
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-2 w-full mt-4">
+                                <Button
+                                    variant="default"
+                                    onClick={handleForceClaim}
+                                    className="bg-yellow-600 hover:bg-yellow-700 text-white"
+                                >
+                                    Yes, Claim Channel
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    onClick={() => router.push('/dashboard')}
+                                >
+                                    Cancel
+                                </Button>
                             </div>
                         </>
                     )}

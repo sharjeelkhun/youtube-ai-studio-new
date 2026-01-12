@@ -147,12 +147,30 @@ export async function POST(request: Request) {
       }
     }
 
-    const videoSyncLimit = FEATURE_LIMITS.VIDEO_SYNC_LIMIT[planName as keyof typeof FEATURE_LIMITS.VIDEO_SYNC_LIMIT] || 10
-    console.log('User plan:', planName, 'Video sync limit:', videoSyncLimit)
-
-    // Get user profile to check for personal YouTube API Key or Gemini Key
+    // Check for personal API key
     const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id).single()
     const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
+
+    // Determine limit
+    let videoSyncLimit = 5 // Default for Free/Starter
+
+    if (planName === 'Starter') {
+      if (personalApiKey) {
+        videoSyncLimit = 25 // Limit with key (Free plan)
+      } else {
+        // Apply default limit (5)
+        // Double check feature limits just in case
+        const planLimit = FEATURE_LIMITS.VIDEO_SYNC_LIMIT['Starter']
+        if (typeof planLimit === 'number') videoSyncLimit = planLimit
+      }
+    } else {
+      // Paid plans are unlimited
+      videoSyncLimit = -1
+    }
+
+    console.log(`[Sync] Plan: ${planName}, Limit: ${videoSyncLimit}, HasKey: ${!!personalApiKey}`)
+
+    console.log('User plan:', planName, 'Personal API Use:', !!personalApiKey, 'Video sync limit:', videoSyncLimit)
 
     const appendKey = (url: string) => {
       if (!personalApiKey) return url
@@ -260,7 +278,7 @@ export async function POST(request: Request) {
 
     // Fetch all videos from the uploads playlist (limited by plan)
     const playlistItems = await fetchAllVideos(accessToken, uploadsPlaylistId, videoSyncLimit, personalApiKey)
-    console.log(`Total videos found (limited by plan ${planName}): ${playlistItems.length}`)
+    console.log(`Total videos found (limited by plan ${planName} and Key ${!!personalApiKey}): ${playlistItems.length}`)
 
     if (playlistItems.length === 0) {
       console.log('No videos found in playlist')

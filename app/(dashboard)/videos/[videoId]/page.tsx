@@ -645,7 +645,16 @@ export default function VideoPage() {
   }, [editedVideo, video])
 
   useEffect(() => {
-    if (isSessionLoading || isChannelLoading || isProfileLoading) return
+    if (isSessionLoading || isChannelLoading) return
+
+    // Prevent refetching if we already have the correct video loaded
+    // This preserves unsaved edits when background contexts (like AI provider) update
+    if (video?.id === params.videoId) {
+      console.log('[VideoPage] Skipping fetch - video already loaded:', video.id)
+      return
+    }
+
+    console.log('[VideoPage] Fetching video...', { videoId: params.videoId, session: !!session, channel: !!channel })
 
     const fetchVideo = async () => {
       try {
@@ -741,7 +750,7 @@ export default function VideoPage() {
     }
 
     fetchVideo()
-  }, [params.videoId, router, session?.user?.id, channel?.id, isSessionLoading, isChannelLoading, isProfileLoading])
+  }, [params.videoId, router, session?.user?.id, channel?.id])
 
   // Countdown effect for AI Generate All retry with live toast updates
   useEffect(() => {

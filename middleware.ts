@@ -30,11 +30,22 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Fix for Supabase PKCE conflict: Rename 'code' to 'g_code' for YouTube callback
+  if (pathname === "/connect-channel/callback" && searchParams.has("code")) {
+    const newUrl = new URL(request.url)
+    const code = searchParams.get("code")
+    newUrl.searchParams.delete("code")
+    newUrl.searchParams.set("g_code", code!)
+    return NextResponse.redirect(newUrl)
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { pathname } = request.nextUrl;
+  console.log(`[Middleware] Path: ${pathname}, User: ${user?.id || 'null'}`)
 
   // Redirect logged-in users away from login/signup
   if (user && (pathname === "/login" || pathname === "/signup")) {
@@ -48,7 +59,9 @@ export async function middleware(request: NextRequest) {
       pathname.startsWith("/videos") ||
       pathname.startsWith("/settings") ||
       pathname.startsWith("/setup") ||
-      pathname.startsWith("/admin")) // Protect admin
+      pathname.startsWith("/admin")) && // Protect admin
+    !pathname.startsWith("/connect-channel/callback") && // Allow callback
+    !pathname.startsWith("/api/youtube") // Allow YouTube APIs for callback handling
   ) {
     return NextResponse.redirect(new URL("/login", request.url));
   }

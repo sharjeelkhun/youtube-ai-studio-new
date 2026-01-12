@@ -18,6 +18,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp"
 import { toast } from "sonner"
+import { PLANS } from "@/lib/pricing"
 
 export default function SignupPage() {
   const searchParams = useSearchParams()
@@ -35,15 +36,18 @@ export default function SignupPage() {
   const { signUp, verifyOtp, resendOtp, isLoading, isPreview } = useAuth()
   const router = useRouter()
 
-  const planNames: Record<string, string> = {
-    starter: "Starter",
-    professional: "Professional",
-    enterprise: "Enterprise"
-  }
+  const planName = selectedPlan ? PLANS.find(p => p.id === selectedPlan)?.name || selectedPlan : null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Phone validation
+    const phoneRegex = /^\+?[0-9\s-()]+$/
+    if (!phoneRegex.test(phone)) {
+      setError("Please enter a valid phone number.")
+      return
+    }
 
     try {
       // Store the plan in a cookie as a backup for the redirect
@@ -86,8 +90,7 @@ export default function SignupPage() {
       }
     } catch (err: any) {
       setError(err.message || "Invalid or expired code. Please try again.")
-    } finally {
-      setIsVerifying(false)
+      setIsVerifying(false) // Only stop loading on error, keep loading on success for redirect
     }
   }
 
@@ -125,7 +128,16 @@ export default function SignupPage() {
 
       {/* Content */}
       <div className="relative flex items-center justify-center min-h-screen py-6 px-4">
-        <Card className="w-full max-w-md border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <Card className="w-full max-w-md border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden relative">
+
+          {/* Global Loader Overlay for Verification Success/Redirect */}
+          {isVerifying && !error && (
+            <div className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
+              <Loader2 className="h-12 w-12 text-primary animate-spin mb-4" />
+              <p className="text-lg font-semibold text-foreground">Verifying & Redirecting...</p>
+            </div>
+          )}
+
           <CardHeader className="space-y-1">
             <CardTitle className="text-center text-2xl font-bold tracking-tight">
               {signUpSuccess ? "Success!" : "Create an account"}
@@ -229,10 +241,10 @@ export default function SignupPage() {
           ) : (
             <>
               <CardContent className="space-y-4 pt-4 pb-6">
-                {selectedPlan && (
+                {planName && (
                   <Alert className="border-[#FF0000]/20 bg-[#FF0000]/5 border-l-4">
                     <Crown className="h-4 w-4 text-[#FF0000]" />
-                    <AlertTitle className="text-[#FF0000] font-bold">Plan: {planNames[selectedPlan] || selectedPlan}</AlertTitle>
+                    <AlertTitle className="text-[#FF0000] font-bold">Plan: {planName}</AlertTitle>
                     <AlertDescription className="text-xs">
                       Finish creating your account to proceed to the payment step.
                     </AlertDescription>

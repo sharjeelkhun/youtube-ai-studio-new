@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Crown, Check, Loader2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -47,6 +47,13 @@ export function Step1SelectPlan({ onNext }: Step1SelectPlanProps) {
     const { subscription, planName, refreshSubscription, isLoading: isSubLoading } = useSubscription()
     const [selectedPlan, setSelectedPlan] = useState<string>(onboardingData.selectedPlan || "Starter")
     const [isProcessing, setIsProcessing] = useState(false)
+
+    // Ensure default plan is synced to context
+    useEffect(() => {
+        if (!onboardingData.selectedPlan) {
+            updateOnboardingData({ selectedPlan: "Starter" })
+        }
+    }, [onboardingData.selectedPlan, updateOnboardingData])
 
     const handleSelectPlan = (planKey: string) => {
         setSelectedPlan(planKey)
@@ -98,6 +105,7 @@ export function Step1SelectPlan({ onNext }: Step1SelectPlanProps) {
     const isPaidPlan = selectedPlan !== "Starter"
     const hasActiveSubForSelected = planName.toLowerCase() === selectedPlan.toLowerCase()
     const showPayPal = isPaidPlan && !hasActiveSubForSelected
+    const isSynced = onboardingData.selectedPlan === selectedPlan
 
     return (
         <PayPalScriptProvider options={{ clientId: PAYPAL_CLIENT_ID, components: "buttons", intent: "subscription", vault: true }}>
@@ -182,7 +190,7 @@ export function Step1SelectPlan({ onNext }: Step1SelectPlanProps) {
                         <div className="flex justify-end w-full">
                             <Button
                                 onClick={handleNext}
-                                disabled={!selectedPlan || isSubLoading || isProcessing}
+                                disabled={!selectedPlan || isSubLoading || isProcessing || !isSynced}
                                 size="lg"
                                 className="min-w-[150px]"
                             >

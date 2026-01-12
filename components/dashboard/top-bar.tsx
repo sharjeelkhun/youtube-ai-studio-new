@@ -1,6 +1,8 @@
 
 'use client'
 
+import { AIProviderSwitcher } from "@/components/ai-provider-switcher"
+
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { Button } from "@/components/ui/button"
 import { ChannelIndicator } from "@/components/channel-indicator"
@@ -110,6 +112,7 @@ export function TopBar() {
             </Button>
           )}
           <ModeToggle />
+          <AIProviderSwitcher />
           <UserNav />
         </div>
       </div>

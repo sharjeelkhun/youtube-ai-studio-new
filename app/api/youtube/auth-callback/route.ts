@@ -1,4 +1,4 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase-admin"
@@ -20,7 +20,7 @@ const getRedirectUri = (request: Request) => {
 
 export async function POST(request: Request) {
   try {
-    const { code } = await request.json()
+    const { code, state } = await request.json()
 
     if (!code) {
       return NextResponse.json({ error: "Authorization code is required" }, { status: 400 })
@@ -72,17 +72,39 @@ export async function POST(request: Request) {
     const expiryDate = new Date(Date.now() + expires_in * 1000)
 
     const cookieStore = cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
+    let userId: string | undefined
 
-    if (!session) {
+    // 1. Try Bearer Token
+    const authHeader = request.headers.get('Authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.split(' ')[1]
+      const { data: { user }, error } = await supabaseAdmin.auth.getUser(token)
+      if (user && !error) userId = user.id
+    }
+
+    // 2. Fallback to Cookies
+    if (!userId) {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            get(name: string) { return cookieStore.get(name)?.value },
+            set(name: string, value: string, options: any) { cookieStore.set({ name, value, ...options }) },
+            remove(name: string, options: any) { cookieStore.delete(name) },
+          },
+        }
+      )
+      const { data: { session } } = await supabase.auth.getSession()
+      userId = session?.user?.id
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
 
-    // Get user profile to check for personal YouTube API Key or Gemini Key
-    const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id).single()
+    // Get user profile using Admin client
+    const { data: profile } = await supabaseAdmin.from('profiles').select('youtube_api_key, ai_settings').eq('id', userId).single()
     const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
 
     const appendKey = (url: string) => {
@@ -126,23 +148,56 @@ export async function POST(request: Request) {
     const channelId = channel.id;
 
     // Check if channel is already connected to another user
+    // Check if channel is already connected to another user
+    // Check if channel is already connected to another user
     const { data: existingChannel } = await supabaseAdmin
       .from("youtube_channels")
       .select("user_id")
       .eq("id", channelId)
       .single()
 
-    if (existingChannel && existingChannel.user_id !== session.user.id) {
-      return NextResponse.json(
-        { error: "This YouTube channel is already connected to another account. Please connect a different channel." },
-        { status: 409 }
-      )
+    if (existingChannel && existingChannel.user_id !== userId) {
+      // Parse force claim from state
+      const forceClaim = state && state.toString().endsWith('::force')
+
+      if (!forceClaim) {
+        // Get the email of the existing owner to show in the error
+        const { data: channelOwner } = await supabaseAdmin
+          .from('profiles')
+          .select('email')
+          .eq('id', existingChannel.user_id)
+          .single()
+
+        return NextResponse.json(
+          {
+            error: `This YouTube channel is already connected to another account (${channelOwner?.email || 'Unknown'}). Do you want to claim it?`,
+            conflict: true,
+            channelTitle: channel.snippet.title
+          },
+          { status: 409 }
+        )
+      }
+
+      // Force claim: Delete existing channel and videos
+      console.log(`Force claiming channel ${channelId} from user ${existingChannel.user_id} to ${userId}`)
+
+      // Delete associated videos first
+      await supabaseAdmin
+        .from('youtube_videos')
+        .delete()
+        .eq('channel_id', channelId)
+
+      // Delete the channel
+      await supabaseAdmin
+        .from('youtube_channels')
+        .delete()
+        .eq('id', channelId)
     }
 
-    await supabase.from("youtube_channels").upsert(
+    await supabaseAdmin.from("youtube_channels").upsert(
       {
         id: channelId,
-        user_id: session.user.id,
+        user_id: userId,
         title: channel.snippet.title,
         description: channel.snippet.description,
         subscriber_count: channel.statistics.subscriberCount || 0,
@@ -228,10 +283,16 @@ export async function POST(request: Request) {
 
         const videos = await Promise.all(videoPromises)
 
-        await supabase.from("youtube_videos").upsert(videos, {
+        await supabaseAdmin.from("youtube_videos").upsert(videos, {
           onConflict: "id",
         })
       }
+
+      // Update profile onboarding status
+      await supabaseAdmin
+        .from('profiles')
+        .update({ onboarding_completed: true })
+        .eq('id', userId)
     } catch (videoError: any) {
       console.error("Error fetching initial videos:", videoError)
       // Check for quota error in video fetch too
