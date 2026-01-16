@@ -12,9 +12,9 @@ const OpenAILogo = () =>
 const GeminiLogo = () =>
   createElement(
     "svg",
-    { viewBox: "0 0 24 24", className: "h-6 w-6", fill: "currentColor" },
+    { viewBox: "0 0 48 48", className: "h-6 w-6", fill: "currentColor" },
     createElement("path", {
-      d: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-2-3.5l6-4.5-6-4.5v9z",
+      d: "M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
     })
   )
 
@@ -127,7 +127,7 @@ export const aiProviders = [
       tokensPerMinute: 50000
     },
     billing: {
-      tier: "free-trial",
+      tier: "free",
       pricingUrl: "https://mistral.ai/technology/#pricing"
     }
   },

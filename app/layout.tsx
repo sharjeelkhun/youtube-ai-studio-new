@@ -6,6 +6,7 @@ import { Providers } from '@/components/providers';
 import { AIProvider } from '@/contexts/ai-context';
 import { SubscriptionProvider } from "@/contexts/subscription-context";
 import ClickSpark from '@/components/click-spark';
+import { TopLoader } from '@/components/ui/top-loader';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -34,6 +35,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
+        <TopLoader />
         <Providers>
           <AIProvider>
             <SubscriptionProvider>

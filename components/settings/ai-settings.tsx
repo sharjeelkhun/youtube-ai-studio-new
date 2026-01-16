@@ -546,6 +546,26 @@ export function AISettings() {
                   <div className="text-center space-y-1.5">
                     <div className="font-bold text-base">{provider.name}</div>
                     <div className="text-xs text-muted-foreground leading-relaxed px-2">{provider.description}</div>
+                    <div className="pt-1">
+                      {provider.billing.tier === 'free' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                          Free API
+                        </span>
+                      )}
+                      {provider.billing.tier === 'free-trial' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                          Free Trial
+                        </span>
+                      )}
+                      {provider.billing.tier === 'pay-as-you-go' && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                          Paid API
+                        </span>
+                      )}
+                    </div>
                   </div>
                   {isApiKeySet(provider.id) && (
                     <Badge variant="secondary" className="mt-4 bg-green-500/10 text-green-600 border-green-200/50">

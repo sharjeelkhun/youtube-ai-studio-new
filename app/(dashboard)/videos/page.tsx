@@ -504,7 +504,7 @@ function Videos() {
                 <Button variant="outline" onClick={() => router.push('/settings?tab=integrations')}>
                   Add API Key
                 </Button>
-                <Button onClick={() => router.push('/signup?plan=professional')} className="bg-gradient-to-r from-primary to-primary/80 hover:scale-105 transition-all shadow-lg shadow-primary/20">
+                <Button onClick={() => router.push('/settings?tab=billing')} className="bg-gradient-to-r from-primary to-primary/80 hover:scale-105 transition-all shadow-lg shadow-primary/20">
                   Upgrade to Pro
                 </Button>
               </div>

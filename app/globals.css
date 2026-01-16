@@ -336,3 +336,14 @@ body {
 }
 
 /* Aurora animations for fluid, organic movement */
+/* Shimmer animation for premium loading states */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, hsl(var(--muted)) 0%, hsl(var(--muted-foreground) / 0.1) 20%, hsl(var(--muted-foreground) / 0.15) 40%, hsl(var(--muted)) 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
+}

@@ -227,9 +227,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
 
   const handleAiOptimize = useCallback(async () => {
     if (!isAiConfigured) {
-      toast.error('AI Provider Not Configured', {
-        description: 'Please select an AI provider and add your API key in the settings.',
-      })
+      toast.error('AI Provider Not Configured - Please select an AI provider and add your API key in the settings.')
       return
     }
 
@@ -279,9 +277,7 @@ export function ImageOptimization({ thumbnailUrl, videoTitle, onOptimizedImage, 
       toast.success('AI optimization completed')
     } catch (error) {
       console.error('Error with AI optimization:', error)
-      toast.error('AI Optimization Failed', {
-        description: error instanceof Error ? error.message : 'An unexpected error occurred.'
-      })
+      toast.error(error instanceof Error ? error.message : 'AI Optimization Failed - An unexpected error occurred.')
     } finally {
       setIsAiOptimizing(false)
     }

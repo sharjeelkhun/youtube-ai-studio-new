@@ -186,7 +186,25 @@ export function Step2ConnectAI({ onNext, onBack }: Step2ConnectAIProps) {
                                     </div>
                                     <div className="flex-1">
                                         <div className="font-bold">{provider.name}</div>
-                                        <div className="text-xs text-muted-foreground">{provider.description}</div>
+                                        <div className="text-xs text-muted-foreground mb-1">{provider.description}</div>
+                                        {provider.billing.tier === 'free' && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-green-500/10 text-green-600 border border-green-500/20">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                                Free API
+                                            </span>
+                                        )}
+                                        {provider.billing.tier === 'free-trial' && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                                Free Trial
+                                            </span>
+                                        )}
+                                        {provider.billing.tier === 'pay-as-you-go' && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600 border border-orange-500/20">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+                                                Paid API
+                                            </span>
+                                        )}
                                     </div>
                                     {isApiKeySet(provider.id) && (
                                         <Check className="h-5 w-5 text-green-500" />

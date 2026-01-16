@@ -106,7 +106,7 @@ export function ThumbnailIntelligence({
                 <Lock className="h-4 w-4 text-purple-600" />
                 <span className="text-sm font-medium text-purple-900">AI Thumbnail Prompt Generator</span>
               </div>
-              <p className="text-xs text-purple-800">Generate detailed AI prompts for creating custom thumbnails with DALL-E or Midjourney</p>
+              <p className="text-xs text-purple-800">Generate detailed AI prompts for creating custom thumbnails with DALL-E or Gemini</p>
             </div>
             <UpgradePrompt
               feature="CUSTOM_AI_PROMPTS"

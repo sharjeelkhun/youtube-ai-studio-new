@@ -1836,16 +1836,16 @@ export default function VideoPage() {
       }
 
       const data = await response.json()
-      setThumbnailIdeas(data.thumbnail_ideas)
+      // Normalize ideas: ensure they are strings
+      const normalizedIdeas = (data.thumbnail_ideas || []).map((item: any) =>
+        typeof item === 'string' ? item : (item?.idea || JSON.stringify(item))
+      )
+      setThumbnailIdeas(normalizedIdeas)
 
-      toast.success('Success!', {
-        description: 'AI has generated thumbnail ideas.',
-      })
+      toast.success('Success! AI has generated thumbnail ideas.')
     } catch (error) {
       console.error('Error generating thumbnail ideas:', error)
-      toast.error('Thumbnail Idea Generation Failed', {
-        description: error instanceof Error ? error.message : 'An unknown error occurred. Please check the console for details.',
-      })
+      toast.error(error instanceof Error ? error.message : 'Thumbnail Idea Generation Failed - An unknown error occurred. Please check the console for details.')
     } finally {
       setIsGettingThumbnailIdeas(false)
     }
