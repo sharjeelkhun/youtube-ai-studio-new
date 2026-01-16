@@ -1,5 +1,7 @@
 import { SuggestionsTab } from "@/components/tabs/suggestions-tab"
 import type { Metadata } from "next"
+import { Suspense } from "react"
+import { Loader2 } from "lucide-react"
 
 import { siteConfig } from "@/lib/config"
 
@@ -19,7 +21,14 @@ export default function SuggestionsPage() {
           Get AI-powered content ideas and suggestions for your YouTube channel
         </p>
       </div>
-      <SuggestionsTab />
+      <Suspense fallback={
+        <div className="flex h-[400px] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }>
+        <SuggestionsTab />
+      </Suspense>
+
     </div>
   )
 }

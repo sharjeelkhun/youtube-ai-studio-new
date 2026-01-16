@@ -27,9 +27,8 @@ export function VideoPlayer({ videoId, title, thumbnailUrl }: VideoPlayerProps) 
                             />
                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-colors">
                                 <Button
-                                    size="lg"
                                     onClick={() => setIsPlaying(true)}
-                                    className="rounded-full h-16 w-16 bg-red-600 hover:bg-red-700 shadow-2xl hover:scale-110 transition-transform"
+                                    className="rounded-full h-16 w-16 bg-red-600 hover:bg-red-700 shadow-2xl hover:scale-110 transition-transform p-0 flex items-center justify-center"
                                 >
                                     <Play className="h-8 w-8 ml-1" fill="white" />
                                 </Button>
