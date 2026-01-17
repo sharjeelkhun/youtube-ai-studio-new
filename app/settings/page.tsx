@@ -1,5 +1,8 @@
 'use client';
 
+import { Suspense } from 'react';
+import { Loader2 } from 'lucide-react';
+
 import { SettingsContent } from '@/components/settings/settings-content';
 
 export default function SettingsPage() {
@@ -11,7 +14,14 @@ export default function SettingsPage() {
                     Manage your account settings and preferences
                 </p>
             </div>
-            <SettingsContent />
+            <Suspense fallback={
+                <div className="flex h-[400px] items-center justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+            }>
+                <SettingsContent />
+            </Suspense>
+
         </div>
     );
 }

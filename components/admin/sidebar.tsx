@@ -14,6 +14,7 @@ import {
     Users,
     Settings,
 } from "lucide-react"
+import { BrandLogo } from "@/components/brand-logo"
 
 export function AdminSidebar() {
     const pathname = usePathname()
@@ -35,15 +36,9 @@ export function AdminSidebar() {
         <>
             <SidebarHeader className="pb-6">
                 <a className="flex items-center gap-3 px-2 py-2" href="/admin">
-                    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white shadow-sm border border-gray-100">
-                        <img
-                            src="https://www.youtube.com/s/desktop/377f632f/img/logos/favicon_144x144.png"
-                            alt="YourAI Studio"
-                            className="h-6 w-6 object-contain"
-                        />
-                    </div>
+                    <BrandLogo size={40} />
                     <div className="flex flex-col">
-                        <span className="text-lg font-bold leading-none tracking-tight">YourAI Studio</span>
+                        <span className="text-lg font-bold leading-none tracking-tight">AI Studio</span>
                         <span className="text-xs text-muted-foreground font-medium">Admin Panel</span>
                     </div>
                 </a>

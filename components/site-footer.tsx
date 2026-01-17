@@ -1,7 +1,6 @@
 import Link from "next/link"
-import Image from "next/image"
-
 import { siteConfig } from "@/lib/config"
+import { BrandLogo } from "@/components/brand-logo"
 
 export function SiteFooter() {
     return (
@@ -10,14 +9,8 @@ export function SiteFooter() {
                 <div className="grid gap-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 text-center sm:text-left">
                     <div className="flex flex-col items-center sm:items-start">
                         <div className="flex items-center gap-2">
-                            <Image
-                                src="/youtube-logo.png"
-                                alt="YouTube"
-                                width={32}
-                                height={32}
-                                className="h-8 w-8"
-                            />
-                            <span className="text-lg font-bold text-foreground">{siteConfig.name}</span>
+                            <BrandLogo size={26} />
+                            <span className="text-lg font-bold text-foreground">YourAI Studio</span>
                         </div>
                         <p className="mt-4 text-sm text-muted-foreground max-w-xs">
                             AI-powered YouTube analytics and optimization platform.

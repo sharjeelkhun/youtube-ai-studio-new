@@ -7,6 +7,7 @@ import { ModeToggle } from "@/components/mode-toggle"
 import { useAuth } from "@/contexts/auth-context"
 import { UserNav } from "@/components/user-nav"
 import { siteConfig } from "@/lib/config"
+import { BrandLogo } from "@/components/brand-logo"
 import { User } from "lucide-react"
 
 export function SiteHeader() {
@@ -17,15 +18,9 @@ export function SiteHeader() {
             <div className="container mx-auto flex h-16 items-center justify-between px-2 sm:px-4 md:px-6">
                 <div className="flex items-center gap-2">
                     <Link href="/" className="flex items-center gap-2">
-                        <Image
-                            src="/youtube-logo.png"
-                            alt="YouTube"
-                            width={32}
-                            height={32}
-                            className="h-8 w-8"
-                        />
-                        <span className="text-lg font-bold hidden sm:inline">{siteConfig.name}</span>
-                        <span className="text-lg font-bold sm:hidden">{siteConfig.name}</span>
+                        <BrandLogo size={26} />
+                        <span className="text-lg font-bold hidden sm:inline">YourAI Studio</span>
+                        <span className="text-lg font-bold sm:hidden">YourAI Studio</span>
                     </Link>
                 </div>
                 <nav className="hidden gap-6 md:flex">

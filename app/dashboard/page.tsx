@@ -1,4 +1,5 @@
 "use client"
+import { Suspense } from 'react'
 
 import { useState, useEffect } from 'react'
 import { useSession } from '@/contexts/session-context'
@@ -180,14 +181,19 @@ export default function DashboardPage() {
     )
   }
 
-  // Standard locked/unlocked content
   return (
-    <div className="min-h-screen">
-      <DashboardContent
-        userId={session?.user?.id || undefined}
-        email={session?.user?.email || ''}
-        channelId={session?.user?.user_metadata?.channel_id}
-      />
-    </div>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <div className="min-h-screen">
+        <DashboardContent
+          userId={session?.user?.id || undefined}
+          email={session?.user?.email || ''}
+          channelId={session?.user?.user_metadata?.channel_id}
+        />
+      </div>
+    </Suspense>
   )
 }
