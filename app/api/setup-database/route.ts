@@ -14,6 +14,22 @@ export async function POST() {
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
 
+        -- Ensure phone column exists
+        DO $$ 
+        BEGIN 
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='phone') THEN
+            ALTER TABLE profiles ADD COLUMN phone TEXT;
+          END IF;
+        END $$;
+
+        -- Ensure role column exists
+        DO $$ 
+        BEGIN 
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='role') THEN
+            ALTER TABLE profiles ADD COLUMN role TEXT DEFAULT 'user';
+          END IF;
+        END $$;
+
         -- Create trigger to update updated_at
         CREATE OR REPLACE FUNCTION update_updated_at_column()
         RETURNS TRIGGER AS $$

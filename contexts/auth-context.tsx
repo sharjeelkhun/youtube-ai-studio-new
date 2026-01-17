@@ -26,6 +26,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, name: string, phone: string, plan?: string | null) => Promise<void>
   verifyOtp: (email: string, token: string, type: 'signup' | 'recovery' | 'magiclink') => Promise<{ error: any }>
   resendOtp: (email: string, type: 'signup' | 'email_change') => Promise<{ error: any }>
+  signInWithGoogle: () => Promise<void>
   signOut: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
   validateEmail: (email: string) => boolean
@@ -214,6 +215,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const signInWithGoogle = async () => {
+    console.log('Starting Google sign in...')
+    setLoading(true)
+    setError(null)
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/callback`,
+        },
+      })
+      if (error) throw error
+    } catch (err) {
+      console.error('Error during Google sign in:', err)
+      setError(err instanceof Error ? err : new Error('Failed to sign in with Google'))
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const signOut = async () => {
     await supabase.auth.signOut();
     router.push('/login');
@@ -242,6 +264,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isPreview: false,
     signIn,
     signUp,
+    signInWithGoogle,
     verifyOtp,
     resendOtp,
     signOut,

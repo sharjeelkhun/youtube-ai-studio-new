@@ -65,6 +65,7 @@ export interface Database {
           ai_provider?: string | null
           ai_settings?: Json | null
           role?: string
+          phone?: string | null
         }
         Update: {
           id?: string
@@ -75,6 +76,7 @@ export interface Database {
           ai_provider?: string | null
           ai_settings?: Json | null
           role?: string
+          phone?: string | null
         }
       },
       youtube_channels: {

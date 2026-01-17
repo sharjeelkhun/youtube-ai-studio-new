@@ -12,7 +12,7 @@ import { toast } from "sonner"
 import { useSession } from "@/contexts/session-context"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
+import { supabase } from "@/lib/supabase/client"
 
 export function AccountSettings() {
   const [isLoading, setIsLoading] = useState(false)
@@ -23,6 +23,7 @@ export function AccountSettings() {
     name: "",
     email: "",
     username: "",
+    phone: "",
   })
 
   useEffect(() => {
@@ -39,7 +40,9 @@ export function AccountSettings() {
       setFormData((prev) => ({
         ...prev,
         email: session.user.email || "",
+        name: meta.full_name || prev.name,
         username: derivedUsername || prev.username,
+        phone: meta.phone || prev.phone,
       }))
     }
     if (channelData) {
@@ -59,14 +62,35 @@ export function AccountSettings() {
   const handleSaveProfile = async () => {
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      // 1. Update Auth Metadata
+      const { error: authError } = await supabase.auth.updateUser({
+        data: {
+          full_name: formData.name,
+          phone: formData.phone,
+        }
+      })
+
+      if (authError) throw authError
+
+      // 2. Update Profiles Table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          full_name: formData.name,
+          phone: formData.phone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', session?.user?.id)
+
+      if (profileError) throw profileError
+
       toast.success("Profile updated", {
         description: "Your profile information has been updated successfully.",
       })
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Error updating profile:", error)
       toast.error("Error", {
-        description: "Failed to update profile. Please try again.",
+        description: error.message || "Failed to update profile. Please try again.",
       })
     } finally {
       setIsLoading(false)
@@ -171,6 +195,18 @@ export function AccountSettings() {
                   className="pl-9 bg-background/50"
                 />
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                name="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="Your phone number"
+                className="bg-background/50"
+              />
             </div>
           </CardContent>
           <CardFooter className="flex justify-between pt-2">
