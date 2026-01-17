@@ -36,6 +36,13 @@ export default function AuthCallbackPage() {
         }
       }
 
+      // 3. Check for existing profile and onboarding status
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding_completed')
+        .eq('id', session.user.id)
+        .single();
+
       // Initialize onboarding data if plan is selected
       if (plan) {
         try {
@@ -50,8 +57,12 @@ export default function AuthCallbackPage() {
         }
       }
 
-      // Always redirect to setup for new users (middleware will handle completed users)
-      router.push('/setup');
+      // 4. Intelligent redirect
+      if (profile?.onboarding_completed) {
+        router.push('/dashboard');
+      } else {
+        router.push('/setup');
+      }
     };
 
     handleAuthCallback();

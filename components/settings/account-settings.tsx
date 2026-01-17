@@ -27,6 +27,33 @@ export function AccountSettings() {
   })
 
   useEffect(() => {
+    const getProfile = async () => {
+      if (!session?.user?.id) return
+
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", session.user.id)
+          .single()
+
+        if (error) {
+          console.error("Error fetching profile:", error)
+          return
+        }
+
+        if (profile) {
+          setFormData((prev) => ({
+            ...prev,
+            name: profile.full_name || prev.name,
+            phone: profile.phone || prev.phone,
+          }))
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching profile:", err)
+      }
+    }
+
     if (session) {
       const meta = (session.user as any)?.user_metadata || {}
       const derivedUsername =
@@ -44,11 +71,14 @@ export function AccountSettings() {
         username: derivedUsername || prev.username,
         phone: meta.phone || prev.phone,
       }))
+
+      getProfile()
     }
+
     if (channelData) {
       setFormData((prev) => ({
         ...prev,
-        name: channelData.title || "",
+        name: channelData.title || prev.name || "",
         username: channelData.title || prev.username,
       }))
     }
