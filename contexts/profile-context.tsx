@@ -35,12 +35,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data && data.length > 0) {
+        console.log('[ProfileProvider] Profile fetched:', data[0])
         setProfile({
           ai_provider: data[0].provider,
           ai_settings: data[0].settings,
           youtube_api_key: data[0].youtube_key,
         })
       } else {
+        console.log('[ProfileProvider] No profile found')
         setProfile(null)
       }
     } catch (error) {
@@ -90,6 +92,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Optimistically update the local state
+    console.log('[ProfileProvider] Optimistically updating profile:', updatedProfile)
     setProfile(updatedProfile)
 
     try {

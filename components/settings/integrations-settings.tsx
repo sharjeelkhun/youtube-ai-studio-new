@@ -21,10 +21,8 @@ export function IntegrationsSettings() {
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    if (profile?.youtube_api_key) {
-      setYoutubeApiKey(profile.youtube_api_key)
-    }
-  }, [profile])
+    setYoutubeApiKey(profile?.youtube_api_key || "")
+  }, [profile?.youtube_api_key])
 
   const handleConnectYouTube = () => {
     router.push("/connect-channel")

@@ -4,6 +4,7 @@ import { VideoGrid } from '@/components/video-grid'
 import { useEffect, useState } from 'react'
 import { useYouTubeChannel } from '@/contexts/youtube-channel-context'
 import { useSubscription } from '@/contexts/subscription-context'
+import { useProfile } from '@/contexts/profile-context'
 import type { Database } from '@/lib/database.types'
 import { supabase } from '@/lib/supabase/client'
 import VideosLoading from './loading'
@@ -27,6 +28,7 @@ import { ConnectChannelHero } from '@/components/connect-channel-hero'
 export function VideosContent() {
     const { channel, isLoading: channelIsLoading } = useYouTubeChannel()
     const { isPro, isEnterprise } = useSubscription()
+    const { profile, loading: profileLoading } = useProfile()
     const [videosLoading, setVideosLoading] = useState(true);
     const [showSyncNotice, setShowSyncNotice] = useState(false);
     const [newCount, setNewCount] = useState<number | null>(null)
@@ -53,6 +55,9 @@ export function VideosContent() {
 
     const [allVideos, setAllVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
 
+    // Derive personal key status directly from context for immediate UI response
+    const hasPersonalKey = !!(profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini)
+
     useEffect(() => {
         const fetchVideos = async (silent = false) => {
             if (!channel?.id) {
@@ -63,8 +68,11 @@ export function VideosContent() {
             if (!silent) setVideosLoading(true)
 
             try {
-                const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', channel.user_id).maybeSingle()
-                const hasPersonalKey = !!(profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini)
+                console.log('[VideosContent] Recalculating limit:', {
+                    youtube_key: !!profile?.youtube_api_key,
+                    gemini_key: !!profile?.ai_settings?.apiKeys?.gemini,
+                    limit: hasPersonalKey ? 25 : 5
+                })
 
                 const { data, error } = await supabase
                     .from('youtube_videos')
@@ -108,7 +116,7 @@ export function VideosContent() {
             }
         })()
 
-        if (!channelIsLoading) {
+        if (!channelIsLoading && !profileLoading) {
             fetchVideos()
 
             if (shouldAutoSync) {
@@ -121,7 +129,7 @@ export function VideosContent() {
                     .catch((err) => console.error('Background sync failed:', err))
             }
         }
-    }, [channel, channelIsLoading, isPro, isEnterprise])
+    }, [channel, channelIsLoading, isPro, isEnterprise, profile, profileLoading])
 
     useEffect(() => {
         const sp = searchParams
@@ -264,79 +272,70 @@ export function VideosContent() {
                 </Alert>
             )}
 
-            <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm">
-                <div className="p-4 flex flex-col xl:flex-row gap-4 justify-between xl:items-center">
-                    <div className="flex flex-wrap gap-2">
-                        {['all', 'video', 'short', 'live'].map((type) => (
-                            <Button
-                                key={type}
-                                variant={typeFilter === type ? 'default' : 'ghost'}
-                                size="sm"
-                                onClick={() => { setPage(1); setTypeFilter(type as any); updateUrl({ page: 1, type: type as any }) }}
-                                className={cn(
-                                    "capitalize rounded-full px-4",
-                                    typeFilter === type ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-md" : "hover:bg-primary/5"
-                                )}
-                            >
-                                {type}
-                            </Button>
-                        ))}
+            <Card className="border-border/50 bg-background/60 backdrop-blur-xl shadow-sm border-x-0 sm:border-x rounded-none sm:rounded-2xl">
+                <div className="p-3 sm:p-4 space-y-4">
+                    {/* Header & Main Actions */}
+                    <div className="flex items-center justify-between gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
+                        <div className="flex gap-1.5 min-w-max">
+                            {['all', 'video', 'short', 'live'].map((type) => (
+                                <Button
+                                    key={type}
+                                    variant={typeFilter === type ? 'default' : 'ghost'}
+                                    size="sm"
+                                    onClick={() => { setPage(1); setTypeFilter(type as any); updateUrl({ page: 1, type: type as any }) }}
+                                    className={cn(
+                                        "capitalize rounded-xl px-4 h-9 min-w-[70px] transition-all duration-200",
+                                        typeFilter === type ? "bg-primary text-primary-foreground shadow-sm" : "hover:bg-primary/5 text-muted-foreground"
+                                    )}
+                                >
+                                    {type}
+                                </Button>
+                            ))}
+                        </div>
+                        <div className="flex items-center bg-muted/50 p-0.5 rounded-lg border border-border/50 h-9 min-w-max">
+                            <Button variant="ghost" size="sm" onClick={() => setViewMode('grid')} className={cn("h-7 w-9 p-0 rounded-md", viewMode === 'grid' ? "bg-background shadow-sm text-primary" : "hover:bg-background/40 text-muted-foreground")}> <LayoutGrid className="h-4 w-4" /> </Button>
+                            <Button variant="ghost" size="sm" onClick={() => setViewMode('list')} className={cn("h-7 w-9 p-0 rounded-md", viewMode === 'list' ? "bg-background shadow-sm text-primary" : "hover:bg-background/40 text-muted-foreground")}> <List className="h-4 w-4" /> </Button>
+                        </div>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap hidden sm:inline-block">Status:</span>
+                    {/* Refined Filters Row */}
+                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <div className="grid grid-cols-3 gap-2 w-full">
                             <Select value={statusFilter} onValueChange={(v) => { const val = v as 'all' | 'public' | 'private' | 'unlisted'; setPage(1); setStatusFilter(val); updateUrl({ page: 1, status: val }) }}>
-                                <SelectTrigger className="w-[140px] bg-background/50 border-border/60">
-                                    <SelectValue placeholder="All Status" />
+                                <SelectTrigger className="w-full h-9 bg-background/50 border-border/60 rounded-xl text-[13px] px-3">
+                                    <SelectValue placeholder="Status" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="all">All Status</SelectItem>
                                     <SelectItem value="public">Published</SelectItem>
                                     <SelectItem value="private">Private</SelectItem>
                                     <SelectItem value="unlisted">Unlisted</SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
 
-                        <div className="w-px h-6 bg-border/60 hidden sm:block" />
-
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap hidden sm:inline-block">SEO:</span>
                             <Select value={seoFilter} onValueChange={(v: any) => { setPage(1); setSeoFilter(v) }}>
-                                <SelectTrigger className="w-[130px] bg-background/50 border-border/60">
-                                    <SelectValue placeholder="All Scores" />
+                                <SelectTrigger className="w-full h-9 bg-background/50 border-border/60 rounded-xl text-[13px] px-3">
+                                    <SelectValue placeholder="SEO" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">All Scores</SelectItem>
+                                    <SelectItem value="all">All SEO</SelectItem>
                                     <SelectItem value="good">Good (80+)</SelectItem>
-                                    <SelectItem value="average">Average (50-79)</SelectItem>
-                                    <SelectItem value="poor">Poor (&lt;50)</SelectItem>
+                                    <SelectItem value="average">Average</SelectItem>
+                                    <SelectItem value="poor">Poor</SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
 
-                        <div className="w-px h-6 bg-border/60 hidden sm:block" />
-
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-muted-foreground whitespace-nowrap hidden sm:inline-block">Sort:</span>
                             <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
-                                <SelectTrigger className="w-[140px] bg-background/50 border-border/60">
-                                    <SelectValue placeholder="Sort by" />
+                                <SelectTrigger className="w-full h-9 bg-background/50 border-border/60 rounded-xl text-[13px] px-3">
+                                    <SelectValue placeholder="Sort" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="date">Newest</SelectItem>
-                                    <SelectItem value="views">Most Viewed</SelectItem>
-                                    <SelectItem value="likes">Most Liked</SelectItem>
-                                    <SelectItem value="seo_high">Highest SEO</SelectItem>
-                                    <SelectItem value="seo_low">Lowest SEO</SelectItem>
+                                    <SelectItem value="views">Views</SelectItem>
+                                    <SelectItem value="likes">Likes</SelectItem>
+                                    <SelectItem value="seo_high">Best SEO</SelectItem>
                                 </SelectContent>
                             </Select>
-                        </div>
-                        <div className="w-px h-6 bg-border/60 hidden sm:block" />
-                        <div className="flex items-center bg-muted/50 p-1 rounded-lg border border-border/50">
-                            <Button variant="ghost" size="sm" onClick={() => setViewMode('grid')} className={cn("h-7 w-7 p-0 rounded-md", viewMode === 'grid' ? "bg-background shadow-sm" : "hover:bg-background/50")}> <LayoutGrid className="h-4 w-4" /> </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setViewMode('list')} className={cn("h-7 w-7 p-0 rounded-md", viewMode === 'list' ? "bg-background shadow-sm" : "hover:bg-background/50")}> <List className="h-4 w-4" /> </Button>
                         </div>
                     </div>
                 </div>
@@ -424,15 +423,22 @@ export function VideosContent() {
                     {!isPro && !isEnterprise && allVideos.length > 0 && (
                         <Card className="border-primary/20 bg-primary/5 backdrop-blur-sm shadow-sm p-6 mt-8 flex flex-col md:flex-row items-center justify-between gap-4">
                             <div className="space-y-1 text-center md:text-left">
-                                <h3 className="text-lg font-semibold text-foreground">Want to see more videos?</h3>
+                                <h3 className="text-lg font-semibold text-foreground">
+                                    {hasPersonalKey ? "Personal API Key Active" : "Want to see more videos?"}
+                                </h3>
                                 <p className="text-sm text-muted-foreground max-w-lg">
-                                    Free plans are limited to the most recent 5 videos. Connect your own YouTube API key to sync up to 25 videos, or upgrade to Professional for unlimited access.
+                                    {hasPersonalKey
+                                        ? "Your personal API key allows syncing up to 25 videos. Upgrade to Professional for unlimited access and advanced AI tools."
+                                        : "Free plans are limited to the most recent 5 videos. Connect your own YouTube API key to sync up to 25 videos, or upgrade to Professional for unlimited access."
+                                    }
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Button variant="outline" onClick={() => router.push('/settings?tab=integrations')}>
-                                    Add API Key
-                                </Button>
+                                {!hasPersonalKey && (
+                                    <Button variant="outline" onClick={() => router.push('/settings?tab=integrations')}>
+                                        Add API Key
+                                    </Button>
+                                )}
                                 <Button onClick={() => router.push('/settings?tab=billing')} className="bg-gradient-to-r from-primary to-primary/80 hover:scale-105 transition-all shadow-lg shadow-primary/20">
                                     Upgrade to Pro
                                 </Button>

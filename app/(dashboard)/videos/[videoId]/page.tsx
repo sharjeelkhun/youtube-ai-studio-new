@@ -2734,8 +2734,8 @@ export default function VideoPage() {
         </div>
       </div>
       {/* Floating Bottom Action Bar */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-fit px-4 animate-in slide-in-from-bottom-10 fade-in duration-500">
-        <div className="flex items-center p-2 gap-2 bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl ring-1 ring-white/10 dark:ring-black/10">
+      <div className="fixed md:bottom-6 bottom-[82px] left-1/2 -translate-x-1/2 z-[60] w-full max-w-[95vw] sm:max-w-fit px-2 animate-in slide-in-from-bottom-10 fade-in duration-500">
+        <div className="flex items-center p-1.5 sm:p-2 gap-1 sm:gap-2 bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-2xl ring-1 ring-white/10 dark:ring-black/10 justify-center">
 
           <TooltipProvider>
             <Tooltip>
@@ -2754,7 +2754,16 @@ export default function VideoPage() {
                   ) : (
                     <Wand2 className="mr-2 h-4 w-4" />
                   )}
-                  <span className="font-medium">{retryCountdown > 0 ? `Retry in ${retryCountdown}s` : 'AI Optmize All'}</span>
+                  <span className="font-medium">
+                    {retryCountdown > 0 ? (
+                      <span className="text-xs">{retryCountdown}s</span>
+                    ) : (
+                      <>
+                        <span className="md:hidden text-xs">Optimize All</span>
+                        <span className="hidden md:inline">Optimize All</span>
+                      </>
+                    )}
+                  </span>
                 </Button>
               </TooltipTrigger>
               <TooltipContent>Generate title, description & tags (Alt+A)</TooltipContent>
@@ -2806,15 +2815,17 @@ export default function VideoPage() {
                   disabled={isSaving || !hasChanges}
                   className={cn(
                     "rounded-xl transition-all h-10",
-                    hasChanges ? "px-5 bg-primary text-primary-foreground shadow-md" : "w-10 hover:bg-primary/5 hover:text-primary"
+                    hasChanges
+                      ? "px-5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-emerald-500/25 border-0"
+                      : "w-10 hover:bg-primary/5 hover:text-primary"
                   )}
                 >
                   {isSaving ? (
                     <Loader className="h-4 w-4 animate-spin" />
                   ) : hasChanges ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <Download className="h-4 w-4" />
-                      <span>Save Changes</span>
+                      <span className="font-medium text-xs sm:text-sm">Save</span>
                     </div>
                   ) : (
                     <Download className="h-4 w-4" />
