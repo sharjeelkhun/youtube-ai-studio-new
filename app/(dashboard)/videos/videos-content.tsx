@@ -56,7 +56,8 @@ export function VideosContent() {
     const [allVideos, setAllVideos] = useState<Database['public']['Tables']['youtube_videos']['Row'][]>([])
 
     // Derive personal key status directly from context for immediate UI response
-    const hasPersonalKey = !!(profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini)
+    // Derive personal key status directly from context for immediate UI response
+    const hasPersonalKey = !!profile?.youtube_api_key
 
     useEffect(() => {
         const fetchVideos = async (silent = false) => {

@@ -34,24 +34,22 @@ const PAYPAL_PLAN_IDS = {
     enterprise: process.env.NEXT_PUBLIC_PAYPAL_PLAN_ENTERPRISE || "",
 }
 
+
+
+import { PLANS as CONFIG_PLANS } from "@/lib/pricing"
+
 export const PLANS = {
     Starter: {
+        ...CONFIG_PLANS.find(p => p.id === 'starter')!,
         id: PAYPAL_PLAN_IDS.starter,
-        name: "Starter",
-        price: "Free",
-        features: ["Sync last 5–10 videos", "1 AI insight per video", "Basic title & description rewrite", "1 AI-generated thumbnail", "Ads outside core workflow", "Email Support"],
     },
     Professional: {
+        ...CONFIG_PLANS.find(p => p.id === 'professional')!,
         id: PAYPAL_PLAN_IDS.professional,
-        name: "Professional",
-        price: "$49",
-        features: ["Full channel sync & analysis", "Unlimited AI insights per video", "Multiple AI suggestions for titles, descriptions, and tags", "Thumbnail guidance & A/B testing", "Competitor analysis & pattern insights", "Priority Support", "Optional: use your own OpenAI/Gemini API key", "No ads"],
     },
     Enterprise: {
+        ...CONFIG_PLANS.find(p => p.id === 'enterprise')!,
         id: PAYPAL_PLAN_IDS.enterprise,
-        name: "Enterprise",
-        price: "$99",
-        features: ["Custom analytics dashboard", "Full AI insights & suggestions across all videos", "Advanced SEO & competitor intelligence", "Dedicated account manager", "Competitor analysis & pattern insights", "Priority Support", "API Access", "Full control over AI models & integrations", "No ads"],
     },
 }
 

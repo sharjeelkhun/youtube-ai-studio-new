@@ -1016,15 +1016,21 @@ export default function VideoPage() {
 
     // Check for AI provider
     if (!profile.ai_provider) {
+      // Check for free usage
+      const freeUsage = profile.ai_settings?.freeUsageCount || 0
+      if (freeUsage < 3) {
+        return true // Allow free usage
+      }
+
       toast.error('AI Provider Not Selected', {
-        description: 'Please select an AI provider in the settings.',
+        description: 'You have used your 3 free generations. Please select an AI provider in the settings.',
       })
       router.push('/settings')
       return false
     }
 
-    // Check for API key
-    if (!profile.ai_settings?.apiKeys?.[profile.ai_provider]) {
+    // Check for API key (only if provider is selected)
+    if (profile.ai_provider && !profile.ai_settings?.apiKeys?.[profile.ai_provider]) {
       toast.error('API Key Missing', {
         description: `Please add an API key for ${profile.ai_provider} in the settings.`,
       })
@@ -2246,7 +2252,11 @@ export default function VideoPage() {
               <Wand2 className="h-4 w-4 text-primary" />
               <AlertTitle>Unlock AI Optimization</AlertTitle>
               <AlertDescription className="flex items-center justify-between">
-                <span>Configure your AI provider settings to enable auto-optimization for titles, descriptions, and tags.</span>
+                <span>
+                  {(profile?.ai_settings?.freeUsageCount || 0) < 3
+                    ? `You have ${3 - (profile?.ai_settings?.freeUsageCount || 0)} free AI generations remaining.`
+                    : "Configure your AI provider settings to enable auto-optimization for titles, descriptions, and tags."}
+                </span>
                 <Button variant="outline" size="sm" onClick={() => router.push('/settings')} className="ml-4">
                   Configure AI
                 </Button>

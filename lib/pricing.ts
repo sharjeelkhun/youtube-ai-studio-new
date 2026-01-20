@@ -11,6 +11,7 @@ export const PLANS = [
             "1 AI-generated thumbnail",
             "Ads outside core workflow",
             "Email support",
+            "Save up to 3 ideas",
         ],
         cta: "Start Free – No Credit Card Required.",
         ctaLink: "/signup?plan=starter",
@@ -20,6 +21,7 @@ export const PLANS = [
             aiInsights: 1,
             thumbnailGenerations: 1,
             apiRate: 100,
+            savedIdeas: 3,
         },
         capabilities: {
             multipleAiSuggestions: false,
@@ -49,6 +51,7 @@ export const PLANS = [
             "Priority support",
             "Optional: use your own OpenAI/Gemini API key",
             "No ads",
+            "Save up to 50 ideas",
         ],
         cta: "Upgrade to Professional",
         ctaLink: "/signup?plan=professional",
@@ -58,6 +61,7 @@ export const PLANS = [
             aiInsights: -1,
             thumbnailGenerations: 5,
             apiRate: 1000,
+            savedIdeas: 50,
         },
         capabilities: {
             multipleAiSuggestions: true,
@@ -87,6 +91,7 @@ export const PLANS = [
             "API access",
             "Full control over AI models & integrations",
             "No ads",
+            "Save up to 100 ideas",
         ],
         cta: "Get Enterprise Access",
         ctaLink: "/signup?plan=enterprise",
@@ -96,6 +101,7 @@ export const PLANS = [
             aiInsights: -1,
             thumbnailGenerations: -1,
             apiRate: -1,
+            savedIdeas: 100,
         },
         capabilities: {
             multipleAiSuggestions: true,

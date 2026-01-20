@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { NewContentIdea } from "@/lib/types/ideas"
+import { PLANS } from "@/lib/pricing"
 
 export const dynamic = "force-dynamic"
 
@@ -10,7 +11,7 @@ const getSupabase = () => {
   if (!cookieStore) {
     throw new Error('Cookie store not available')
   }
-  
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -52,12 +53,12 @@ export async function GET() {
 
     // Get current session
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    
+
     if (sessionError) {
       console.error("Session error in GET /api/ideas:", sessionError)
       throw sessionError
     }
-    
+
     if (!sessionData?.session) {
       console.error("No session found in GET /api/ideas")
       return NextResponse.json({ error: "You must be signed in to view ideas" }, { status: 401 })
@@ -100,12 +101,12 @@ export async function POST(req: Request) {
 
     // Get current session
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    
+
     if (sessionError) {
       console.error("Session error in POST /api/ideas:", sessionError)
       throw new Error("Authentication failed: " + sessionError.message)
     }
-    
+
     if (!sessionData?.session) {
       console.error("No session found in POST /api/ideas")
       return NextResponse.json(
@@ -125,7 +126,7 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
-    
+
     // Validate required fields
     if (!ideaData.title || !ideaData.type) {
       console.error("Missing required fields in idea data")
@@ -134,12 +135,63 @@ export async function POST(req: Request) {
         { status: 400 }
       )
     }
-    
+
     // Add user_id and timestamps
     const now = new Date().toISOString()
+    const userId = sessionData.session.user.id
+
+    // Determine plan limit
+    let limit = 3 // Default/Starter limit
+
+    // Check subscription for dynamic limit
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('status, plan_id, current_period_end')
+      .eq('user_id', userId)
+      .in('status', ['active', 'trialing'])
+      .single()
+
+    if (subscription && ['active', 'trialing'].includes(subscription.status)) {
+      // Map plan_id to pricing config
+      // Note: adjust if your DB plan_ids differ from pricing IDs
+      // For now assuming direct mapping or falling back to Starter
+      const planConfig = PLANS.find(p => p.id === subscription.plan_id)
+      if (planConfig) {
+        limit = planConfig.limits.savedIdeas
+      } else {
+        // If plan_id doesn't match, determine by some other logic or default to Pro if active?
+        // For safety, if status is active but plan not found, maybe assume Pro? 
+        // Or strictly strictly follow Starter if unknown. 
+        // Let's assume 'professional' is the standard upgrade.
+        if (subscription.plan_id === 'price_pro' || subscription.plan_id === 'pro') limit = 50
+        if (subscription.plan_id === 'price_enterprise' || subscription.plan_id === 'enterprise') limit = 100
+      }
+    }
+
+    const { count, error: countError } = await supabase
+      .from('content_ideas')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+
+    if (countError) {
+      console.error("Error checking idea count:", countError)
+      throw new Error("Failed to check plan limits")
+    }
+
+    if (count !== null && count >= limit) {
+      return NextResponse.json(
+        {
+          error: `You have reached the limit of ${limit} saved ideas. Please delete some ideas or upgrade your plan to save more.`,
+          code: 'limit_reached',
+          limit: limit
+        },
+        { status: 403 }
+      )
+    }
+
     const ideaWithUser = {
       ...ideaData,
-      user_id: sessionData.session.user.id,
+      user_id: userId,
       created_at: now,
       updated_at: now,
       metrics: ideaData.metrics || {},
@@ -198,12 +250,12 @@ export async function PATCH(req: Request) {
 
     // Get current session
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-    
+
     if (sessionError) {
       console.error("Session error in PATCH /api/ideas:", sessionError)
       throw new Error("Authentication failed: " + sessionError.message)
     }
-    
+
     if (!sessionData?.session) {
       console.error("No session found in PATCH /api/ideas")
       return NextResponse.json(

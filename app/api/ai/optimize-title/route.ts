@@ -39,20 +39,47 @@ export async function POST(request: Request) {
       );
     }
 
-    const provider = profile.ai_provider;
-    if (!provider) {
-      return NextResponse.json(
-        { error: "No AI provider selected" },
-        { status: 400 }
-      );
-    }
+    let provider = profile.ai_provider;
+    let apiKey = provider ? profile.ai_settings?.apiKeys?.[provider] : null;
 
-    const apiKey = profile.ai_settings.apiKeys[provider];
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: "API key not found for selected provider" },
-        { status: 400 }
-      );
+    // Free Plan Logic
+    if (!provider || !apiKey) {
+      const freeUsage = profile.ai_settings?.freeUsageCount || 0;
+      if (freeUsage < 3) {
+        console.log(`[FREE-PLAN] User ${session.user.id} using free generation (${freeUsage + 1}/3)`);
+
+        // Use System Key (Fallback)
+        // Ensure you have SYSTEM_GEMINI_API_KEY in your .env
+        apiKey = process.env.SYSTEM_GEMINI_API_KEY || null;
+        provider = 'gemini';
+
+        if (!apiKey) {
+          return NextResponse.json(
+            { error: "Free tier system key not configured. Please contact support." },
+            { status: 500 }
+          );
+        }
+
+        // Increment usage count
+        const newSettings = {
+          ...profile.ai_settings,
+          freeUsageCount: freeUsage + 1
+        };
+
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ settings: newSettings }) // Assuming 'settings' column exists and maps to 'ai_settings'
+          .eq('id', session.user.id);
+
+        if (updateError) {
+          console.error("[FREE-PLAN] Failed to update usage count:", updateError);
+        }
+      } else {
+        return NextResponse.json(
+          { error: "AI provider not configured and free generations exhausted." },
+          { status: 400 }
+        );
+      }
     }
 
     // Extract userId for rate limiting

@@ -251,13 +251,45 @@ export async function POST(req: Request) {
 
     const profile = data as AiSettingsRpcResponse
 
-    if (!profile.provider || !profile.settings) {
-      return NextResponse.json({ error: 'AI provider not configured. Please configure it in the settings.' }, { status: 400 })
-    }
+    let provider = profile.provider
+    let apiKey = provider && profile.settings?.apiKeys ? profile.settings.apiKeys[provider] : null
 
-    const apiKey = profile.settings.apiKeys?.[profile.provider]
-    if (!apiKey) {
-      return NextResponse.json({ error: `API key for ${profile.provider} not found. Please add it in the settings.` }, { status: 400 })
+    // Free Plan Logic
+    if (!provider || !apiKey) {
+      const settingsAny = profile.settings as any
+      const freeUsage = settingsAny?.freeUsageCount || 0
+      if (freeUsage < 3) {
+        console.log(`[FREE-PLAN] User ${session.user.id} using free generation (${freeUsage + 1}/3)`)
+
+        apiKey = process.env.SYSTEM_GEMINI_API_KEY || null
+        provider = 'gemini'
+
+        if (!apiKey) {
+          return NextResponse.json(
+            { error: 'Free tier system key not configured. Please contact support.' },
+            { status: 500 }
+          )
+        }
+
+        const newSettings = {
+          ...profile.settings,
+          freeUsageCount: freeUsage + 1
+        }
+
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ settings: newSettings })
+          .eq('id', session.user.id)
+
+        if (updateError) {
+          console.error('[FREE-PLAN] Failed to update usage count:', updateError)
+        }
+      } else {
+        return NextResponse.json(
+          { error: 'AI provider not configured. Please configure it in the settings.' },
+          { status: 400 }
+        )
+      }
     }
 
     const body = await req.json()
@@ -266,7 +298,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Title and description are required' }, { status: 400 })
     }
 
-    const aiSettings = { ...profile.settings.features }
+    const aiSettings: any = { ...(profile.settings?.features || {}) }
 
     const providerConfig = aiProviders.find(p => p.id === profile.provider)
     if (providerConfig) {

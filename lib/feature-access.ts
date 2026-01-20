@@ -43,6 +43,13 @@ export const FEATURE_LIMITS = {
         Enterprise: getLimit('enterprise', 'apiRate'),
     },
 
+    // Saved ideas limits
+    SAVED_IDEAS_LIMIT: {
+        Starter: getLimit('starter', 'savedIdeas'),
+        Professional: getLimit('professional', 'savedIdeas'),
+        Enterprise: getLimit('enterprise', 'savedIdeas'),
+    },
+
     // Feature access flags
     FEATURES: {
         MULTIPLE_AI_SUGGESTIONS: {
@@ -193,6 +200,8 @@ export function useFeatureAccess() {
                 return "👥 Collaborate with your team on content creation. Share access, assign tasks, and work together seamlessly on your channel growth."
             case 'WHITE_LABELING':
                 return "🏷️ Remove branding and customize the experience for your team or clients. Present a professional, branded interface that matches your business."
+            case 'SAVED_IDEAS_LIMIT':
+                return "💾 Save more of your best ideas. Upgrade to keep a larger library of video concepts, scripts, and research."
             default:
                 return "🎯 Unlock premium features designed for serious creators. Join thousands of successful YouTubers who have upgraded their workflow."
         }
@@ -216,6 +225,10 @@ export function useFeatureAccess() {
         return FEATURE_LIMITS.API_RATE_LIMIT[planName as keyof typeof FEATURE_LIMITS.API_RATE_LIMIT] || 100
     }
 
+    const getSavedIdeasLimit = () => {
+        return FEATURE_LIMITS.SAVED_IDEAS_LIMIT[planName as keyof typeof FEATURE_LIMITS.SAVED_IDEAS_LIMIT] || 3
+    }
+
     return {
         planName,
         isPro,
@@ -230,6 +243,7 @@ export function useFeatureAccess() {
         shouldShowAds,
         getPlanLevel,
         canUpgradeTo,
+        getSavedIdeasLimit,
     }
 }
 

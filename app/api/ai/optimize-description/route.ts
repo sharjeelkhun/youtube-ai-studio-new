@@ -32,11 +32,47 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Failed to get profile settings' }, { status: 500 })
     }
 
-    if (!profile.ai_provider || !profile.ai_settings?.apiKeys?.[profile.ai_provider]) {
-      return NextResponse.json({ error: 'AI provider not configured' }, { status: 400 })
-    }
+    let provider = profile.ai_provider
+    let apiKey = provider ? profile.ai_settings?.apiKeys?.[provider] : null
 
-    const apiKey = profile.ai_settings.apiKeys[profile.ai_provider]
+    // Free Plan Logic
+    if (!provider || !apiKey) {
+      const freeUsage = profile.ai_settings?.freeUsageCount || 0
+      if (freeUsage < 3) {
+        console.log(`[FREE-PLAN] User ${session.user.id} using free generation (${freeUsage + 1}/3)`)
+
+        apiKey = process.env.SYSTEM_GEMINI_API_KEY || null
+        provider = 'gemini'
+
+        if (!apiKey) {
+          return NextResponse.json(
+            { error: 'Free tier system key not configured. Please contact support.' },
+            { status: 500 }
+          )
+        }
+
+        const newSettings = {
+          ...profile.ai_settings,
+          freeUsageCount: freeUsage + 1
+        }
+
+        /* 
+          Note: Since 'profiles' table update logic might be complex depending on schema 
+          (jsonb vs columns), assuming 'settings' column. 
+          If optimize-title used 'settings', assume consistency.
+        */
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({ settings: newSettings })
+          .eq('id', session.user.id)
+
+        if (updateError) {
+          console.error('[FREE-PLAN] Failed to update usage count:', updateError)
+        }
+      } else {
+        return NextResponse.json({ error: 'AI provider not configured and free generations exhausted' }, { status: 400 })
+      }
+    }
 
     // Extract userId for rate limiting
     const userId = session.user.id

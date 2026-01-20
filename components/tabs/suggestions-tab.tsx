@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
+import { Slider } from "@/components/ui/slider"
 import { IdeaCard } from "@/components/idea-card"
 import type { ContentIdea, NewContentIdea, IdeaType, IdeaStatus, IdeaSource } from "@/lib/types/ideas"
 import { useIdeas } from "@/hooks/use-ideas"
@@ -23,6 +24,7 @@ export function SuggestionsTab() {
   const [promptText, setPromptText] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedContent, setGeneratedContent] = useState("")
+  const [ideaCount, setIdeaCount] = useState<number>(3)
 
   const [suggestions, setSuggestions] = useState<NewContentIdea[]>([])
   const [isLoadingContent, setIsLoadingContent] = useState(false)
@@ -37,7 +39,7 @@ export function SuggestionsTab() {
   const [searchQuery, setSearchQuery] = useState("")
 
   // Feature access hook
-  const { hasFeature, getUpgradeMessage, planName } = useFeatureAccess()
+  const { hasFeature, getUpgradeMessage, planName, getSavedIdeasLimit } = useFeatureAccess()
 
   // Load view mode from local storage
   useEffect(() => {
@@ -78,7 +80,12 @@ export function SuggestionsTab() {
     }
 
     // Check if user has access to multiple AI suggestions
-    if (!hasFeature('MULTIPLE_AI_SUGGESTIONS')) {
+    // Allow if they have free generations remaining (less than 3)
+    const settings = profile?.ai_settings as any
+    const freeUsage = settings?.freeUsageCount || 0
+    const hasFreeGenerations = freeUsage < 3
+
+    if (!hasFeature('MULTIPLE_AI_SUGGESTIONS') && !hasFreeGenerations) {
       toast.error("Upgrade Required", {
         description: getUpgradeMessage('MULTIPLE_AI_SUGGESTIONS'),
         action: {
@@ -95,7 +102,9 @@ export function SuggestionsTab() {
       const res = await fetch('/api/ai/suggestions/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptText }),
+        body: JSON.stringify({
+          prompt: `${promptText}\n\nPlease generate exactly ${ideaCount} distinct ideas.`
+        }),
       })
 
       if (!res.ok) {
@@ -180,9 +189,6 @@ export function SuggestionsTab() {
       }
       console.log('Generated suggestions:', newSuggestions)
 
-      // Update suggestions state with new ideas
-      setSuggestions(newSuggestions)
-
       // Only update suggestions if we actually got new ones
       if (newSuggestions.length > 0) {
         console.log('Setting suggestions:', newSuggestions)
@@ -237,6 +243,26 @@ export function SuggestionsTab() {
     } catch (error) {
       console.error('Error updating idea:', error)
       toast.error("Failed to update idea")
+    }
+  }
+
+  const handleSaveSuggestion = async (suggestion: NewContentIdea, index: number) => {
+    try {
+      await saveIdea({
+        title: suggestion.title,
+        description: suggestion.description || '',
+        type: suggestion.type,
+        status: 'saved',
+        metrics: suggestion.metrics || {},
+        metadata: suggestion.metadata || {},
+        source: 'ai_generated'
+      })
+
+      // Remove from suggestions list on success
+      setSuggestions(prev => prev.filter((_, i) => i !== index))
+    } catch (error) {
+      // Error is handled by useIdeas hook toast, but we catch it here to prevent runtime crash
+      console.error("Failed to save suggestion:", error)
     }
   }
 
@@ -313,27 +339,44 @@ export function SuggestionsTab() {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-between gap-3 border-t bg-muted/20 px-6 py-4">
-          <Button variant="ghost" onClick={handleClearPrompt} disabled={isGenerating || !promptText} className="hover:bg-destructive/10 hover:text-destructive">
-            Clear
-          </Button>
-          <Button
-            onClick={handleGenerateContent}
-            disabled={isGenerating || !promptText || !profile?.ai_provider}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow-md transition-all active:scale-95"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Generate Ideas
-              </>
-            )}
-          </Button>
+        <CardFooter className="flex flex-col gap-4 border-t bg-muted/20 px-6 py-4">
+          <div className="flex w-full items-center justify-between gap-4">
+            <div className="flex items-center gap-4 flex-1">
+              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">
+                Generate {ideaCount} ideas
+              </span>
+              <Slider
+                value={[ideaCount]}
+                onValueChange={(value) => setIdeaCount(value[0])}
+                max={9}
+                min={3}
+                step={3}
+                className="w-[200px]"
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button variant="ghost" onClick={handleClearPrompt} disabled={isGenerating || !promptText} className="hover:bg-destructive/10 hover:text-destructive">
+                Clear
+              </Button>
+              <Button
+                onClick={handleGenerateContent}
+                disabled={isGenerating || !promptText || !profile?.ai_provider}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm hover:shadow-md transition-all active:scale-95"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate Ideas
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </CardFooter>
       </Card>
 
@@ -383,6 +426,24 @@ export function SuggestionsTab() {
           </div>
         </div>
 
+        {ideas.length >= getSavedIdeasLimit() && (
+          <Alert className="mb-4 border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400">
+            <Info className="h-4 w-4" />
+            <AlertTitle>Storage Limit Reached</AlertTitle>
+            <AlertDescription>
+              You have reached the limit of {getSavedIdeasLimit()} ideas (across all tabs). Please delete some ideas or
+              <Button
+                variant="link"
+                className="px-1.5 h-auto font-semibold underline text-foreground"
+                onClick={() => router.push('/settings?tab=billing')}
+              >
+                upgrade your plan
+              </Button>
+              to save more.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <TabsContent value="content" className="space-y-4 max-w-full">
           {isLoadingContent || ideasLoading ? (
             <div className="flex h-[300px] items-center justify-center">
@@ -400,6 +461,9 @@ export function SuggestionsTab() {
                   </CardHeader>
                   <CardContent>
                     <div className={viewMode === 'grid' ? 'grid gap-4 sm:grid-cols-2 lg:grid-cols-3' : 'flex flex-col gap-3'}>
+
+
+
                       {suggestions.map((suggestion, index) => (
                         <IdeaCard
                           key={`suggestion-${index}`}
@@ -411,15 +475,7 @@ export function SuggestionsTab() {
                             updated_at: new Date().toISOString()
                           }}
                           showSave
-                          onSave={() => saveIdea({
-                            title: suggestion.title,
-                            description: suggestion.description || '',
-                            type: suggestion.type,
-                            status: 'saved',
-                            metrics: suggestion.metrics || {},
-                            metadata: suggestion.metadata || {},
-                            source: 'ai_generated'
-                          })}
+                          onSave={() => handleSaveSuggestion(suggestion, index)}
                           viewMode={viewMode}
                         />
                       ))}
@@ -433,6 +489,7 @@ export function SuggestionsTab() {
                   <CardTitle className="text-lg font-medium">Saved Ideas</CardTitle>
                 </CardHeader>
                 <CardContent className="px-0">
+
                   {savedIdeas.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center rounded-xl border border-dashed border-muted-foreground/25 bg-muted/10">
                       <FileText className="h-10 w-10 text-muted-foreground/50 mb-3" />

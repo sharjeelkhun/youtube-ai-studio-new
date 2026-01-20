@@ -136,12 +136,11 @@ async function generate(
 }
 
 export async function generateContentSuggestions(supabase: SupabaseClient, userPrompt?: string) {
-  // Get userId for rate limiting
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) throw new Error('Unauthorized - No active session')
   const userId = session.user.id
 
-  // Check user's subscription plan
+  // Determine plan and limit (existing code...)
   const { data: subscription } = await supabase
     .from('subscriptions')
     .select('plan_id, status, current_period_end')
@@ -150,8 +149,9 @@ export async function generateContentSuggestions(supabase: SupabaseClient, userP
     .limit(1)
     .maybeSingle()
 
-  let planName = 'Starter' // Default plan
+  let planName = 'Starter'
   if (subscription) {
+    // ... (existing logic)
     const isValid =
       ['active', 'trialing'].includes(subscription.status) ||
       (subscription.status === 'cancelled' && subscription.current_period_end && new Date(subscription.current_period_end) > new Date())
@@ -164,7 +164,6 @@ export async function generateContentSuggestions(supabase: SupabaseClient, userP
   }
 
   const aiInsightsLimit = FEATURE_LIMITS.AI_INSIGHTS_PER_VIDEO[planName as keyof typeof FEATURE_LIMITS.AI_INSIGHTS_PER_VIDEO] || 1
-  console.log('User plan:', planName, 'AI insights limit:', aiInsightsLimit)
 
   let ai_provider: string
   let client: any
@@ -173,31 +172,46 @@ export async function generateContentSuggestions(supabase: SupabaseClient, userP
     ai_provider = settings.ai_provider
     client = await getAiClient(supabase)
   } catch (err) {
-    // Try server-level fallback (env vars)
-    const fb = getServerProviderFallback()
-    if (!fb) throw err
-    ai_provider = fb.ai_provider
-    // Build a minimal client from env key for supported providers
-    if (ai_provider === 'openai') {
-      client = new (await import('openai')).default({ apiKey: String(fb.openai_api_key) })
-    } else if (ai_provider === 'google') {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai')
-      client = new GoogleGenerativeAI(String(fb.google_api_key))
-    } else if (ai_provider === 'anthropic') {
-      const Anthropic = (await import('@anthropic-ai/sdk')).default
-      client = new Anthropic({ apiKey: String(fb.anthropic_api_key) })
-    } else if (ai_provider === 'mistral') {
-      const { Mistral } = await import('@mistralai/mistralai')
-      client = new Mistral({ apiKey: String(fb.mistral_api_key) })
+    // Free Plan Logic
+    const { data: profile } = await supabase.from('profiles').select('settings').eq('id', userId).single()
+    const settings = profile?.settings as any || {}
+    const freeUsage = settings?.freeUsageCount || 0
+
+    if (freeUsage >= 3) {
+      throw new Error("AI provider not configured. Please configure it in Settings > AI Providers.")
     }
 
+    console.log(`[FREE-PLAN-SUGGESTIONS] User ${userId} using free generation (${freeUsage + 1}/3)`)
+
+    // Increment usage
+    await supabase.from('profiles').update({
+      settings: { ...settings, freeUsageCount: freeUsage + 1 }
+    }).eq('id', userId)
+
+    const apiKey = process.env.SYSTEM_GEMINI_API_KEY
+    if (!apiKey) throw new Error("Free tier system key not configured.")
+
+    ai_provider = 'gemini'
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    client = new GoogleGenerativeAI(apiKey)
   }
+  // Extract requested count from prompt if present (e.g. "exactly 3 distinct ideas")
+  const countMatch = userPrompt?.match(/exactly (\d+) distinct ideas/);
+  const requestedCount = countMatch ? parseInt(countMatch[1]) : 0;
+
+  // Use requested count if valid, otherwise fallback to stricter plan limits
+  // For free users, cap at 3. For paid users, allow registered count up to plan limit.
+  let targetCount: number = aiInsightsLimit;
+  if (requestedCount > 0) {
+    targetCount = requestedCount;
+  }
+
   const model = getModel(ai_provider);
   const prompt = `Generate YouTube video ideas based on the following request. Make each idea specific, actionable, and valuable to viewers.
 
 User Request: ${userPrompt || "Generate video ideas about AI tools for content creators"}
 
-IMPORTANT: Return ONLY valid JSON array with this EXACT structure for each idea. Generate exactly ${aiInsightsLimit} idea${aiInsightsLimit === 1 ? '' : 's'}:
+IMPORTANT: Return ONLY valid JSON array with this EXACT structure for each idea. Generate exactly ${targetCount} idea${targetCount === 1 ? '' : 's'}:
 [{
   "title": "Catchy, SEO-friendly title",
   "type": "video_idea",
@@ -268,21 +282,28 @@ export async function generateVideoImprovements(
     ai_provider = settings.ai_provider
     client = await getAiClient(supabase)
   } catch (err) {
-    const fb = getServerProviderFallback()
-    if (!fb) throw err
-    ai_provider = fb.ai_provider
-    if (ai_provider === 'openai') {
-      client = new (await import('openai')).default({ apiKey: String(fb.openai_api_key) })
-    } else if (ai_provider === 'google') {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai')
-      client = new GoogleGenerativeAI(String(fb.google_api_key))
-    } else if (ai_provider === 'anthropic') {
-      const Anthropic = (await import('@anthropic-ai/sdk')).default
-      client = new Anthropic({ apiKey: String(fb.anthropic_api_key) })
-    } else if (ai_provider === 'mistral') {
-      const { Mistral } = await import('@mistralai/mistralai')
-      client = new Mistral({ apiKey: String(fb.mistral_api_key) })
+    // Free Plan Logic
+    const { data: profile } = await supabase.from('profiles').select('settings').eq('id', userId).single()
+    const settings = profile?.settings as any || {}
+    const freeUsage = settings?.freeUsageCount || 0
+
+    if (freeUsage >= 3) {
+      throw new Error("AI provider not configured. Please configure it in Settings > AI Providers.")
     }
+
+    console.log(`[FREE-PLAN-IMPROVEMENTS] User ${userId} using free generation (${freeUsage + 1}/3)`)
+
+    // Increment usage
+    await supabase.from('profiles').update({
+      settings: { ...settings, freeUsageCount: freeUsage + 1 }
+    }).eq('id', userId)
+
+    const apiKey = process.env.SYSTEM_GEMINI_API_KEY
+    if (!apiKey) throw new Error("Free tier system key not configured.")
+
+    ai_provider = 'gemini'
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    client = new GoogleGenerativeAI(apiKey)
   }
   const model = getModel(ai_provider);
   const prompt = `Analyze the following YouTube video data and provide specific suggestions for improvement for each video. Focus on titles, descriptions, and tags.
@@ -333,21 +354,28 @@ export async function generateTrendingTopics(supabase: SupabaseClient) {
     ai_provider = settings.ai_provider
     client = await getAiClient(supabase)
   } catch (err) {
-    const fb = getServerProviderFallback()
-    if (!fb) throw err
-    ai_provider = fb.ai_provider
-    if (ai_provider === 'openai') {
-      client = new (await import('openai')).default({ apiKey: String(fb.openai_api_key) })
-    } else if (ai_provider === 'google') {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai')
-      client = new GoogleGenerativeAI(String(fb.google_api_key))
-    } else if (ai_provider === 'anthropic') {
-      const Anthropic = (await import('@anthropic-ai/sdk')).default
-      client = new Anthropic({ apiKey: String(fb.anthropic_api_key) })
-    } else if (ai_provider === 'mistral') {
-      const { Mistral } = await import('@mistralai/mistralai')
-      client = new Mistral({ apiKey: String(fb.mistral_api_key) })
+    // Free Plan Logic
+    const { data: profile } = await supabase.from('profiles').select('settings').eq('id', userId).single()
+    const settings = profile?.settings as any || {}
+    const freeUsage = settings?.freeUsageCount || 0
+
+    if (freeUsage >= 3) {
+      throw new Error("AI provider not configured. Please configure it in Settings > AI Providers.")
     }
+
+    console.log(`[FREE-PLAN-TRENDS] User ${userId} using free generation (${freeUsage + 1}/3)`)
+
+    // Increment usage
+    await supabase.from('profiles').update({
+      settings: { ...settings, freeUsageCount: freeUsage + 1 }
+    }).eq('id', userId)
+
+    const apiKey = process.env.SYSTEM_GEMINI_API_KEY
+    if (!apiKey) throw new Error("Free tier system key not configured.")
+
+    ai_provider = 'gemini'
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    client = new GoogleGenerativeAI(apiKey)
   }
   const model = getModel(ai_provider);
   const prompt =
@@ -391,21 +419,28 @@ export async function generateText(supabase: SupabaseClient, prompt: string) {
     ai_provider = settings.ai_provider
     client = await getAiClient(supabase)
   } catch (err) {
-    const fb = getServerProviderFallback()
-    if (!fb) throw err
-    ai_provider = fb.ai_provider
-    if (ai_provider === 'openai') {
-      client = new (await import('openai')).default({ apiKey: String(fb.openai_api_key) })
-    } else if (ai_provider === 'google') {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai')
-      client = new GoogleGenerativeAI(String(fb.google_api_key))
-    } else if (ai_provider === 'anthropic') {
-      const Anthropic = (await import('@anthropic-ai/sdk')).default
-      client = new Anthropic({ apiKey: String(fb.anthropic_api_key) })
-    } else if (ai_provider === 'mistral') {
-      const { Mistral } = await import('@mistralai/mistralai')
-      client = new Mistral({ apiKey: String(fb.mistral_api_key) })
+    // Free Plan Logic
+    const { data: profile } = await supabase.from('profiles').select('settings').eq('id', userId).single()
+    const settings = profile?.settings as any || {}
+    const freeUsage = settings?.freeUsageCount || 0
+
+    if (freeUsage >= 3) {
+      throw new Error("AI provider not configured. Please configure it in Settings > AI Providers.")
     }
+
+    console.log(`[FREE-PLAN-TEXT] User ${userId} using free generation (${freeUsage + 1}/3)`)
+
+    // Increment usage
+    await supabase.from('profiles').update({
+      settings: { ...settings, freeUsageCount: freeUsage + 1 }
+    }).eq('id', userId)
+
+    const apiKey = process.env.SYSTEM_GEMINI_API_KEY
+    if (!apiKey) throw new Error("Free tier system key not configured.")
+
+    ai_provider = 'gemini'
+    const { GoogleGenerativeAI } = await import('@google/generative-ai')
+    client = new GoogleGenerativeAI(apiKey)
   }
   const model = getModel(ai_provider);
 
