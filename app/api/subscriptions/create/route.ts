@@ -100,7 +100,8 @@ export async function POST(request: Request) {
         if (subError) throw subError;
 
         // 5. Check if this transaction was already recorded
-        const paypalTxId = paypalSub?.billing_info?.last_payment?.transaction_id || `SUB-${subscriptionId}`;
+        const lastPaymentTimeId = paypalSub?.billing_info?.last_payment?.time ? new Date(paypalSub.billing_info.last_payment.time).getTime() : 'initial';
+        const paypalTxId = paypalSub?.billing_info?.last_payment?.transaction_id || `SUB-${subscriptionId}-${lastPaymentTimeId}`;
 
         const { data: existingPayment } = await supabase
             .from('payments')

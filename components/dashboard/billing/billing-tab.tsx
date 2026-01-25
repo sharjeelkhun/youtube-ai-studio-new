@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Check, Loader2, AlertCircle } from "lucide-react"
+import { Check, Loader2, AlertCircle, Sparkles } from "lucide-react"
 import { useSubscription } from "@/contexts/subscription-context"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -151,6 +151,20 @@ export default function BillingTab() {
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Current Plan</CardTitle>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={async () => {
+                                    toast.promise(refreshSubscription(true), {
+                                        loading: 'Syncing with PayPal...',
+                                        success: 'Dashboard updated!',
+                                        error: 'Sync failed'
+                                    });
+                                }}
+                                title="Sync with PayPal"
+                            >
+                                <Sparkles className="h-4 w-4" />
+                            </Button>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{planName}</div>
@@ -303,7 +317,7 @@ export default function BillingTab() {
                                         <div>
                                             <div className="flex items-center gap-2">
                                                 <p className="font-medium">{payment.plan_name}</p>
-                                                <Badge variant="outline" className="text-[10px] h-5">{payment.status}</Badge>
+                                                <Badge variant="outline" className="text-[10px] h-5">{payment.status?.toUpperCase()}</Badge>
                                             </div>
                                             <div className="text-sm text-muted-foreground mt-1">
                                                 {payment.period_start ? new Date(payment.period_start).toLocaleDateString() : 'N/A'} - {payment.period_end ? new Date(payment.period_end).toLocaleDateString() : 'N/A'}

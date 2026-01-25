@@ -17,7 +17,7 @@ interface SubscriptionContextType {
     planName: string
     isCheckoutRequired: boolean
     setCheckoutRequired: (required: boolean) => void
-    refreshSubscription: () => Promise<void>
+    refreshSubscription: (forceSync?: boolean) => Promise<void>
 }
 
 const SubscriptionContext = createContext<SubscriptionContextType>({
@@ -39,8 +39,8 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     const [isLoading, setIsLoading] = useState(true)
     const [isCheckoutRequired, setCheckoutRequired] = useState(false)
 
-    const refreshSubscription = async () => {
-        console.log("[SUB-CONTEXT] refreshSubscription triggered for user:", user?.id);
+    const refreshSubscription = async (forceSync = false) => {
+        console.log("[SUB-CONTEXT] refreshSubscription triggered. forceSync:", forceSync);
         if (!user) {
             setSubscription(null)
             setPayments([])
@@ -117,25 +117,31 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             }
 
             // AUTO-SYNC LOGIC:
-            // If the subscription is marked as 'active' but the current period has ended,
-            // trigger a sync to check if it has renewed on PayPal.
             if (activeSub && activeSub.status === 'active' && activeSub.current_period_end) {
                 const now = new Date();
                 const periodEnd = new Date(activeSub.current_period_end);
 
-                if (now > periodEnd) {
-                    console.log("[SUB-CONTEXT] Subscription expired but active. Triggering sync...");
-                    fetch('/api/subscriptions/sync', { method: 'POST' })
-                        .then(res => res.json())
-                        .then(data => {
-                            if (data.success) {
-                                console.log("[SUB-CONTEXT] Sync successful, updating local state.");
-                                if (data.subscription) {
-                                    setSubscription(data.subscription as Subscription);
-                                }
-                            }
-                        })
-                        .catch(err => console.error("[SUB-CONTEXT] Sync failed:", err));
+                if (forceSync || now > periodEnd) {
+                    console.log("[SUB-CONTEXT] Triggering sync with PayPal...");
+                    const res = await fetch('/api/subscriptions/sync', { method: 'POST' });
+                    const data = await res.json();
+
+                    if (data.success) {
+                        console.log("[SUB-CONTEXT] Sync successful.");
+                        if (data.subscription) {
+                            setSubscription(data.subscription as Subscription);
+                        }
+
+                        // Re-fetch payments to get the newly recorded ones
+                        const { data: updatedPayData } = await supabase
+                            .from('payments')
+                            .select('*')
+                            .eq('user_id', user.id)
+                            .order('created_at', { ascending: false })
+                            .limit(10);
+
+                        if (updatedPayData) setPayments(updatedPayData as Payment[]);
+                    }
                 }
             }
         } catch (error) {

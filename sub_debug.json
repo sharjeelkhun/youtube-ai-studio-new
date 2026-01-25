@@ -1,0 +1,86 @@
+{
+  "status": "ACTIVE",
+  "status_update_time": "2026-01-19T13:40:43Z",
+  "id": "I-PYWN61XN11RR",
+  "plan_id": "P-94N513288E663534JNE6SSNA",
+  "start_time": "2025-12-19T19:23:52Z",
+  "quantity": "1",
+  "shipping_amount": {
+    "currency_code": "USD",
+    "value": "0.0"
+  },
+  "subscriber": {
+    "email_address": "sb-43h7jp46131108@personal.example.com",
+    "payer_id": "RUTKZ27SNBZ44",
+    "name": {
+      "given_name": "John",
+      "surname": "Doe"
+    },
+    "tenant": "PAYPAL",
+    "shipping_address": {
+      "address": {
+        "address_line_1": "Whittaker House",
+        "address_line_2": "2 Whittaker Avenue",
+        "admin_area_2": "Richmond",
+        "admin_area_1": "Surrey",
+        "postal_code": "TW9 1EH",
+        "country_code": "GB"
+      }
+    }
+  },
+  "billing_info": {
+    "outstanding_balance": {
+      "currency_code": "USD",
+      "value": "0.0"
+    },
+    "cycle_executions": [
+      {
+        "tenure_type": "REGULAR",
+        "sequence": 1,
+        "cycles_completed": 2,
+        "cycles_remaining": 0,
+        "current_pricing_scheme_version": 1,
+        "total_cycles": 0
+      }
+    ],
+    "last_payment": {
+      "amount": {
+        "currency_code": "USD",
+        "value": "49.0"
+      },
+      "time": "2026-01-19T13:40:43Z"
+    },
+    "next_billing_time": "2026-02-19T10:00:00Z",
+    "failed_payments_count": 0
+  },
+  "create_time": "2025-12-19T19:24:14Z",
+  "update_time": "2026-01-19T13:40:43Z",
+  "plan_overridden": false,
+  "links": [
+    {
+      "href": "https://api.sandbox.paypal.com/v1/billing/subscriptions/I-PYWN61XN11RR/cancel",
+      "rel": "cancel",
+      "method": "POST"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v1/billing/subscriptions/I-PYWN61XN11RR",
+      "rel": "edit",
+      "method": "PATCH"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v1/billing/subscriptions/I-PYWN61XN11RR",
+      "rel": "self",
+      "method": "GET"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v1/billing/subscriptions/I-PYWN61XN11RR/suspend",
+      "rel": "suspend",
+      "method": "POST"
+    },
+    {
+      "href": "https://api.sandbox.paypal.com/v1/billing/subscriptions/I-PYWN61XN11RR/capture",
+      "rel": "capture",
+      "method": "POST"
+    }
+  ]
+}

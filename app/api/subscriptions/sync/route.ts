@@ -71,8 +71,35 @@ export async function POST(request: Request) {
 
         if (updateError) throw updateError;
 
-        // 5. If there's a new payment recorded in PayPal billing info, we should ideally record it
-        // but for now, the priority is fixing the "0 days remaining" UI.
+        // 5. Check and Record latest payment
+        const lastPayment = paypalSub.billing_info?.last_payment;
+        if (lastPayment && lastPayment.amount) {
+            // Include payment time in the fallback ID to ensure uniqueness for each renewal month
+            const paymentTimeId = lastPayment.time ? new Date(lastPayment.time).getTime() : 'latest';
+            const paypalTxId = lastPayment.transaction_id || `SUB-${subscription.paypal_subscription_id}-${paymentTimeId}`;
+
+            // Check if this transaction exists
+            const { data: existingPayment } = await supabase
+                .from('payments')
+                .select('id')
+                .eq('paypal_transaction_id', paypalTxId)
+                .maybeSingle();
+
+            if (!existingPayment) {
+                console.log(`[API-SUB-SYNC] Recording missing payment: ${paypalTxId}`);
+                await supabase.from('payments').insert({
+                    user_id: user.id,
+                    subscription_id: subscription.id,
+                    amount: parseFloat(lastPayment.amount.value),
+                    currency: lastPayment.amount.currency_code || 'USD',
+                    status: 'succeeded',
+                    paypal_transaction_id: paypalTxId,
+                    plan_name: subscription.plan_name + ' Plan',
+                    period_start: lastPayment.time,
+                    period_end: paypalSub.billing_info.next_billing_time
+                });
+            }
+        }
 
         return NextResponse.json({ success: true, subscription: updatedSub });
 

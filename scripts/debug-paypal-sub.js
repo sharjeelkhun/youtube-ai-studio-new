@@ -35,7 +35,9 @@ async function debugSub(id) {
             headers: { 'Authorization': `Bearer ${accessToken}` }
         });
         const sub = await response.json();
-        console.log(JSON.stringify(sub, null, 2));
+        const content = JSON.stringify(sub, null, 2);
+        fs.writeFileSync(path.resolve(process.cwd(), 'sub_debug.json'), content, 'utf8');
+        console.log("Saved response to sub_debug.json");
     } catch (e) {
         console.error(e);
     }
