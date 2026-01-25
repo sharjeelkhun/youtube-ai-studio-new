@@ -16,6 +16,11 @@ export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isL
   const [isLoadingData, setIsLoadingData] = useState(true)
   const [dateRange, setDateRange] = useState("30d")
   const [selectedMetric, setSelectedMetric] = useState<"views" | "watch_time" | "subscribers" | "engagement">("views")
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Feature access hook
   const { hasFeature, planName } = useFeatureAccess()
@@ -182,90 +187,92 @@ export function AnalyticsTab({ channelData, isLoading }: { channelData: any; isL
             </div>
           </div>
         </CardHeader>
-        <CardContent className="h-[350px] w-full pb-4">
-          <ResponsiveContainer width="100%" height="100%">
-            {currentMetric.isBar ? (
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.1)" />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  minTickGap={30}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value}`}
-                />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--background)/0.9)",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-                    color: "hsl(var(--foreground))",
-                    marginTop: "10px"
-                  }}
-                  itemStyle={{ color: "hsl(var(--foreground))" }}
-                />
-                <Bar
-                  dataKey="value"
-                  fill={currentMetric.stroke}
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={50}
-                />
-              </BarChart>
-            ) : (
-              <AreaChart data={chartData}>
-                <defs>
-                  <linearGradient id={currentMetric.fill.replace('url(#', '').replace(')', '')} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={currentMetric.stroke} stopOpacity={0.3} />
-                    <stop offset="95%" stopColor={currentMetric.stroke} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.1)" />
-                <XAxis
-                  dataKey="date"
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  minTickGap={30}
-                />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `${value}`}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--background)/0.9)",
-                    borderColor: "hsl(var(--border))",
-                    borderRadius: "10px",
-                    boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
-                    color: "hsl(var(--foreground))",
-                  }}
-                  itemStyle={{ color: "hsl(var(--foreground))" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke={currentMetric.stroke}
-                  strokeWidth={2}
-                  fill={currentMetric.fill}
-                  activeDot={{ r: 6, strokeWidth: 0 }}
-                />
-              </AreaChart>
-            )}
-          </ResponsiveContainer>
+        <CardContent className="h-[350px] w-full pb-4 min-h-[350px]">
+          {mounted && (
+            <ResponsiveContainer width="100%" height="100%">
+              {currentMetric.isBar ? (
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.1)" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={30}
+                  />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--background)/0.9)",
+                      borderColor: "hsl(var(--border))",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                      color: "hsl(var(--foreground))",
+                      marginTop: "10px"
+                    }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Bar
+                    dataKey="value"
+                    fill={currentMetric.stroke}
+                    radius={[4, 4, 0, 0]}
+                    maxBarSize={50}
+                  />
+                </BarChart>
+              ) : (
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id={currentMetric.fill.replace('url(#', '').replace(')', '')} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={currentMetric.stroke} stopOpacity={0.3} />
+                      <stop offset="95%" stopColor={currentMetric.stroke} stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--muted-foreground)/0.1)" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    minTickGap={30}
+                  />
+                  <YAxis
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "hsl(var(--background)/0.9)",
+                      borderColor: "hsl(var(--border))",
+                      borderRadius: "10px",
+                      boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                      color: "hsl(var(--foreground))",
+                    }}
+                    itemStyle={{ color: "hsl(var(--foreground))" }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke={currentMetric.stroke}
+                    strokeWidth={2}
+                    fill={currentMetric.fill}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  />
+                </AreaChart>
+              )}
+            </ResponsiveContainer>
+          )}
         </CardContent>
       </Card>
 

@@ -24,6 +24,11 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
     likes: { current: 0, growth: 0 },
     comments: { current: 0, growth: 0 }
   })
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     if (channelData) {
@@ -251,6 +256,7 @@ export function OverviewTab({ channelData, isLoading }: OverviewTabProps) {
                 {(() => {
                   const ts = channelData?.last_synced || channelData?.updated_at
                   if (!ts) return 'Never'
+                  if (!mounted) return 'Loading...'
                   try { return new Date(ts).toLocaleString() } catch { return 'Invalid Date' }
                 })()}
               </p>

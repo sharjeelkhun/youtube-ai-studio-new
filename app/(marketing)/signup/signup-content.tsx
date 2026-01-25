@@ -59,8 +59,12 @@ export function SignupContent() {
             await signUp(email, password, fullName, phone, selectedPlan)
             setSignUpSuccess(true)
         } catch (err: any) {
-            // Show the specific error message from Supabase if available
+            console.error("[SIGNUP-CONTENT] Error during submit:", err)
+            // Error already set in auth context or propagated here
             setError(err.message || "Could not create account. Please try again.")
+            toast.error("Sign up failed", {
+                description: err.message || "Please check your details and try again."
+            })
         }
     }
 

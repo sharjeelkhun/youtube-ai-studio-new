@@ -50,8 +50,8 @@ export function SiteFooter() {
                                 </Link>
                             </li>
                             <li>
-                                <Link href="/blog" className="text-muted-foreground hover:text-foreground transition-colors">
-                                    Blog
+                                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors cursor-not-allowed opacity-50">
+                                    Blog (Coming Soon)
                                 </Link>
                             </li>
                             <li>

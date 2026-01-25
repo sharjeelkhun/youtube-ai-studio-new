@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
-          .single()
+          .single() as any
 
         setUser({
           id: session.user.id,
@@ -141,6 +141,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null)
 
     try {
+      // 1. Pre-registration check: Verify if email already exists
+      // This provides better UX because Supabase often silently fails for security
+      const checkRes = await fetch('/api/auth/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+
+      if (checkRes.ok) {
+        const { exists } = await checkRes.json()
+        if (exists) {
+          throw new Error("An account with this email already exists. Please sign in instead.")
+        }
+      }
+
       const redirectUrl = plan
         ? `${window.location.origin}/callback?plan=${plan}`
         : `${window.location.origin}/callback`
