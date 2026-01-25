@@ -63,20 +63,23 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
             if (subError) console.error("[SUB-CONTEXT] Sub query error:", subError);
             console.log("[SUB-CONTEXT] Raw sub from DB:", subData);
             if (subData) {
-                console.log("[SUB-CONTEXT] Sub status:", subData.status, "ID:", subData.paypal_subscription_id);
+                const sub = subData as Subscription;
+                console.log("[SUB-CONTEXT] Sub status:", sub.status, "ID:", sub.paypal_subscription_id);
             }
 
             let activeSub: Subscription | null = null;
             if (subData) {
+                const sub = subData as Subscription;
+                const status = sub.status;
                 const isValid =
-                    ['active', 'trialing'].includes(subData.status) ||
-                    (subData.status === 'cancelled' && subData.current_period_end && new Date(subData.current_period_end) > new Date())
+                    (['active', 'trialing'] as string[]).includes(status) ||
+                    (status === 'cancelled' && sub.current_period_end && new Date(sub.current_period_end) > new Date())
 
                 if (isValid) {
-                    activeSub = subData;
-                    console.log("[SUB-CONTEXT] Active sub confirmed:", activeSub?.plan_id);
+                    activeSub = sub;
+                    console.log("[SUB-CONTEXT] Active sub confirmed:", activeSub.plan_id);
                 } else {
-                    console.log("[SUB-CONTEXT] Sub found but invalid/expired status:", subData.status);
+                    console.log("[SUB-CONTEXT] Sub found but invalid/expired status:", status);
                 }
             }
             setSubscription(activeSub)
@@ -110,7 +113,30 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
                 console.error("[SUB-CONTEXT] Payments query error:", payError)
             } else {
                 console.log("[SUB-CONTEXT] Payments received:", payData?.length || 0);
-                setPayments(payData || [])
+                setPayments((payData as Payment[]) || [])
+            }
+
+            // AUTO-SYNC LOGIC:
+            // If the subscription is marked as 'active' but the current period has ended,
+            // trigger a sync to check if it has renewed on PayPal.
+            if (activeSub && activeSub.status === 'active' && activeSub.current_period_end) {
+                const now = new Date();
+                const periodEnd = new Date(activeSub.current_period_end);
+
+                if (now > periodEnd) {
+                    console.log("[SUB-CONTEXT] Subscription expired but active. Triggering sync...");
+                    fetch('/api/subscriptions/sync', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success) {
+                                console.log("[SUB-CONTEXT] Sync successful, updating local state.");
+                                if (data.subscription) {
+                                    setSubscription(data.subscription as Subscription);
+                                }
+                            }
+                        })
+                        .catch(err => console.error("[SUB-CONTEXT] Sync failed:", err));
+                }
             }
         } catch (error) {
             console.error('[SUB-CONTEXT] Error in refreshSubscription:', error)

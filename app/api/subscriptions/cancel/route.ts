@@ -1,50 +1,7 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-
-const PAYPAL_API = process.env.NEXT_PUBLIC_PAYPAL_MODE === 'live'
-    ? 'https://api-m.paypal.com'
-    : 'https://api-m.sandbox.paypal.com'
-
-const CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
-const CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET
-
-async function getPayPalAccessToken() {
-    // Debug logging
-    console.log('Attempting PayPal Auth...')
-    console.log('Client ID exists:', !!CLIENT_ID)
-    console.log('Client Secret exists:', !!CLIENT_SECRET)
-
-    if (!CLIENT_ID || !CLIENT_SECRET) {
-        console.error('Missing PayPal Credentials in environment variables')
-        throw new Error('Missing PayPal credentials')
-    }
-
-    const auth = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
-
-    try {
-        const response = await fetch(`${PAYPAL_API}/v1/oauth2/token`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Basic ${auth}`,
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: 'grant_type=client_credentials'
-        })
-
-        if (!response.ok) {
-            const errorText = await response.text()
-            console.error('PayPal Token Error Response:', errorText)
-            throw new Error(`PayPal API Error: ${response.status} ${response.statusText}`)
-        }
-
-        const data = await response.json()
-        return data.access_token
-    } catch (error) {
-        console.error('PayPal Fetch Error:', error)
-        throw error
-    }
-}
+import { cancelPayPalSubscription } from '@/lib/paypal'
 
 export async function POST(request: Request) {
     try {
@@ -74,35 +31,15 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'No active subscription found' }, { status: 404 })
         }
 
-        // 2. Get Access Token
-        let accessToken
+        // 2. Cancel Subscription on PayPal
         try {
-            accessToken = await getPayPalAccessToken()
+            await cancelPayPalSubscription(subscription.paypal_subscription_id, 'User requested cancellation from dashboard');
         } catch (e) {
-            console.error('PayPal Auth Error:', e)
-            return NextResponse.json({ error: 'Failed to authenticate with PayPal. Check server configuration.' }, { status: 500 })
-        }
-
-        // 3. Cancel Subscription on PayPal
-        const cancelResponse = await fetch(
-            `${PAYPAL_API}/v1/billing/subscriptions/${subscription.paypal_subscription_id}/cancel`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ reason: 'User requested cancellation from dashboard' })
-            }
-        )
-
-        if (!cancelResponse.ok && cancelResponse.status !== 204) {
-            const errorText = await cancelResponse.text()
-            console.error('PayPal Cancel Error:', errorText)
+            console.error('PayPal Cancel Error:', e)
             return NextResponse.json({ error: 'Failed to cancel subscription with PayPal' }, { status: 500 })
         }
 
-        // 4. Update Database
+        // 3. Update Database
         const { error: updateError } = await supabase
             .from('subscriptions')
             .update({

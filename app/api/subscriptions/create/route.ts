@@ -1,6 +1,7 @@
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
+import { getPayPalSubscription, cancelPayPalSubscription } from '@/lib/paypal'
 
 export async function POST(request: Request) {
     console.log("[API-SUB-CREATE] POST triggered");
@@ -34,52 +35,19 @@ export async function POST(request: Request) {
             .limit(1)
             .maybeSingle()
 
-        // Helper to get PayPal access token (re-using logic)
-        async function getPayPalAccessToken() {
-            const PAYPAL_API = process.env.NEXT_PUBLIC_PAYPAL_MODE === 'live'
-                ? 'https://api-m.paypal.com'
-                : 'https://api-m.sandbox.paypal.com'
-
-            const CLIENT_ID = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID
-            const CLIENT_SECRET = process.env.PAYPAL_CLIENT_SECRET
-
-            if (!CLIENT_ID || !CLIENT_SECRET) throw new Error("Missing PayPal credentials")
-
-            const auth = Buffer.from(`${CLIENT_ID}:${CLIENT_SECRET}`).toString('base64')
-            const response = await fetch(`${PAYPAL_API}/v1/oauth2/token`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Basic ${auth}`,
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: 'grant_type=client_credentials'
-            })
-
-            if (!response.ok) throw new Error("Failed to get PayPal token")
-            const data = await response.json()
-            return data.access_token
-        }
-
         // 1. Verify with PayPal FIRST
         console.log("[API-SUB-CREATE] Verifying subscription with PayPal...");
         let paypalSub;
-        let accessToken;
         try {
-            accessToken = await getPayPalAccessToken();
-            const PAYPAL_API = process.env.NEXT_PUBLIC_PAYPAL_MODE === 'live'
-                ? 'https://api-m.paypal.com'
-                : 'https://api-m.sandbox.paypal.com'
-
-            const subResponse = await fetch(`${PAYPAL_API}/v1/billing/subscriptions/${subscriptionId}`, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-
-            if (subResponse.ok) {
-                paypalSub = await subResponse.json();
+            paypalSub = await getPayPalSubscription(subscriptionId);
+            if (paypalSub) {
                 console.log("[API-SUB-CREATE] PayPal Sub Details:", JSON.stringify(paypalSub.billing_info, null, 2));
+            } else {
+                return NextResponse.json({ error: 'Subscription not found on PayPal' }, { status: 404 });
             }
         } catch (err) {
             console.error("[API-SUB-CREATE] PayPal Verification Error:", err);
+            return NextResponse.json({ error: 'Failed to verify subscription with PayPal' }, { status: 500 });
         }
 
         // 2. ACCOUNT JANITOR: Cancel ALL other active subscriptions for this user
@@ -95,21 +63,7 @@ export async function POST(request: Request) {
                 if (sub.paypal_subscription_id && sub.paypal_subscription_id !== subscriptionId) {
                     console.log("[API-SUB-CREATE] Janitor: Cancelling stale subscription:", sub.paypal_subscription_id);
                     try {
-                        const PAYPAL_API = process.env.NEXT_PUBLIC_PAYPAL_MODE === 'live'
-                            ? 'https://api-m.paypal.com'
-                            : 'https://api-m.sandbox.paypal.com'
-
-                        await fetch(
-                            `${PAYPAL_API}/v1/billing/subscriptions/${sub.paypal_subscription_id}/cancel`,
-                            {
-                                method: 'POST',
-                                headers: {
-                                    'Authorization': `Bearer ${accessToken}`,
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ reason: 'System cleanup: ensuring only one active subscription' })
-                            }
-                        );
+                        await cancelPayPalSubscription(sub.paypal_subscription_id, 'System cleanup: ensuring only one active subscription');
                     } catch (e) {
                         console.error("[API-SUB-CREATE] Janitor Cleanup Error:", e);
                     }
@@ -171,7 +125,7 @@ export async function POST(request: Request) {
             subscription_id: subscription.id,
             amount: finalAmount,
             currency: 'USD',
-            status: 'COMPLETED',
+            status: 'succeeded',
             paypal_transaction_id: finalTxId,
             plan_name: planName + ' Plan',
             period_start: periodStart,
