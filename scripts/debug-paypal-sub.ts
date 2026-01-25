@@ -1,5 +1,5 @@
 
-import { getPayPalSubscription } from './lib/paypal';
+import { getPayPalSubscription } from '../lib/paypal';
 import dotenv from 'dotenv';
 import path from 'path';
 
