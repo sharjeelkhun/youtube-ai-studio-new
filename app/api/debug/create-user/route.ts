@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     // Create profile
     if (userData.user) {
-      const { error: profileError } = await supabase.from("profiles").insert([
+      const { error: profileError } = await (supabase.from("profiles") as any).insert([
         {
           id: userData.user.id,
           full_name: fullName,

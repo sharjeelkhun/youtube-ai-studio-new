@@ -15,13 +15,13 @@ export async function POST(req: Request) {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set(name: string, value: string, options) {
+        set(name: string, value: string, options: any) {
           cookieStore.set({ name, value, ...options })
         },
-        remove(name: string, options) {
+        remove(name: string, options: any) {
           cookieStore.set({ name, value: "", ...options })
         },
-      },
+      } as any,
     }
   )
 
@@ -38,25 +38,25 @@ export async function POST(req: Request) {
 
     // Get suggestions from AI
     const suggestions = await generateContentSuggestions(supabase, prompt)
-    
+
     // Validate that we got an array of suggestions
     if (!Array.isArray(suggestions)) {
       throw new Error("Invalid response format from AI")
     }
 
-    return NextResponse.json({ 
-      content: JSON.stringify(suggestions), 
-      structured: suggestions 
+    return NextResponse.json({
+      content: JSON.stringify(suggestions),
+      structured: suggestions
     })
-    
+
   } catch (error) {
     console.error("Error generating suggestions:", error)
-    
+
     // Provide more specific error messages based on the error type
     if (error instanceof Error) {
       if (error.message.includes("AI provider not configured")) {
         return NextResponse.json(
-          { 
+          {
             error: "AI provider not configured. Please configure your AI provider in Settings > AI Providers.",
             code: "ai_provider_not_configured"
           },
@@ -64,7 +64,7 @@ export async function POST(req: Request) {
         )
       } else if (error.message.includes("User not authenticated")) {
         return NextResponse.json(
-          { 
+          {
             error: "Authentication required. Please log in and try again.",
             code: "authentication_required"
           },
@@ -72,7 +72,7 @@ export async function POST(req: Request) {
         )
       } else if (error.message.includes("API key not configured")) {
         return NextResponse.json(
-          { 
+          {
             error: "API key not configured for the selected provider. Please check your settings.",
             code: "api_key_not_configured"
           },
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
         )
       } else if (error.message.includes("billing")) {
         return NextResponse.json(
-          { 
+          {
             error: "Billing issue with AI provider. Please check your account.",
             code: "billing_error"
           },
@@ -88,9 +88,9 @@ export async function POST(req: Request) {
         )
       }
     }
-    
+
     return NextResponse.json(
-      { 
+      {
         error: "Failed to generate AI suggestions. Please try again or check your AI provider settings.",
         code: "generation_failed"
       },

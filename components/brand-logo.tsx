@@ -12,7 +12,7 @@ interface BrandLogoProps {
 
 export function BrandLogo({
     className,
-    size = 32,
+    size = 50,
     showText = false,
     textClassName
 }: BrandLogoProps) {
@@ -20,7 +20,7 @@ export function BrandLogo({
         <div className={cn("flex items-center gap-2", className)}>
             <div
                 className="relative flex items-center justify-center"
-                style={{ width: size * 1.48, height: size }}
+                style={{ width: 50, height: 50 }}
             >
                 <Image
                     src="/brand/logo.png"

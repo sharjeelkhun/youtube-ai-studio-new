@@ -20,21 +20,21 @@ const getSupabase = () => {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
-        set(name: string, value: string, options) {
+        set(name: string, value: string, options: any) {
           try {
             cookieStore.set({ name, value, ...options })
           } catch (e) {
             console.error('Error setting cookie:', e)
           }
         },
-        remove(name: string, options) {
+        remove(name: string, options: any) {
           try {
             cookieStore.set({ name, value: "", ...options })
           } catch (e) {
             console.error('Error removing cookie:', e)
           }
         },
-      },
+      } as any,
     }
   )
 

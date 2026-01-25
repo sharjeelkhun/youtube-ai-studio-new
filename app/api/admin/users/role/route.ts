@@ -18,7 +18,7 @@ export async function POST(request: Request) {
             .eq('id', user.id)
             .single()
 
-        if (requesterProfile?.role !== 'admin') {
+        if ((requesterProfile as any)?.role !== 'admin') {
             return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
         }
 
@@ -34,8 +34,8 @@ export async function POST(request: Request) {
         }
 
         // 3. Update target user
-        const { error: updateError } = await supabaseAdmin
-            .from('profiles')
+        const { error: updateError } = await (supabaseAdmin
+            .from('profiles') as any)
             .update({ role })
             .eq('id', userId)
 

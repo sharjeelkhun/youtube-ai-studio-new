@@ -24,12 +24,13 @@ export async function GET() {
 
     // 1. Fetch ALL videos
     // We need to check everything because we might need to REMOVE 'short' tag from mislabeled ones
-    const { data: videos } = await supabase
+    const { data: channelData } = await (supabase.from('youtube_channels').select('id').eq('user_id', session.user.id) as any).single()
+    const { data: videos } = await (supabase
         .from('youtube_videos')
         .select('id, title, duration, tags')
-        .eq('channel_id', (await supabase.from('youtube_channels').select('id').eq('user_id', session.user.id).single()).data?.id)
+        .eq('channel_id', (channelData as any)?.id) as any)
 
-    if (!videos?.length) return NextResponse.json({ message: 'No videos found' })
+    if (!(videos as any[])?.length) return NextResponse.json({ message: 'No videos found' })
 
     let fixedCount = 0
     let processedCount = 0
@@ -40,7 +41,7 @@ export async function GET() {
     for (let i = 0; i < videos.length; i += BATCH_SIZE) {
         const batch = videos.slice(i, i + BATCH_SIZE)
 
-        await Promise.all(batch.map(async (v) => {
+        await Promise.all(batch.map(async (v: any) => {
             const seconds = parseDuration(v.duration || '')
             let isShort = false
 
@@ -84,8 +85,8 @@ export async function GET() {
 
     // 3. Apply updates
     if (updates.length > 0) {
-        const { error } = await supabase
-            .from('youtube_videos')
+        const { error } = await (supabase
+            .from('youtube_videos') as any)
             .upsert(updates.map(u => ({ id: u.id, tags: u.tags }))) // Upsert by ID to update tags
 
         if (error) return NextResponse.json({ error: 'Failed to update DB', details: error })

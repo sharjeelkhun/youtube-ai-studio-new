@@ -50,11 +50,12 @@ export async function POST(request: Request) {
 
     // Update the channel in database with new token
     const supabase = createServerClient()
-    const { error: updateError } = await supabase
-      .from('youtube_channels')
+    const expires_in = (data as any).expires_in || 3600
+    const { error: updateError } = await (supabase
+      .from('youtube_channels') as any)
       .update({
-        access_token: data.access_token,
-        token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+        access_token: (data as any).access_token,
+        token_expires_at: new Date(Date.now() + expires_in * 1000).toISOString(),
       })
       .eq('id', channelId)
 

@@ -148,18 +148,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No YouTube channel connected' }, { status: 404 })
     }
 
+    // Found channel
     console.log('Found channel:', {
-      id: channel.id,
-      title: channel.title,
+      id: (channel as any).id,
+      title: (channel as any).title,
       userId: session.user.id,
-      hasAccessToken: !!channel.access_token,
-      hasRefreshToken: !!channel.refresh_token,
-      tokenExpiresAt: channel.token_expires_at
+      hasAccessToken: !!(channel as any).access_token,
+      hasRefreshToken: !!(channel as any).refresh_token,
+      tokenExpiresAt: (channel as any).token_expires_at
     })
 
     // Get user profile to check for personal YouTube API Key or Gemini Key
-    const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id).single()
-    const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
+    const { data: profile } = await (supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id) as any).single()
+    const personalApiKey = (profile as any)?.youtube_api_key || (profile as any)?.ai_settings?.apiKeys?.gemini
 
     const appendKey = (url: string) => {
       if (!personalApiKey) return url
@@ -168,28 +169,28 @@ export async function GET(request: Request) {
     }
 
     // Check if we need to refresh the token
-    const tokenExpiry = new Date(channel.token_expires_at)
-    let accessToken = channel.access_token
+    const tokenExpiry = new Date((channel as any).token_expires_at)
+    let accessToken = (channel as any).access_token
 
     if (tokenExpiry <= new Date()) {
       console.log('Token expired, refreshing...')
       try {
-        accessToken = await refreshAccessToken(channel.refresh_token)
+        accessToken = await refreshAccessToken((channel as any).refresh_token)
 
         // Update the access token in the database
-        const { error: updateError } = await supabase
-          .from('youtube_channels')
+        const { error: updateError } = await (supabase
+          .from('youtube_channels') as any)
           .update({
             access_token: accessToken,
             token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
           })
-          .eq('id', channel.id)
+          .eq('id', (channel as any).id)
           .eq('user_id', session.user.id)
 
         if (updateError) {
           console.error('Error updating token:', {
             error: updateError,
-            channelId: channel.id,
+            channelId: (channel as any).id,
             userId: session.user.id
           })
           throw new Error('Failed to update access token')
@@ -199,7 +200,7 @@ export async function GET(request: Request) {
       } catch (error) {
         console.error('Error refreshing token:', {
           error,
-          channelId: channel.id,
+          channelId: (channel as any).id,
           userId: session.user.id
         })
         return NextResponse.json({ error: 'Failed to refresh access token' }, { status: 401 })
@@ -262,7 +263,7 @@ export async function GET(request: Request) {
 
         const video = {
           id: item.snippet.resourceId.videoId,
-          channel_id: channel.id,
+          channel_id: (channel as any).id,
           title: item.snippet.title,
           description: item.snippet.description,
           thumbnail_url: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.default?.url,
@@ -280,7 +281,7 @@ export async function GET(request: Request) {
 
     console.log('Successfully processed videos:', {
       total: videos.length,
-      channelId: channel.id
+      channelId: (channel as any).id
     })
 
     return NextResponse.json({

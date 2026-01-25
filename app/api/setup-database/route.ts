@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase"
 export async function POST() {
   try {
     // Create profiles table if it doesn't exist
-    const { error } = await supabase.rpc("execute_sql", {
+    const { error } = await (supabase as any).rpc("execute_sql", {
       sql_query: `
         CREATE TABLE IF NOT EXISTS profiles (
           id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,

@@ -19,15 +19,15 @@ export async function POST() {
       .eq('user_id', session.user.id)
       .single()
 
-    if (channelError || !channel) {
+    if (channelError || !(channel as any)) {
       return NextResponse.json({ error: 'No YouTube channel connected' }, { status: 404 })
     }
 
     // Delete associated videos first to maintain referential integrity
-    const { error: videosError } = await supabase
-      .from('youtube_videos')
+    const { error: videosError } = await (supabase
+      .from('youtube_videos') as any)
       .delete()
-      .eq('channel_id', channel.id)
+      .eq('channel_id', (channel as any).id)
 
     if (videosError) {
       console.error('Error disconnecting youtube channel (deleting videos):', videosError)
@@ -35,10 +35,10 @@ export async function POST() {
     }
 
     // Delete the channel itself
-    const { error: deleteChannelError } = await supabase
-      .from('youtube_channels')
+    const { error: deleteChannelError } = await (supabase
+      .from('youtube_channels') as any)
       .delete()
-      .eq('id', channel.id)
+      .eq('id', (channel as any).id)
 
     if (deleteChannelError) {
       console.error('Error disconnecting youtube channel (deleting channel):', deleteChannelError)

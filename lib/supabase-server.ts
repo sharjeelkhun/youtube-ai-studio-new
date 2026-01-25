@@ -27,7 +27,7 @@ export function createServerClient() {
             // Handle cookie errors in development
           }
         },
-      },
+      } as any,
     }
   )
 }

@@ -18,7 +18,7 @@ export function SiteHeader() {
             <div className="container mx-auto flex h-16 items-center justify-between px-2 sm:px-4 md:px-6">
                 <div className="flex items-center gap-2">
                     <Link href="/" className="flex items-center gap-2">
-                        <BrandLogo size={26} />
+                        <BrandLogo size={50} />
                         <span className="text-lg font-bold hidden sm:inline">YourAI Studio</span>
                         <span className="text-lg font-bold sm:hidden">YourAI Studio</span>
                     </Link>

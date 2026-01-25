@@ -66,7 +66,7 @@ export function DashboardSidebar() {
         <>
             <SidebarHeader className="pb-6">
                 <Link className="flex items-center gap-3 px-2 py-2" href="/dashboard">
-                    <BrandLogo size={34} />
+                    <BrandLogo size={50} />
                     <div className="flex flex-col">
                         <span className="text-lg font-bold leading-none tracking-tight">YourAI Studio</span>
                         <span className="text-xs text-muted-foreground font-medium">YouTube Growth</span>

@@ -720,7 +720,7 @@ export default function VideoPage() {
 
         // Combine database data with YouTube data and calculated metrics
         const fullVideoDetails = {
-          ...video,
+          ...(video as any),
           ...youtubeData,
           watch_time: calculatedWatchTime,
           engagement_rate: Math.round(calculatedEngagementRate * 100) / 100,
@@ -735,7 +735,7 @@ export default function VideoPage() {
         const { data: historyData } = await supabase
           .from('video_history')
           .select('*')
-          .eq('video_id', video.id)
+          .eq('video_id', (video as any).id)
           .order('created_at', { ascending: false })
 
         if (historyData) {
@@ -896,7 +896,7 @@ export default function VideoPage() {
 
       // Save to local history table
       // const supabase = createClientComponentClient()
-      await supabase.from('video_history').insert({
+      await (supabase.from('video_history') as any).insert({
         video_id: video?.id,
         title: editedVideo.title,
         description: editedVideo.description,
@@ -924,8 +924,8 @@ export default function VideoPage() {
     try {
       setIsSaving(true)
       // const supabase = createClientComponentClient()
-      const { error } = await supabase
-        .from('youtube_videos')
+      const { error } = await (supabase
+        .from('youtube_videos') as any)
         .update({
           title: historyItem.title,
           description: historyItem.description,

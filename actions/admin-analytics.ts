@@ -16,14 +16,15 @@ export async function getRevenueData() {
             .order('created_at', { ascending: true })
 
         if (error) throw error
+        if (!payments) return []
 
         // Group by date
         const revenueByDate: Record<string, number> = {}
 
-        payments.forEach(payment => {
+        for (const payment of (payments as any[])) {
             const date = new Date(payment.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
             revenueByDate[date] = (revenueByDate[date] || 0) + (payment.amount / 100) // Assuming amount is in cents
-        })
+        }
 
         return Object.entries(revenueByDate).map(([date, amount]) => ({
             date,
@@ -43,14 +44,15 @@ export async function getSubscriptionStats() {
             .in('status', ['active', 'trialing'])
 
         if (error) throw error
+        if (!subscriptions) return []
 
         const stats: Record<string, number> = {}
 
-        subscriptions.forEach(sub => {
+        for (const sub of (subscriptions as any[])) {
             // Normalize plan names if needed, or use raw plan_id
             const plan = sub.plan_id || 'Unknown'
             stats[plan] = (stats[plan] || 0) + 1
-        })
+        }
 
         // Also get total users to calculate "Free" (Total Users - Active Subs)
         const { count: totalUsers } = await supabaseAdmin
@@ -87,23 +89,24 @@ export async function getAIUsageStats() {
             .order('created_at', { ascending: true })
 
         if (error) throw error
+        if (!ideas) return { byType: [], trend: [] }
 
         // 1. Group by Type
         const typeStats: Record<string, number> = {}
-        ideas.forEach(idea => {
+        for (const idea of (ideas as any[])) {
             // Clean up type name (e.g. 'video_idea' -> 'Video Idea')
             const cleanType = idea.type.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
             typeStats[cleanType] = (typeStats[cleanType] || 0) + 1
-        })
+        }
 
         const byType = Object.entries(typeStats).map(([name, value]) => ({ name, value }))
 
         // 2. Group by Date (Trend)
         const trendStats: Record<string, number> = {}
-        ideas.forEach(idea => {
+        for (const idea of (ideas as any[])) {
             const date = new Date(idea.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
             trendStats[date] = (trendStats[date] || 0) + 1
-        })
+        }
 
         const trend = Object.entries(trendStats).map(([date, count]) => ({ date, count }))
 

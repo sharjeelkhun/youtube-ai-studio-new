@@ -59,7 +59,7 @@ export async function GET(req: Request) {
   try {
     // Get the user's session
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    
+
     if (sessionError || !session) {
       return getDefaultResponse(
         provider,
@@ -95,7 +95,7 @@ export async function GET(req: Request) {
       );
     }
 
-    if (!settings || !settings.ai_settings) {
+    if (!settings || !(settings as any).ai_settings) {
       return getDefaultResponse(
         provider,
         nextReset,
@@ -106,7 +106,7 @@ export async function GET(req: Request) {
     }
 
     // Check provider configuration
-    const apiKeys = (settings.ai_settings as any)?.apiKeys || {};
+    const apiKeys = (settings as any).ai_settings?.apiKeys || {};
     const apiKey = apiKeys[provider];
     const providerConfigured = !!apiKey && (
       (provider === 'openai' && apiKey.startsWith('sk-')) ||
@@ -144,8 +144,8 @@ export async function GET(req: Request) {
 
     // Calculate total usage (handle empty or null records)
     const totalUsage = {
-      api_calls: usageRecords?.reduce((sum, record) => sum + (record.api_calls || 0), 0) || 0,
-      content_generation: usageRecords?.reduce((sum, record) => sum + (record.content_generation || 0), 0) || 0
+      api_calls: (usageRecords as any[])?.reduce((sum, record) => sum + (record.api_calls || 0), 0) || 0,
+      content_generation: (usageRecords as any[])?.reduce((sum, record) => sum + (record.content_generation || 0), 0) || 0
     };
 
     // Try to fetch provider-specific usage data
@@ -162,13 +162,13 @@ export async function GET(req: Request) {
             }
           }
         );
-        
+
         if (response.ok) {
           const data = await response.json();
           const apiUsage = {
             api_calls: data.data?.length || 0,
             content_generation: Math.ceil(
-              data.data?.reduce((sum: number, item: any) => 
+              data.data?.reduce((sum: number, item: any) =>
                 sum + (item.n_context_tokens || 0) + (item.n_generated_tokens || 0), 0
               ) / 1000
             ) || 0
@@ -177,7 +177,7 @@ export async function GET(req: Request) {
           totalUsage.content_generation = Math.max(totalUsage.content_generation, apiUsage.content_generation);
         }
       }
-      
+
       if (provider === 'mistral') {
         const response = await fetch('https://api.mistral.ai/v1/user/usage', {
           headers: {
@@ -185,7 +185,7 @@ export async function GET(req: Request) {
             'Content-Type': 'application/json'
           }
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           const apiUsage = {
@@ -246,7 +246,7 @@ export async function GET(req: Request) {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
     });
-    
+
     return getDefaultResponse(
       provider,
       nextReset,

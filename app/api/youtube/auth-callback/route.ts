@@ -93,7 +93,7 @@ export async function POST(request: Request) {
             set(name: string, value: string, options: any) { cookieStore.set({ name, value, ...options }) },
             remove(name: string, options: any) { cookieStore.delete(name) },
           },
-        }
+        } as any
       )
       const { data: { session } } = await supabase.auth.getSession()
       userId = session?.user?.id
@@ -104,8 +104,8 @@ export async function POST(request: Request) {
     }
 
     // Get user profile using Admin client
-    const { data: profile } = await supabaseAdmin.from('profiles').select('youtube_api_key, ai_settings').eq('id', userId).single()
-    const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
+    const { data: profile } = await (supabaseAdmin.from('profiles').select('youtube_api_key, ai_settings').eq('id', userId) as any).single()
+    const personalApiKey = (profile as any)?.youtube_api_key || (profile as any)?.ai_settings?.apiKeys?.gemini
 
     const appendKey = (url: string) => {
       if (!personalApiKey) return url
@@ -150,27 +150,27 @@ export async function POST(request: Request) {
     // Check if channel is already connected to another user
     // Check if channel is already connected to another user
     // Check if channel is already connected to another user
-    const { data: existingChannel } = await supabaseAdmin
+    const { data: existingChannel } = await (supabaseAdmin
       .from("youtube_channels")
       .select("user_id")
-      .eq("id", channelId)
+      .eq("id", channelId) as any)
       .single()
 
-    if (existingChannel && existingChannel.user_id !== userId) {
+    if (existingChannel && (existingChannel as any).user_id !== userId) {
       // Parse force claim from state
       const forceClaim = state && state.toString().endsWith('::force')
 
       if (!forceClaim) {
         // Get the email of the existing owner to show in the error
-        const { data: channelOwner } = await supabaseAdmin
+        const { data: channelOwner } = await (supabaseAdmin
           .from('profiles')
           .select('email')
-          .eq('id', existingChannel.user_id)
+          .eq('id', (existingChannel as any).user_id) as any)
           .single()
 
         return NextResponse.json(
           {
-            error: `This YouTube channel is already connected to another account (${channelOwner?.email || 'Unknown'}). Do you want to claim it?`,
+            error: `This YouTube channel is already connected to another account (${(channelOwner as any)?.email || 'Unknown'}). Do you want to claim it?`,
             conflict: true,
             channelTitle: channel.snippet.title
           },
@@ -179,7 +179,7 @@ export async function POST(request: Request) {
       }
 
       // Force claim: Delete existing channel and videos
-      console.log(`Force claiming channel ${channelId} from user ${existingChannel.user_id} to ${userId}`)
+      console.log(`Force claiming channel ${channelId} from user ${(existingChannel as any).user_id} to ${userId}`)
 
       // Delete associated videos first
       await supabaseAdmin
@@ -194,7 +194,7 @@ export async function POST(request: Request) {
         .eq('id', channelId)
     }
 
-    await supabaseAdmin.from("youtube_channels").upsert(
+    await (supabaseAdmin.from("youtube_channels") as any).upsert(
       {
         id: channelId,
         user_id: userId,
@@ -283,14 +283,14 @@ export async function POST(request: Request) {
 
         const videos = await Promise.all(videoPromises)
 
-        await supabaseAdmin.from("youtube_videos").upsert(videos, {
+        await (supabaseAdmin.from("youtube_videos") as any).upsert(videos, {
           onConflict: "id",
         })
       }
 
       // Update profile onboarding status
-      await supabaseAdmin
-        .from('profiles')
+      await (supabaseAdmin
+        .from('profiles') as any)
         .update({ onboarding_completed: true })
         .eq('id', userId)
     } catch (videoError: any) {

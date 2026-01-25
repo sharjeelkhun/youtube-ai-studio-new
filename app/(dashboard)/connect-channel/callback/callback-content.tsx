@@ -85,15 +85,16 @@ export function CallbackContent() {
                 })
 
                 // Check if onboarding is complete
+                const { data: { user } } = await supabase.auth.getUser()
                 const { data: profile } = await supabase
                     .from("profiles")
                     .select("onboarding_completed")
-                    .eq("id", (await supabase.auth.getUser()).data.user?.id)
+                    .eq("id", user?.id || "")
                     .single()
 
                 // Redirect after short delay
                 setTimeout(() => {
-                    if (profile && !profile.onboarding_completed) {
+                    if (profile && !(profile as any).onboarding_completed) {
                         window.location.href = "/setup"
                     } else {
                         window.location.href = "/dashboard"

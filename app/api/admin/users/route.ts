@@ -38,9 +38,9 @@ export async function GET() {
         }
 
         // Merge data
-        const combinedUsers = profiles.map(profile => {
-            const sub = subscriptions?.find(s => s.user_id === profile.id)
-            const authUser = users?.find(u => u.id === profile.id)
+        const combinedUsers = (profiles as any[]).map(profile => {
+            const sub = (subscriptions as any[])?.find(s => s.user_id === profile.id)
+            const authUser = (users as any[])?.find(u => u.id === profile.id)
 
             return {
                 id: profile.id,

@@ -188,7 +188,7 @@ export function AdminAnalytics() {
                                     cursor={{ fill: 'transparent' }}
                                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                                 />
-                                <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0]} barSize={20} />
+                                <Bar dataKey="value" fill="#8b5cf6" radius={[0, 4, 4, 0] as any} barSize={20} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>

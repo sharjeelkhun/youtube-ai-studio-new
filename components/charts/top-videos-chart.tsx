@@ -33,9 +33,9 @@ export function TopVideosChart() {
             color: "hsl(var(--foreground))",
             borderRadius: "8px",
           }}
-          formatter={(value) => [`${value.toLocaleString()} views`, "Views"]}
+          formatter={(value) => [`${value?.toLocaleString() ?? "0"} views`, "Views"]}
         />
-        <Bar dataKey="views" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={20} />
+        <Bar dataKey="views" fill="hsl(var(--primary))" radius={[0, 4, 4, 0] as any} barSize={20} />
       </BarChart>
     </ResponsiveContainer>
   )

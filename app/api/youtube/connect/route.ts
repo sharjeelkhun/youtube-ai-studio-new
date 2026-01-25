@@ -35,7 +35,7 @@ export async function GET(request: Request) {
         remove(name: string, options: any) {
           cookieStore.delete(name)
         },
-      },
+      } as any,
     }
   )
 

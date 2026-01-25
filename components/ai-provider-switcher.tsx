@@ -63,8 +63,8 @@ export function AIProviderSwitcher() {
                 .eq('id', user.id)
                 .maybeSingle()
 
-            if (profile && profile.ai_provider !== currentProvider) {
-                setCurrentProvider(profile.ai_provider)
+            if (profile && (profile as any).ai_provider !== currentProvider) {
+                setCurrentProvider((profile as any).ai_provider)
             }
         } catch (error) {
             console.error('Error loading provider:', error)
@@ -82,8 +82,8 @@ export function AIProviderSwitcher() {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) return
 
-            const { error } = await supabase
-                .from('profiles')
+            const { error } = await (supabase
+                .from('profiles') as any)
                 .update({ ai_provider: providerId })
                 .eq('id', user.id)
 

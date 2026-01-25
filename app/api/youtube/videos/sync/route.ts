@@ -137,19 +137,19 @@ export async function POST(request: Request) {
     let planName = 'Starter' // Default plan
     if (subscription) {
       const isValid =
-        ['active', 'trialing'].includes(subscription.status) ||
-        (subscription.status === 'cancelled' && subscription.current_period_end && new Date(subscription.current_period_end) > new Date())
+        ['active', 'trialing'].includes((subscription as any).status) ||
+        ((subscription as any).status === 'cancelled' && (subscription as any).current_period_end && new Date((subscription as any).current_period_end) > new Date())
 
       if (isValid) {
-        const planId = subscription.plan_id?.toLowerCase()
+        const planId = (subscription as any).plan_id?.toLowerCase()
         if (planId === 'professional') planName = 'Professional'
         else if (planId === 'enterprise') planName = 'Enterprise'
       }
     }
 
     // Check for personal API key
-    const { data: profile } = await supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id).single()
-    const personalApiKey = profile?.youtube_api_key || profile?.ai_settings?.apiKeys?.gemini
+    const { data: profile } = await (supabase.from('profiles').select('youtube_api_key, ai_settings').eq('id', session.user.id) as any).single()
+    const personalApiKey = (profile as any)?.youtube_api_key || (profile as any)?.ai_settings?.apiKeys?.gemini
 
     // Determine limit
     let videoSyncLimit = 5 // Default for Free/Starter
@@ -179,10 +179,10 @@ export async function POST(request: Request) {
     }
 
     // Get the user's YouTube channel
-    const { data: channel, error: channelError } = await supabase
+    const { data: channel, error: channelError } = await (supabase
       .from('youtube_channels')
       .select('*')
-      .eq('user_id', session.user.id)
+      .eq('user_id', session.user.id) as any)
       .maybeSingle()
 
     if (channelError) {
@@ -201,34 +201,34 @@ export async function POST(request: Request) {
     }
 
     console.log('Found channel:', {
-      id: channel.id,
-      title: channel.title,
+      id: (channel as any).id,
+      title: (channel as any).title,
       userId: session.user.id
     })
 
     // Check if we need to refresh the token
-    const tokenExpiry = new Date(channel.token_expires_at)
-    let accessToken = channel.access_token
+    const tokenExpiry = new Date((channel as any).token_expires_at)
+    let accessToken = (channel as any).access_token
 
     if (tokenExpiry <= new Date()) {
       console.log('Token expired, refreshing...')
       try {
-        accessToken = await refreshAccessToken(channel.refresh_token)
+        accessToken = await refreshAccessToken((channel as any).refresh_token)
 
         // Update the access token in the database
-        const { error: updateError } = await supabase
-          .from('youtube_channels')
+        const { error: updateError } = await (supabase
+          .from('youtube_channels') as any)
           .update({
             access_token: accessToken,
             token_expires_at: new Date(Date.now() + 3600 * 1000).toISOString(), // 1 hour from now
           })
-          .eq('id', channel.id)
+          .eq('id', (channel as any).id)
           .eq('user_id', session.user.id)
 
         if (updateError) {
           console.error('Error updating token:', {
             error: updateError,
-            channelId: channel.id,
+            channelId: (channel as any).id,
             userId: session.user.id
           })
           throw new Error('Failed to update access token')
@@ -238,7 +238,7 @@ export async function POST(request: Request) {
       } catch (error) {
         console.error('Error refreshing token:', {
           error,
-          channelId: channel.id,
+          channelId: (channel as any).id,
           userId: session.user.id
         })
         return NextResponse.json({ error: 'Failed to refresh access token' }, { status: 401 })
@@ -246,7 +246,7 @@ export async function POST(request: Request) {
     }
 
     // Get the channel's uploads playlist ID
-    const channelUrl = appendKey(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails,statistics&id=${channel.id}`)
+    const channelUrl = appendKey(`https://www.googleapis.com/youtube/v3/channels?part=contentDetails,statistics&id=${(channel as any).id}`)
     console.log('Fetching channel details from:', channelUrl)
 
     const channelResponse = await fetch(channelUrl, {
@@ -362,7 +362,7 @@ export async function POST(request: Request) {
 
         return {
           id: video.id,
-          channel_id: channel.id,
+          channel_id: (channel as any).id,
           title: base?.title || '',
           description: base?.description || '',
           thumbnail_url: base?.thumbnails?.medium?.url || base?.thumbnails?.default?.url || null,
@@ -379,8 +379,8 @@ export async function POST(request: Request) {
       // Batch upsert to database (much faster)
       const validVideos = videoBatchData.filter(v => v !== null)
       if (validVideos.length > 0) {
-        const { error: upsertError } = await supabase
-          .from('youtube_videos')
+        const { error: upsertError } = await (supabase
+          .from('youtube_videos') as any)
           .upsert(validVideos, {
             onConflict: 'id'
           })
@@ -399,14 +399,14 @@ export async function POST(request: Request) {
     const totalComments = videos.reduce((sum, video) => sum + (video.comment_count || 0), 0)
 
     // Update channel statistics
-    const { error: updateError } = await supabase
-      .from('youtube_channels')
+    const { error: updateError } = await (supabase
+      .from('youtube_channels') as any)
       .update({
         view_count: totalViews,
         video_count: videos.length,
         last_synced: new Date().toISOString()
       })
-      .eq('id', channel.id)
+      .eq('id', (channel as any).id)
       .eq('user_id', session.user.id)
 
     if (updateError) {

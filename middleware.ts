@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
           response = NextResponse.next({ request: { headers: request.headers } });
           response.cookies.set({ name, value: "", ...options });
         },
-      },
+      } as any,
     }
   );
 
@@ -78,7 +78,7 @@ export async function middleware(request: NextRequest) {
       // If onboarding is not complete and user is trying to access protected routes
       if (
         profile &&
-        !profile.onboarding_completed &&
+        !(profile as any).onboarding_completed &&
         (pathname.startsWith("/dashboard") ||
           pathname.startsWith("/videos") ||
           pathname.startsWith("/settings") ||
@@ -88,7 +88,7 @@ export async function middleware(request: NextRequest) {
       }
 
       // If onboarding is complete and user is on setup page, redirect to dashboard
-      if (profile && profile.onboarding_completed && pathname === "/setup") {
+      if (profile && (profile as any).onboarding_completed && pathname === "/setup") {
         return NextResponse.redirect(new URL("/dashboard", request.url));
       }
     } catch (error) {

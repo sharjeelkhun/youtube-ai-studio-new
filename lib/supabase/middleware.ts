@@ -53,7 +53,7 @@ export const createClient = (request: NextRequest) => {
             ...options,
           })
         },
-      },
+      } as any,
     }
   )
 
