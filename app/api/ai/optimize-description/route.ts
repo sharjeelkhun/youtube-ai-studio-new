@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { handleOpenAI, handleGemini, handleAnthropic, handleMistral } from '@/lib/ai-description-handlers'
+import { unifiedOptimizer } from '@/lib/unified-ai-optimizer'
 import { RateLimitTimeoutError } from '@/lib/rate-limiter'
 
 export async function POST(req: Request) {
@@ -77,29 +77,27 @@ export async function POST(req: Request) {
     // Extract userId for rate limiting
     const userId = session.user.id
 
-    let optimizedContent
+    // Build video context
+    const context = {
+      videoId: (await req.clone().json()).videoId || 'legacy-desc-request',
+      currentTitle: title,
+      currentDescription: description,
+      currentTags: []
+    }
 
     try {
-      switch (profile.ai_provider) {
-        case 'openai':
-          optimizedContent = await handleOpenAI(apiKey, title, description, profile.ai_settings, userId)
-          break
-        case 'anthropic':
-          optimizedContent = await handleAnthropic(apiKey, title, description, profile.ai_settings, userId)
-          break
-        case 'mistral':
-          optimizedContent = await handleMistral(apiKey, title, description, profile.ai_settings, userId)
-          break
-        case 'gemini':
-          optimizedContent = await handleGemini(apiKey, title, description, profile.ai_settings, userId)
-          break
-        default:
-          return NextResponse.json({ error: 'Unsupported AI provider' }, { status: 400 })
-      }
+      const result = await unifiedOptimizer.optimize(
+        context,
+        provider as any,
+        apiKey,
+        profile.ai_settings,
+        userId,
+        'description'
+      )
 
       return NextResponse.json({
-        title: optimizedContent.title || title,
-        description: optimizedContent.description || description
+        title: result.title || title,
+        description: result.description || description
       })
     } catch (error: any) {
       console.error('[AI_OPTIMIZE_DESCRIPTION_ERROR]', error)

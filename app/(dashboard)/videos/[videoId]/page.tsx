@@ -2590,7 +2590,7 @@ export default function VideoPage() {
                     <TrendingUp className="h-3 w-3 text-emerald-600 dark:text-emerald-500" />
                   </div>
                   <p className="text-2xl font-bold tracking-tight text-emerald-900 dark:text-emerald-100">
-                    {video.view_count.toLocaleString()}
+                    {video?.view_count?.toLocaleString() || '0'}
                   </p>
                   <div className="h-1.5 w-full bg-emerald-200/30 dark:bg-emerald-900/30 rounded-full overflow-hidden">
                     <div
@@ -2610,7 +2610,7 @@ export default function VideoPage() {
                     <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-500" />
                   </div>
                   <p className="text-2xl font-bold tracking-tight text-blue-900 dark:text-blue-100">
-                    {video.like_count.toLocaleString()}
+                    {video?.like_count?.toLocaleString() || '0'}
                   </p>
                   <div className="h-1.5 w-full bg-blue-200/30 dark:bg-blue-900/30 rounded-full overflow-hidden">
                     <div
@@ -2630,7 +2630,7 @@ export default function VideoPage() {
                     <TrendingUp className="h-3 w-3 text-purple-600 dark:text-purple-500" />
                   </div>
                   <p className="text-2xl font-bold tracking-tight text-purple-900 dark:text-purple-100">
-                    {video.comment_count?.toLocaleString() || '0'}
+                    {video?.comment_count?.toLocaleString() || '0'}
                   </p>
                   <div className="h-1.5 w-full bg-purple-200/30 dark:bg-purple-900/30 rounded-full overflow-hidden">
                     <div
@@ -2650,7 +2650,7 @@ export default function VideoPage() {
                     <TrendingUp className="h-3 w-3 text-amber-600 dark:text-amber-500" />
                   </div>
                   <p className="text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100">
-                    {(video.watch_time || 0).toLocaleString()}
+                    {(video?.watch_time || 0).toLocaleString()}
                   </p>
                   <p className="text-[10px] text-amber-700 dark:text-amber-400 font-medium">
                     Estimated Views
@@ -2698,7 +2698,7 @@ export default function VideoPage() {
                       <span className="text-muted-foreground font-medium">Subscribers Gained</span>
                       <div className="flex items-center gap-2">
                         <Users className="h-3.5 w-3.5 text-primary" />
-                        <span className="font-semibold text-foreground">+{video.subscriber_gained?.toLocaleString()}</span>
+                        <span className="font-semibold text-foreground">+{video?.subscriber_gained?.toLocaleString() || '0'}</span>
                       </div>
                     </div>
                     <p className="text-[10px] text-muted-foreground">

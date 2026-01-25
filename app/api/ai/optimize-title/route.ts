@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
-import { handleOpenAI, handleGemini, handleAnthropic, handleMistral } from "@/lib/ai-title-handlers";
+import { unifiedOptimizer } from "@/lib/unified-ai-optimizer";
 import { RateLimitTimeoutError } from '@/lib/rate-limiter';
 
 export async function POST(request: Request) {
@@ -16,7 +16,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const { title, description } = await request.json();
+    const body = await request.json();
+    const { title, description } = body;
 
     if (!title || !description) {
       return NextResponse.json(
@@ -48,8 +49,6 @@ export async function POST(request: Request) {
       if (freeUsage < 3) {
         console.log(`[FREE-PLAN] User ${session.user.id} using free generation (${freeUsage + 1}/3)`);
 
-        // Use System Key (Fallback)
-        // Ensure you have SYSTEM_GEMINI_API_KEY in your .env
         apiKey = process.env.SYSTEM_GEMINI_API_KEY || null;
         provider = 'gemini';
 
@@ -60,7 +59,6 @@ export async function POST(request: Request) {
           );
         }
 
-        // Increment usage count
         const newSettings = {
           ...profile.ai_settings,
           freeUsageCount: freeUsage + 1
@@ -68,7 +66,7 @@ export async function POST(request: Request) {
 
         const { error: updateError } = await supabase
           .from('profiles')
-          .update({ settings: newSettings }) // Assuming 'settings' column exists and maps to 'ai_settings'
+          .update({ settings: newSettings })
           .eq('id', session.user.id);
 
         if (updateError) {
@@ -84,31 +82,29 @@ export async function POST(request: Request) {
 
     // Extract userId for rate limiting
     const userId = session.user.id;
-    let optimizedTitle;
+
+    // Build video context
+    const context = {
+      videoId: body.videoId || 'legacy-title-request',
+      currentTitle: title,
+      currentDescription: description,
+      currentTags: []
+    }
 
     try {
-      switch (provider) {
-        case 'openai':
-          optimizedTitle = await handleOpenAI(apiKey, title, description, profile.ai_settings, userId);
-          break;
-        case 'anthropic':
-          optimizedTitle = await handleAnthropic(apiKey, title, description, profile.ai_settings, userId);
-          break;
-        case 'mistral':
-          optimizedTitle = await handleMistral(apiKey, title, description, profile.ai_settings, userId);
-          break;
-        case 'gemini':
-          optimizedTitle = await handleGemini(apiKey, title, description, profile.ai_settings, userId);
-          break;
-        default:
-          return NextResponse.json({ error: 'Unsupported AI provider' }, { status: 400 });
-      }
+      const result = await unifiedOptimizer.optimize(
+        context,
+        provider as any,
+        apiKey,
+        profile.ai_settings,
+        userId,
+        'title'
+      )
 
-      return NextResponse.json({ optimizedTitle });
+      return NextResponse.json({ optimizedTitle: result.title });
     } catch (error: any) {
       console.error("Error with AI provider:", error);
 
-      // Handle rate limit timeout errors from centralized limiter
       if (error instanceof RateLimitTimeoutError) {
         return NextResponse.json({
           error: error.message,
@@ -118,7 +114,6 @@ export async function POST(request: Request) {
 
       const errorMessage = error?.message || String(error);
 
-      // Handle rate limit errors (429)
       if (/429|rate.?limit|too many requests|quota exceeded/i.test(errorMessage)) {
         return NextResponse.json({
           error: `Your ${provider} provider is currently rate limited. Please wait a moment and try again.`,
@@ -126,7 +121,6 @@ export async function POST(request: Request) {
         }, { status: 429 });
       }
 
-      // Handle billing/credit errors
       if (/credit|insufficient|balance|billing|plan/i.test(errorMessage)) {
         return NextResponse.json({
           error: `Your ${provider} account has a billing issue. Please check your credits or plan on the provider's website.`,

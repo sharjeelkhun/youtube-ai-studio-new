@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs"
 import { cookies } from "next/headers"
+import { acquireRateLimit } from "@/lib/rate-limiter"
 
 export async function POST(request: NextRequest) {
     try {
@@ -9,6 +10,22 @@ export async function POST(request: NextRequest) {
         if (!provider || !apiKey) {
             return NextResponse.json({ valid: false, error: "Provider and API key are required" }, { status: 400 })
         }
+
+        // Get the user session for rate limiting
+        const cookieStore = cookies()
+        const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+        const {
+            data: { session },
+        } = await supabase.auth.getSession()
+
+        if (!session) {
+            return NextResponse.json({ valid: false, error: "Unauthorized" }, { status: 401 })
+        }
+
+        const userId = session.user.id
+
+        // Apply rate limiting for onboarding key validation
+        await acquireRateLimit('ai_validate', userId)
 
         // Validate API key based on provider
         let isValid = false
@@ -37,17 +54,28 @@ export async function POST(request: NextRequest) {
 
         if (isValid) {
             // Save the API key to the user's profile
-            const supabase = createRouteHandlerClient({ cookies })
-            const {
-                data: { user },
-            } = await supabase.auth.getUser()
+            if (session.user) {
+                // Get existing settings to preserve other keys
+                const { data: profile } = await supabase
+                    .from("profiles")
+                    .select("ai_settings")
+                    .eq("id", session.user.id)
+                    .single()
 
-            if (user) {
+                const existingSettings = (profile?.ai_settings as any) || {}
+                const existingKeys = existingSettings.apiKeys || {}
+
                 const { error } = await supabase
                     .from("profiles")
                     .update({
                         ai_provider: provider,
-                        ai_settings: { api_key: apiKey },
+                        ai_settings: {
+                            ...existingSettings,
+                            apiKeys: {
+                                ...existingKeys,
+                                [provider]: apiKey
+                            }
+                        },
                     })
                     .eq("id", user.id)
 
