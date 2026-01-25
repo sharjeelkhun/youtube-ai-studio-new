@@ -47,6 +47,11 @@ export async function middleware(request: NextRequest) {
 
   console.log(`[Middleware] Path: ${pathname}, User: ${user?.id || 'null'}`)
 
+  // Redirect logged-in users from root to dashboard
+  if (user && pathname === "/") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   // Redirect logged-in users away from login/signup
   if (user && (pathname === "/login" || pathname === "/signup")) {
     return NextResponse.redirect(new URL("/dashboard", request.url));

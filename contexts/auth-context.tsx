@@ -32,6 +32,8 @@ interface AuthContextType {
   validateEmail: (email: string) => boolean
   validatePassword: (password: string) => boolean
   isMockAuth: boolean
+  updatePassword: (password: string) => Promise<void>
+  deleteAccount: () => Promise<void>
   loading: boolean
   error: Error | null
 }
@@ -271,6 +273,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return password.length >= 6
   }
 
+  const updatePassword = async (password: string) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      })
+      if (error) throw error
+    } catch (err: any) {
+      console.error('Error updating password:', err)
+      setError(err)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const deleteAccount = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/user/delete', {
+        method: 'DELETE'
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to delete account')
+
+      // Successfully deleted, now sign out locally
+      await signOut()
+    } catch (err: any) {
+      console.error('Error deleting account:', err)
+      setError(err)
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const value = {
     user,
     supabaseUser,
@@ -284,6 +324,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     resendOtp,
     signOut,
     resetPassword,
+    updatePassword,
+    deleteAccount,
     validateEmail,
     validatePassword,
     isMockAuth: false,

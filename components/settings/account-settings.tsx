@@ -7,12 +7,24 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Loader2, Save, User, Lock, ShieldAlert, BadgeCheck, Mail, Camera } from "lucide-react"
+import { Loader2, Save, User, Lock, ShieldAlert, BadgeCheck, Mail, Camera, Eye, EyeOff } from "lucide-react"
 import { toast } from "sonner"
 import { useSession } from "@/contexts/session-context"
 import { useYouTubeChannel } from "@/contexts/youtube-channel-context"
 import { Badge } from "@/components/ui/badge"
 import { supabase } from "@/lib/supabase/client"
+import { useAuth } from "@/contexts/auth-context"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 export function AccountSettings() {
   const [isLoading, setIsLoading] = useState(false)
@@ -25,6 +37,14 @@ export function AccountSettings() {
     username: "",
     phone: "",
   })
+  const [passwordData, setPasswordData] = useState({
+    current: "",
+    new: "",
+    confirm: "",
+  })
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false)
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false)
+  const { updatePassword, deleteAccount } = useAuth()
 
   useEffect(() => {
     const getProfile = async () => {
@@ -35,7 +55,7 @@ export function AccountSettings() {
           .from("profiles")
           .select("*")
           .eq("id", session.user.id)
-          .single()
+          .single() as any
 
         if (error) {
           console.error("Error fetching profile:", error)
@@ -103,14 +123,14 @@ export function AccountSettings() {
       if (authError) throw authError
 
       // 2. Update Profiles Table
-      const { error: profileError } = await supabase
-        .from('profiles')
+      const { error: profileError } = await (supabase
+        .from('profiles') as any)
         .update({
           full_name: formData.name,
           phone: formData.phone,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', session?.user?.id)
+        .eq('id', session?.user?.id!)
 
       if (profileError) throw profileError
 
@@ -124,6 +144,44 @@ export function AccountSettings() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleUpdatePassword = async () => {
+    if (!passwordData.new || passwordData.new !== passwordData.confirm) {
+      toast.error("Error", { description: "Passwords do not match." })
+      return
+    }
+
+    if (passwordData.new.length < 6) {
+      toast.error("Error", { description: "Password must be at least 6 characters." })
+      return
+    }
+
+    setIsUpdatingPassword(true)
+    try {
+      await updatePassword(passwordData.new)
+      toast.success("Password updated", {
+        description: "Your security credentials have been updated successfully.",
+      })
+      setPasswordData({ current: "", new: "", confirm: "" })
+    } catch (error: any) {
+      toast.error("Failed to update password", { description: error.message })
+    } finally {
+      setIsUpdatingPassword(false)
+    }
+  }
+
+  const handleDeleteAccount = async () => {
+    setIsDeletingAccount(true)
+    try {
+      await deleteAccount()
+      toast.success("Account deleted", {
+        description: "Your account and data have been permanently removed.",
+      })
+    } catch (error: any) {
+      toast.error("Deletion failed", { description: error.message })
+      setIsDeletingAccount(false)
     }
   }
 
@@ -268,22 +326,38 @@ export function AccountSettings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="current-password">Current Password</Label>
-              <Input id="current-password" type="password" placeholder="••••••••" className="bg-background/50" />
+              <Label htmlFor="new-password">New Password</Label>
+              <Input
+                id="new-password"
+                type="password"
+                placeholder="••••••••"
+                className="bg-background/50"
+                value={passwordData.new}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, new: e.target.value }))}
+              />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" placeholder="••••••••" className="bg-background/50" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirm-password">Confirm</Label>
-                <Input id="confirm-password" type="password" placeholder="••••••••" className="bg-background/50" />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">Confirm New Password</Label>
+              <Input
+                id="confirm-password"
+                type="password"
+                placeholder="••••••••"
+                className="bg-background/50"
+                value={passwordData.confirm}
+                onChange={(e) => setPasswordData(prev => ({ ...prev, confirm: e.target.value }))}
+              />
             </div>
           </CardContent>
           <CardFooter className="flex justify-end pt-2">
-            <Button variant="outline" className="hover:bg-muted/50">Update Password</Button>
+            <Button
+              variant="outline"
+              className="hover:bg-muted/50"
+              onClick={handleUpdatePassword}
+              disabled={isUpdatingPassword || !passwordData.new || !passwordData.confirm}
+            >
+              {isUpdatingPassword ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Update Password
+            </Button>
           </CardFooter>
         </Card>
       </div>
@@ -305,9 +379,28 @@ export function AccountSettings() {
                 Once you delete your account, there is no going back. All your data and settings will be permanently removed.
               </p>
             </div>
-            <Button variant="destructive" size="sm" className="shadow-sm">
-              Delete Account
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="shadow-sm" disabled={isDeletingAccount}>
+                  {isDeletingAccount ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Delete Account"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action cannot be undone. This will permanently delete your account
+                    and remove your data from our servers.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Delete Permanently
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardContent>
       </Card>
