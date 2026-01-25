@@ -3,26 +3,30 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabase/client';
 
 export default function AuthCallbackPage() {
   const router = useRouter();
-  const supabase = createClientComponentClient();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
+      console.log('[CALLBACK] Handling auth callback...');
+
       const { data: { session }, error } = await supabase.auth.getSession();
 
       if (error) {
-        console.error('Error during auth callback:', error);
+        console.error('[CALLBACK] Error getting session:', error);
         router.push('/login?error=auth');
         return;
       }
 
       if (!session?.user) {
+        console.warn('[CALLBACK] No session found, redirecting to login');
         router.push('/login');
         return;
       }
+
+      console.log('[CALLBACK] Session established for user:', session.user.id);
 
       // Check for plan in URL first, then fallback to cookies
       const searchParams = new URLSearchParams(window.location.search);
@@ -33,40 +37,50 @@ export default function AuthCallbackPage() {
         const pendingPlanCookie = cookies.find(row => row.startsWith('pending_plan='));
         if (pendingPlanCookie) {
           plan = pendingPlanCookie.split('=')[1];
+          console.log('[CALLBACK] Found pending plan in cookie:', plan);
         }
       }
 
-      // 3. Check for existing profile and onboarding status
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('onboarding_completed')
-        .eq('id', session.user.id)
-        .single();
+      // Check for existing profile and onboarding status
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('id', session.user.id)
+          .single() as any;
 
-      // Initialize onboarding data if plan is selected
-      if (plan) {
-        try {
+        if (profileError) {
+          console.error('[CALLBACK] Error fetching profile:', profileError);
+          // If profile doesn't exist, it's likely a new signup
+        }
+
+        // Initialize onboarding data if plan is selected
+        if (plan) {
+          console.log('[CALLBACK] Updating profile with selected plan:', plan);
           await supabase
             .from('profiles')
             .update({
               onboarding_data: { selectedPlan: plan },
-            })
+            } as any)
             .eq('id', session.user.id);
-        } catch (err) {
-          console.error('Error saving plan to onboarding data:', err);
         }
-      }
 
-      // 4. Intelligent redirect
-      if (profile?.onboarding_completed) {
-        router.push('/dashboard');
-      } else {
-        router.push('/setup');
+        // Intelligent redirect
+        if (profile?.onboarding_completed) {
+          console.log('[CALLBACK] Onboarding complete, redirecting to dashboard');
+          router.push('/dashboard');
+        } else {
+          console.log('[CALLBACK] Onboarding incomplete or profile missing, redirecting to setup');
+          router.push('/setup');
+        }
+      } catch (err) {
+        console.error('[CALLBACK] Unexpected error during profile check:', err);
+        router.push('/dashboard'); // Fallback redirect
       }
     };
 
     handleAuthCallback();
-  }, [router, supabase.auth]);
+  }, [router]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center">
