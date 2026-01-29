@@ -33,6 +33,8 @@ export const viewport = {
   userScalable: false,
 };
 
+import { ConsoleSilencer } from '@/components/console-silencer';
+
 export default function RootLayout({
   children,
 }: {
@@ -41,6 +43,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
+        <ConsoleSilencer />
         <Suspense fallback={null}>
           <TopLoader />
         </Suspense>

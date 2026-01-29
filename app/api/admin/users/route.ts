@@ -1,14 +1,18 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
     try {
         // 1. Fetch profiles (which contains user metadata we care about)
         // We use supabaseAdmin to bypass RLS policies
+        // Fetch up to 1000 users for now. For larger scale, we need server-side pagination.
         const { data: profiles, error: profilesError } = await supabaseAdmin
             .from('profiles')
             .select('*')
             .order('created_at', { ascending: false })
+            .limit(1000)
 
         if (profilesError) {
             console.error('Error fetching profiles:', profilesError)
@@ -31,7 +35,10 @@ export async function GET() {
         // If profiles table doesn't have email, we might strictly need access to auth.users list
         // using the admin auth client.
 
-        const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers()
+        const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers({
+            page: 1,
+            perPage: 1000
+        })
 
         if (authError) {
             console.error('Error fetching auth users:', authError)
@@ -42,6 +49,11 @@ export async function GET() {
             const sub = (subscriptions as any[])?.find(s => s.user_id === profile.id)
             const authUser = (users as any[])?.find(u => u.id === profile.id)
 
+            let status = sub ? sub.status : 'active'
+            if (authUser && !authUser.email_confirmed_at) {
+                status = 'unverified'
+            }
+
             return {
                 id: profile.id,
                 full_name: profile.full_name,
@@ -49,7 +61,7 @@ export async function GET() {
                 email: authUser?.email || 'N/A', // Email comes from auth.users
                 created_at: profile.created_at,
                 plan: sub?.plan_id || 'Free', // Naive plan check
-                status: sub?.status || 'inactive',
+                status: status,
                 last_sign_in: authUser?.last_sign_in_at,
                 role: profile.role || 'user'
             }

@@ -32,7 +32,7 @@ export function AdminOverview({ showStats = true }: AdminOverviewProps) {
     useEffect(() => {
         const fetchUsers = async () => {
             try {
-                const response = await fetch('/api/admin/users')
+                const response = await fetch('/api/admin/users', { cache: 'no-store' })
                 if (!response.ok) {
                     throw new Error('Failed to fetch users')
                 }
@@ -64,6 +64,10 @@ export function AdminOverview({ showStats = true }: AdminOverviewProps) {
         )
     }
 
+    const handleUserDelete = (userId: string) => {
+        setUsers(prev => prev.filter(u => u.id !== userId))
+    }
+
     return (
         <div className="space-y-6">
             {showStats && <AdminStats users={users} />}
@@ -75,14 +79,14 @@ export function AdminOverview({ showStats = true }: AdminOverviewProps) {
                         <TabsTrigger value="users">Users Management</TabsTrigger>
                     </TabsList>
                     <TabsContent value="users" className="space-y-4">
-                        <UsersTable initialUsers={users} />
+                        <UsersTable initialUsers={users} onUserDelete={handleUserDelete} />
                     </TabsContent>
                     <TabsContent value="analytics" className="space-y-4">
                         <AdminAnalytics />
                     </TabsContent>
                 </Tabs>
             ) : (
-                <UsersTable initialUsers={users} />
+                <UsersTable initialUsers={users} onUserDelete={handleUserDelete} />
             )}
         </div>
     )

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Input } from "@/components/ui/input"
+import { UserDetailsModal } from "@/components/admin/user-details-modal"
 import {
     Select,
     SelectContent,
@@ -56,11 +57,15 @@ interface User {
     role: string
 }
 
+import { useRouter } from "next/navigation"
+
 interface UsersTableProps {
     initialUsers: User[]
+    onUserDelete?: (userId: string) => void
 }
 
-export function UsersTable({ initialUsers }: UsersTableProps) {
+export function UsersTable({ initialUsers, onUserDelete }: UsersTableProps) {
+    const router = useRouter()
     const [users, setUsers] = useState<User[]>(initialUsers || [])
     const [filteredUsers, setFilteredUsers] = useState<User[]>(initialUsers || [])
 
@@ -71,10 +76,16 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
         }
     }, [initialUsers])
 
+    // ... (rest of state definitions same as before) ...
     // Filter states
     const [searchQuery, setSearchQuery] = useState("")
     const [roleFilter, setRoleFilter] = useState("all")
+    const [statusFilter, setStatusFilter] = useState("all")
     const [planFilter, setPlanFilter] = useState("all")
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1)
+    const itemsPerPage = 10
 
     // Confirm Dialog State
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
@@ -109,8 +120,21 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
             }
         }
 
+        // Status Filter
+        if (statusFilter !== "all") {
+            result = result.filter(u => u.status === statusFilter)
+        }
+
         setFilteredUsers(result)
-    }, [users, searchQuery, roleFilter, planFilter])
+        // Adjust current page if it exceeds total pages after filtering or deletion
+        const newTotalPages = Math.ceil(result.length / itemsPerPage)
+        if (currentPage > newTotalPages && newTotalPages > 0) {
+            setCurrentPage(newTotalPages)
+        } else if (currentPage > newTotalPages && newTotalPages === 0) {
+            setCurrentPage(1)
+        }
+
+    }, [users, searchQuery, roleFilter, planFilter, statusFilter, itemsPerPage, currentPage]) // Added deps
 
 
     const initiateRoleUpdate = (userId: string, email: string, newRole: 'admin' | 'user') => {
@@ -121,28 +145,22 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
 
     const executeRoleUpdate = async () => {
         if (!userToUpdate) return
-
         setIsUpdating(true)
         try {
             const response = await fetch('/api/admin/users/role', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId: userToUpdate.id, role: userToUpdate.role })
             })
-
             if (!response.ok) {
                 const errorData = await response.json()
                 throw new Error(errorData.error || 'Failed to update role')
             }
-
             toast.success(`User role updated to ${userToUpdate.role}`)
-
-            // Optimistic update
             setUsers(users.map(u => u.id === userToUpdate.id ? { ...u, role: userToUpdate.role } : u))
             setIsConfirmOpen(false)
             setUserToUpdate(null)
+            router.refresh()
         } catch (error) {
             toast.error(error instanceof Error ? error.message : 'Failed to update user role')
             console.error(error)
@@ -151,14 +169,46 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
         }
     }
 
+    const [selectedUser, setSelectedUser] = useState<User | null>(null)
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
+    const handleRoleUpdateWrapper = (userId: string, currentRole: string) => {
+        const user = users.find(u => u.id === userId)
+        if (user) {
+            initiateRoleUpdate(userId, user.email, currentRole === 'admin' ? 'user' : 'admin')
+        }
+    }
+
+    const handleDeleteSuccess = (userId: string) => {
+        // Optimistically update local state
+        const updatedUsers = users.filter(u => u.id !== userId)
+        setUsers(updatedUsers)
+        setFilteredUsers(filteredUsers.filter(u => u.id !== userId))
+
+        setIsDetailsOpen(false)
+        setSelectedUser(null)
+
+        // Notify parent to update stats
+        if (onUserDelete) {
+            onUserDelete(userId)
+        }
+
+        // Refresh server data
+        router.refresh()
+    }
+
+    // Pagination Logic
+    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage)
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    const currentUsers = filteredUsers.slice(startIndex, endIndex)
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle>All Users</CardTitle>
                 <CardDescription>
-                    Manage and view all registered users. Total: {users?.length || 0}
+                    Manage and view all registered users. Total: {filteredUsers.length} {filteredUsers.length !== users.length && `(filtered from ${users.length})`}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -172,9 +222,9 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                         <Select value={roleFilter} onValueChange={setRoleFilter}>
-                            <SelectTrigger className="w-[140px]">
+                            <SelectTrigger className="w-[130px]">
                                 <SelectValue placeholder="Role" />
                             </SelectTrigger>
                             <SelectContent>
@@ -184,13 +234,24 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                             </SelectContent>
                         </Select>
                         <Select value={planFilter} onValueChange={setPlanFilter}>
-                            <SelectTrigger className="w-[140px]">
+                            <SelectTrigger className="w-[130px]">
                                 <SelectValue placeholder="Plan" />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">All Plans</SelectItem>
                                 <SelectItem value="pro">Paid Plans</SelectItem>
                                 <SelectItem value="free">Free Plan</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[130px]">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="active">Active</SelectItem>
+                                <SelectItem value="inactive">Inactive</SelectItem>
+                                <SelectItem value="unverified">Unverified</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -210,21 +271,24 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {filteredUsers.length === 0 ? (
+                            {currentUsers.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                                         No users found.
                                     </TableCell>
                                 </TableRow>
-                            ) : filteredUsers.map((user) => (
-                                <TableRow key={user.id}>
+                            ) : currentUsers.map((user) => (
+                                <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50 transition-colors group" onClick={() => {
+                                    setSelectedUser(user)
+                                    setIsDetailsOpen(true)
+                                }}>
                                     <TableCell className="flex items-center gap-3 min-w-[250px]">
-                                        <Avatar className="h-9 w-9">
+                                        <Avatar className="h-9 w-9 ring-2 ring-transparent group-hover:ring-primary/20 transition-all">
                                             <AvatarImage src={user.avatar_url || undefined} alt={user.full_name || "User"} />
                                             <AvatarFallback>{(user.full_name || user.email || "U").slice(0, 2).toUpperCase()}</AvatarFallback>
                                         </Avatar>
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-sm text-foreground">
+                                            <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
                                                 {user.full_name || "No Name"}
                                             </span>
                                             <span className="text-xs text-muted-foreground">{user.email}</span>
@@ -233,7 +297,10 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                                     <TableCell>
                                         <Badge
                                             variant="outline"
-                                            onClick={() => initiateRoleUpdate(user.id, user.email, user.role === 'admin' ? 'user' : 'admin')}
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                initiateRoleUpdate(user.id, user.email, user.role === 'admin' ? 'user' : 'admin')
+                                            }}
                                             className={`
                                                 cursor-pointer transition-all hover:scale-105 active:scale-95
                                                 ${user.role === 'admin'
@@ -255,7 +322,10 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                                     <TableCell>
                                         <Badge
                                             variant={user.status === 'active' ? 'default' : 'secondary'}
-                                            className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+                                            className={`
+                                                ${user.status === 'active' ? 'bg-green-100 text-green-700 hover:bg-green-100 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800' : ''}
+                                                ${user.status === 'unverified' ? 'bg-orange-100 text-orange-700 hover:bg-orange-100 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800' : ''}
+                                            `}
                                         >
                                             {user.status}
                                         </Badge>
@@ -266,46 +336,18 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                                     <TableCell className="text-muted-foreground text-sm">
                                         {user.last_sign_in ? format(new Date(user.last_sign_in), "MMM d, HH:mm") : "Never"}
                                     </TableCell>
-                                    <TableCell>
+                                    <TableCell onClick={(e) => e.stopPropagation()}>
                                         <div className="flex items-center justify-end gap-2">
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                                                            onClick={() => {
-                                                                navigator.clipboard.writeText(user.id)
-                                                                toast.success("User ID copied to clipboard")
-                                                            }}
-                                                        >
-                                                            <Copy className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>Copy User ID</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className={`h-8 w-8 ${user.role === 'admin' ? 'text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20' : 'text-muted-foreground hover:text-primary hover:bg-primary/10'}`}
-                                                            onClick={() => initiateRoleUpdate(user.id, user.email, user.role === 'admin' ? 'user' : 'admin')}
-                                                        >
-                                                            {user.role === 'admin' ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <p>{user.role === 'admin' ? 'Revoke Admin Access' : 'Promote to Admin'}</p>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => {
+                                                    setSelectedUser(user)
+                                                    setIsDetailsOpen(true)
+                                                }}
+                                            >
+                                                View
+                                            </Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -314,33 +356,63 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                     </Table>
                 </div>
 
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between space-x-2 py-4">
+                        <div className="text-sm text-muted-foreground">
+                            Page {currentPage} of {totalPages}
+                        </div>
+                        <div className="space-x-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                            >
+                                Previous
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+
             </CardContent>
 
             <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Change User Role?</AlertDialogTitle>
-                        <AlertDialogDescription className="space-y-4">
-                            <div>
-                                Are you sure you want to change this user&apos;s role to{' '}
-                                <span className="font-bold">{userToUpdate?.role.toUpperCase()}</span>?
-                                {userToUpdate?.role === 'admin' && (
-                                    <span className="block mt-2 text-yellow-600 dark:text-yellow-500 font-medium">
-                                        Warning: This gives the user full control over the system.
-                                    </span>
-                                )}
-                            </div>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-4 text-sm text-muted-foreground">
+                                <div>
+                                    Are you sure you want to change this user&apos;s role to{' '}
+                                    <span className="font-bold">{userToUpdate?.role.toUpperCase()}</span>?
+                                    {userToUpdate?.role === 'admin' && (
+                                        <span className="block mt-2 text-yellow-600 dark:text-yellow-500 font-medium">
+                                            Warning: This gives the user full control over the system.
+                                        </span>
+                                    )}
+                                </div>
 
-                            <div className="space-y-2">
-                                <p className="text-sm font-medium text-foreground">
-                                    Type <span className="font-mono text-muted-foreground select-all">{userToUpdate?.email}</span> to confirm:
-                                </p>
-                                <Input
-                                    value={confirmEmail}
-                                    onChange={(e) => setConfirmEmail(e.target.value)}
-                                    placeholder={userToUpdate?.email}
-                                    className="font-mono"
-                                />
+                                <div className="space-y-2">
+                                    <p className="font-medium text-foreground">
+                                        Type <span className="font-mono text-muted-foreground select-all">{userToUpdate?.email}</span> to confirm:
+                                    </p>
+                                    <Input
+                                        value={confirmEmail}
+                                        onChange={(e) => setConfirmEmail(e.target.value)}
+                                        placeholder={userToUpdate?.email}
+                                        className="font-mono"
+                                    />
+                                </div>
                             </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
@@ -356,6 +428,16 @@ export function UsersTable({ initialUsers }: UsersTableProps) {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {selectedUser && (
+                <UserDetailsModal
+                    user={selectedUser}
+                    isOpen={isDetailsOpen}
+                    onOpenChange={setIsDetailsOpen}
+                    onRoleUpdate={handleRoleUpdateWrapper}
+                    onDeleteSuccess={handleDeleteSuccess}
+                />
+            )}
         </Card >
     )
 }

@@ -357,6 +357,47 @@ export interface Database {
           period_end?: string | null
         }
       }
+    },
+    seo_pages: {
+      Row: {
+        id: string
+        location: string
+        keyword: string
+        title: string
+        description: string | null
+        content: string | null
+        slug: string
+        status: 'published' | 'draft' | 'archived'
+        metadata: Json | null
+        created_at: string
+        updated_at: string
+      }
+      Insert: {
+        id?: string
+        location: string
+        keyword: string
+        title: string
+        description?: string | null
+        content?: string | null
+        slug: string
+        status?: 'published' | 'draft' | 'archived'
+        metadata?: Json | null
+        created_at?: string
+        updated_at?: string
+      }
+      Update: {
+        id?: string
+        location?: string
+        keyword?: string
+        title?: string
+        description?: string | null
+        content?: string | null
+        slug?: string
+        status?: 'published' | 'draft' | 'archived'
+        metadata?: Json | null
+        created_at?: string
+        updated_at?: string
+      }
     }
   }
 }

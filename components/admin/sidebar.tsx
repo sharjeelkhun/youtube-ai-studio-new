@@ -30,6 +30,11 @@ export function AdminSidebar() {
             label: "Users",
             icon: Users,
         },
+        {
+            href: "/admin/seo-generator",
+            label: "Bulk SEO",
+            icon: LayoutDashboard // Or a better icon if imported
+        },
     ]
 
     return (
