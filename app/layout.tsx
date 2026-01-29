@@ -8,6 +8,7 @@ import { AIProvider } from '@/contexts/ai-context';
 import { SubscriptionProvider } from "@/contexts/subscription-context";
 import ClickSpark from '@/components/click-spark';
 import { TopLoader } from '@/components/ui/top-loader';
+import Script from 'next/script'; // <-- Import Script
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -42,6 +43,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      {/* Google AdSense */}
+      <Script
+        async
+        strategy="afterInteractive" // Loads after page is interactive
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9343137756527137"
+        crossOrigin="anonymous"
+      />
       <meta name="google-adsense-account" content="ca-pub-9343137756527137" />
       <body className={`${inter.variable} font-sans antialiased`}>
         <ConsoleSilencer />
