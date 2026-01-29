@@ -2,6 +2,7 @@
 
 import React, { Suspense } from "react"
 import LoginContent from "@/components/login-content"
+import { PageLoader } from "@/components/ui/page-loader"
 
 // Wrapper component that handles the useSearchParams call
 function LoginInner() {
@@ -11,7 +12,7 @@ function LoginInner() {
 // Main wrapper with Suspense boundary
 export function LoginWrapper() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<PageLoader />}>
       <LoginInner />
     </Suspense>
   )

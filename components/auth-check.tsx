@@ -5,6 +5,7 @@ import type React from "react"
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { PageLoader } from "@/components/ui/page-loader"
 
 export function AuthCheck({ children }: { children: React.ReactNode }) {
   const { session, isLoading } = useAuth()
@@ -17,7 +18,7 @@ export function AuthCheck({ children }: { children: React.ReactNode }) {
   }, [session, isLoading, router])
 
   if (isLoading) {
-    return <div>Loading...</div>
+    return <PageLoader />
   }
 
   if (!session) {
